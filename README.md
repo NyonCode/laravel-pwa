@@ -125,7 +125,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | | [Service worker](docs/en/service-worker.md) | [Livewire and Inertia](docs/en/adapters.md) | [Platform support](docs/en/platforms.md) |
 | | [Offline](docs/en/offline.md) | [Push notifications](docs/en/push.md) | [Troubleshooting](docs/en/troubleshooting.md) |
 | | [Persistent login](docs/en/session.md) | [AI agents](docs/en/ai.md) | [Testing](docs/en/testing.md) |
-| | [Maintenance](docs/en/maintenance.md) | | |
+| | [Maintenance](docs/en/maintenance.md) | | [Versioning](docs/en/versioning.md) |
 | | [Kill switch](docs/en/kill-switch.md) | | |
 
 The documentation is also available in [Czech](docs/cs/index.md).
@@ -134,13 +134,11 @@ The documentation is also available in [Czech](docs/cs/index.md).
 
 | Version | PHP | Laravel | Status |
 | --- | --- | --- | --- |
-| 0.4 | 8.2 – 8.5 | 12, 13 | Active |
-| 0.3 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.4.0 + 3 months |
-| 0.2 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.3.0 + 3 months |
-| 0.1 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.2.0 + 3 months |
+| 1.x | 8.2 – 8.5 | 12, 13 | Active |
 
-Laravel 11 and older are end of life and not supported. Every release is tested against the
-lowest and the latest dependencies on every supported PHP and Laravel version.
+The package follows [Semantic Versioning](docs/en/versioning.md): minor releases never break the
+public API. Laravel 11 and older are end of life and not supported. Every release is tested against
+the lowest and the latest dependencies on every supported PHP and Laravel version.
 
 ## AI agents and MCP
 

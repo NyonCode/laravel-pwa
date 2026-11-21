@@ -5,7 +5,10 @@ This is the complete public surface, written from the source of the installed re
 inside the package (`vendor/nyoncode/laravel-pwa/ai/AGENTS.md`), so it matches `composer.lock`.
 Prefer it — and the package's MCP server, if registered — over recalling the API.
 
-Requires PHP 8.2+ (8.3+ with Laravel 13) and Laravel 12.x or 13.x. Built on
+Requires PHP 8.2+ (8.3+ with Laravel 13) and Laravel 12.x or 13.x. Semantic Versioning from 1.0:
+everything below is public API; classes marked `@internal` (controllers, listeners, command classes,
+icon drivers, `Support`, `MinishlinkTransport`, `SendWebPush`, `Vapid`) are not, so never extend or
+call them from app code. Built on
 `nyoncode/laravel-package-toolkit`; short name `pwa` (views `pwa::`, translations `pwa::`, publish
 tags `pwa::config`, `pwa::views`, `pwa::translations`, `pwa::migrations`).
 
@@ -228,7 +231,7 @@ User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's `pwa-pa
 (incl. rules) + precache list + `sw.import`/`sw.extend` contents + runtime file. New versions wait;
 the client asks the user (bar or update toast), then `Pwa.applyUpdate()` sends `SKIP_WAITING`
 and reloads after `controllerchange`. Never post `SKIP_WAITING` from app code: the page would not reload. Activation removes caches of rules that no
-longer exist and 0.1.x caches (`pwa-api-*`, `pwa-images*`).
+longer exist and pre-1.0 caches (`pwa-api-*`, `pwa-images*`).
 
 Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION` (with a port).
 Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503.

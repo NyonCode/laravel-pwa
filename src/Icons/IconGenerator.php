@@ -10,6 +10,8 @@ use RuntimeException;
 
 /**
  * Generates the PWA icons and iOS startup images from one source image (used by pwa:icons).
+ *
+ * @internal
  */
 class IconGenerator
 {

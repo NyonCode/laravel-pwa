@@ -9,6 +9,9 @@ use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:build', description: 'Build the service worker from the Vite build (run it in your deploy script after npm run build)')]
 class BuildCommand extends Command
 {

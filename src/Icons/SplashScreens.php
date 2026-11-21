@@ -6,6 +6,8 @@ namespace NyonCode\LaravelPwa\Icons;
 
 /**
  * The <link rel="apple-touch-startup-image"> tags for the images pwa:icons --splash generated.
+ *
+ * @internal
  */
 final class SplashScreens
 {

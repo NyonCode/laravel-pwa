@@ -73,7 +73,7 @@ cache-first on their first use (`/build/*`).
 2. **waiting**: the new version waits while the old one is running. The client shows an update bar
    ("A new version is available.").
 3. **activate** (after `SKIP_WAITING` is confirmed): deletes old `pwa-static-*` caches, caches of
-   rules that no longer exist, caches from 0.1.x (`pwa-api-*`, `pwa-images*`), and, when the
+   rules that no longer exist, caches of pre-1.0 versions (`pwa-api-*`, `pwa-images*`), and, when the
    version changes, the cached pages too (they reference old assets). It then enables Navigation
    Preload and claims the clients.
 4. After `controllerchange`, the client reloads the page only if the user confirmed the update.

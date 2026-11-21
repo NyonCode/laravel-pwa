@@ -93,9 +93,12 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   `assertNotPwaCacheable()`, `assertPwaLogout()`, `assertPwaUser()` and `assertValidManifest()`.
 
 ### Documentation and tooling
+- Semantic Versioning with a documented public API ([Versioning](https://nyoncode.github.io/laravel-pwa/versioning.html));
+  classes outside it are `@internal`, enforced by architecture tests.
 - Documentation in English and Czech at https://nyoncode.github.io/laravel-pwa/.
 - AI support: `ai/AGENTS.md`, a Claude Code skill and a dependency-free MCP server.
-- Tested on PHP 8.2–8.5 × Laravel 12/13; JS unit tests of the worker and the client; browser tests
-  in Chromium, Firefox, WebKit and an iPhone project.
+- Tested on PHP 8.2–8.5 × Laravel 12/13 (lowest and latest dependencies, 90 % coverage minimum,
+  Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
+  client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
 [Unreleased]: https://github.com/NyonCode/laravel-pwa/commits/main

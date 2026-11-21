@@ -14,6 +14,8 @@ use NyonCode\LaravelPwa\Push\WebPush;
  * POST / DELETE {route_prefix}/push/subscriptions, the JSON of PushSubscription.toJSON():
  * { endpoint, expirationTime, keys: { p256dh, auth } } plus contentEncoding and, from the
  * worker's pushsubscriptionchange, the endpoint it replaces.
+ *
+ * @internal
  */
 class PushSubscriptionRequest extends FormRequest
 {

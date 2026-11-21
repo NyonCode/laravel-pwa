@@ -10,6 +10,8 @@ use NyonCode\LaravelPwa\Events\TelemetryReceived;
 /**
  * Writes worker and client errors to the log (`pwa.telemetry.channel`, else the default channel).
  * Turn off with `pwa.telemetry.log = false` when you handle TelemetryReceived yourself.
+ *
+ * @internal
  */
 final class LogTelemetry
 {

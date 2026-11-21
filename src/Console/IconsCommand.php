@@ -14,6 +14,9 @@ use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:icons', description: 'Generate the PWA icons (any, maskable, monochrome, apple-touch-icon) and iOS splash screens from a single image')]
 class IconsCommand extends Command
 {

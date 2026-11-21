@@ -120,19 +120,17 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | | [Service worker](docs/cs/service-worker.md) | [Livewire a Inertia](docs/cs/adapters.md) | [Podpora platforem](docs/cs/platforms.md) |
 | | [Offline](docs/cs/offline.md) | [Push notifikace](docs/cs/push.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
 | | [Trvalé přihlášení](docs/cs/session.md) | [AI agenti](docs/cs/ai.md) | [Testování](docs/cs/testing.md) |
-| | [Údržba](docs/cs/maintenance.md) | | |
+| | [Údržba](docs/cs/maintenance.md) | | [Verzování](docs/cs/versioning.md) |
 | | [Nouzové vypnutí](docs/cs/kill-switch.md) | | |
 
 ## Podpora verzí
 
 | Verze | PHP | Laravel | Stav |
 | --- | --- | --- | --- |
-| 0.4 | 8.2 – 8.5 | 12, 13 | Aktivní |
-| 0.3 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.4.0 |
-| 0.2 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.3.0 |
-| 0.1 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.2.0 |
+| 1.x | 8.2 – 8.5 | 12, 13 | Aktivní |
 
-Laravel 11 a starší jsou po konci podpory a balíček je nepodporuje. Každé vydání se testuje
+Balíček se řídí [sémantickým verzováním](docs/cs/versioning.md): minor verze nikdy nerozbijí veřejné
+API. Laravel 11 a starší jsou po konci podpory a balíček je nepodporuje. Každé vydání se testuje
 s nejnižšími i nejnovějšími závislostmi na všech podporovaných verzích PHP a Laravelu.
 
 ## AI agenti a MCP
@@ -148,7 +146,7 @@ Viz [AI agenti](docs/cs/ai.md).
 ## Přispívání a bezpečnost
 
 Viz [CONTRIBUTING.md](CONTRIBUTING.md). Zranitelnosti hlaste neveřejně podle
-[SECURITY.md](SECURITY.md), ne ve veřejných issues.
+[SECURITY.cs.md](SECURITY.cs.md), ne ve veřejných issues.
 
 ## Licence
 

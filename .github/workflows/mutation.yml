@@ -1,0 +1,50 @@
+name: mutation
+
+# Pest mutation testing of the code where a surviving mutant would hide a real bug. Slow (every
+# mutant runs the tests covering its line), so it runs weekly and on demand, one class per job.
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    name: ${{ matrix.class }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        class:
+          - Manifest\ManifestValidator
+          - Manifest\ManifestBuilder
+          - ServiceWorker\CacheRule
+          - ServiceWorker\ServiceWorkerBuilder
+          - Push\WebPush
+          - Push\WebPushMessage
+          - Http\Controllers\PushSubscriptionController
+          - Http\Middleware\PwaWebMiddleware
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: gd
+          coverage: pcov
+
+      - run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Pest --mutate
+        run: |
+          vendor/bin/pest --mutate --everything --covered-only --class='NyonCode\LaravelPwa\${{ matrix.class }}' 2>&1 | tee mutation.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### ${{ matrix.class }}" >> "$GITHUB_STEP_SUMMARY"
+          grep -E 'Mutations:|Score:' mutation.txt >> "$GITHUB_STEP_SUMMARY" || true

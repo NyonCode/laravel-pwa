@@ -8,6 +8,9 @@ use Illuminate\Console\Command;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:clear', description: 'Delete the built service worker (it is then built at runtime)')]
 class ClearCommand extends Command
 {
