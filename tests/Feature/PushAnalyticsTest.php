@@ -37,3 +37,19 @@ it('tells the worker where to report', function (): void {
 it('carries the message id in the notification data', function (): void {
     expect(WebPushMessage::create('Hi')->id('campaign-7')->toPayload()['options']['data']['id'])->toBe('campaign-7');
 });
+
+it('limits the reported fields', function (string $field, int $length, bool $valid): void {
+    $response = $this->postJson('/pwa/push/events', ['events' => [['type' => 'click', $field => str_repeat('x', $length)]]]);
+
+    $valid ? $response->assertStatus(202) : $response->assertUnprocessable();
+})->with([
+    ['id', 100, true], ['id', 101, false],
+    ['tag', 100, true], ['tag', 101, false],
+    ['action', 100, true], ['action', 101, false],
+]);
+
+it('requires events and a type', function (): void {
+    $this->postJson('/pwa/push/events', [])->assertUnprocessable();
+    $this->postJson('/pwa/push/events', ['events' => [['id' => 'x']]])->assertUnprocessable();
+    $this->postJson('/pwa/push/events', ['events' => array_fill(0, 20, ['type' => 'shown'])])->assertStatus(202);
+});

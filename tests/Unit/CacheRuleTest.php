@@ -81,3 +81,43 @@ it('knows which strategies store responses', function (): void {
     expect(CacheStrategy::NetworkOnly->stores())->toBeFalse()
         ->and(CacheStrategy::CacheFirst->stores())->toBeTrue();
 });
+
+it('accepts the smallest limits and rejects anything below', function (): void {
+    $rule = CacheRule::for('/api/*')->networkFirst()->maxEntries(1)->maxAge(1)->timeout(1);
+
+    expect($rule->toArray())->toMatchArray(['maxEntries' => 1, 'maxAge' => 1, 'timeout' => 1])
+        ->and(fn (): CacheRule => CacheRule::for('/x')->maxEntries(0))->toThrow(InvalidArgumentException::class, '[max_entries] must be at least 1')
+        ->and(fn (): CacheRule => CacheRule::for('/x')->maxAge())->toThrow(InvalidArgumentException::class, '[max_age] must be at least 1 second')
+        ->and(fn (): CacheRule => CacheRule::for('/x')->networkFirst()->timeout(0))->toThrow(InvalidArgumentException::class, '[timeout] must be at least 1 second');
+});
+
+it('adds up max_age from every unit', function (): void {
+    expect(CacheRule::for('/x')->maxAge(seconds: 1, minutes: 2, hours: 3, days: 4)->toArray()['maxAge'])->toBe(1 + 120 + 10800 + 345600);
+});
+
+it('derives a stable name from the pattern and the destinations', function (): void {
+    $a = CacheRule::for('/api/*')->getName();
+
+    expect($a)->toMatch('/^r[a-f0-9]{8}$/')
+        ->and($a)->toBe('r'.substr(hash('sha256', '/api/*|'), 0, 8))
+        ->and(CacheRule::for('/api/*')->getName())->toBe($a)
+        ->and(CacheRule::for('/other/*')->getName())->not->toBe($a)
+        ->and(CacheRule::for(null)->destination('image', 'font')->getName())->toBe('r'.substr(hash('sha256', '|image,font'), 0, 8));
+});
+
+it('lists each destination once', function (): void {
+    expect(CacheRule::for(null)->destination('image', 'image', 'font')->destination('font')->toArray()['destinations'])->toBe(['image', 'font']);
+});
+
+it('sends an empty pattern as null', function (): void {
+    expect(CacheRule::for('')->destination('image')->toArray()['match'])->toBeNull();
+});
+
+it('allows a timeout only with network-first', function (): void {
+    expect(fn (): CacheRule => CacheRule::for('/x')->cacheFirst()->timeout(3)->validate())->toThrow(InvalidArgumentException::class);
+});
+
+it('names an unknown destination and lists the allowed ones', function (): void {
+    expect(fn (): CacheRule => CacheRule::for(null)->destination('iframe'))
+        ->toThrow(InvalidArgumentException::class, 'Unknown request destination [iframe]. Allowed: image, font, style, script, audio, video, track, manifest, worker, document.');
+});

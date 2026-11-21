@@ -1,7 +1,8 @@
 name: mutation
 
-# Pest mutation testing of the code where a surviving mutant would hide a real bug. Slow (every
-# mutant runs the tests covering its line), so it runs weekly and on demand, one class per job.
+# Pest mutation testing of the whole package: a mutant that no test catches marks code whose
+# behaviour is not pinned down. Slow (every mutant runs the tests covering its line), so it runs
+# weekly and on demand rather than on every pull request.
 on:
   schedule:
     - cron: '0 3 * * 1'
@@ -12,21 +13,9 @@ permissions:
 
 jobs:
   mutate:
-    name: ${{ matrix.class }}
+    name: Pest --mutate
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        class:
-          - Manifest\ManifestValidator
-          - Manifest\ManifestBuilder
-          - ServiceWorker\CacheRule
-          - ServiceWorker\ServiceWorkerBuilder
-          - Push\WebPush
-          - Push\WebPushMessage
-          - Http\Controllers\PushSubscriptionController
-          - Http\Middleware\PwaWebMiddleware
+    timeout-minutes: 75
 
     steps:
       - uses: actions/checkout@v4
@@ -34,17 +23,22 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: gd
+          extensions: gd, imagick
           coverage: pcov
 
       - run: composer update --prefer-dist --no-interaction --no-progress
 
-      - name: Pest --mutate
-        run: |
-          vendor/bin/pest --mutate --everything --covered-only --class='NyonCode\LaravelPwa\${{ matrix.class }}' 2>&1 | tee mutation.txt
+      - name: Pest --mutate (minimum score 75 %)
+        run: vendor/bin/pest --mutate --everything --covered-only --min=75 2>&1 | tee mutation.txt
 
       - name: Summary
         if: always()
         run: |
-          echo "### ${{ matrix.class }}" >> "$GITHUB_STEP_SUMMARY"
-          grep -E 'Mutations:|Score:' mutation.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo "### Mutation testing" >> "$GITHUB_STEP_SUMMARY"
+          sed -E 's/\x1b\[[0-9;]*m//g' mutation.txt | grep -E 'Mutations:|Score:' >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutation-report
+          path: mutation.txt
