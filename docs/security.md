@@ -26,7 +26,8 @@ Doporučení: na citlivé stránky `pwa.cache` nedávejte; odpovědi s citlivým
 | `pwa_display` | klient | režim zobrazení (`standalone`, `browser` …) | ne (vyjmuta z `EncryptCookies`) |
 | remember cookie | Laravel | standardní remember token | ano, HttpOnly |
 
-`pwa_display` je jen nápověda; podvržená hodnota může nanejvýš zapnout remember-me při přihlášení.
+`pwa_display` je jen nápověda; podvržená hodnota může nanejvýš zapnout remember-me při přihlášení
+(a jen když formulář pole remember výslovně nevypne). `?source=pwa` remember-me nezapne.
 
 ## CSP
 

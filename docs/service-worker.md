@@ -51,7 +51,7 @@ importovaných souborů a souboru `runtime.js`. Precache obsahuje hashované ná
 | --- | --- | --- |
 | navigace (HTML) | síť (s Navigation Preload); po `cache.navigation_timeout` cache, pokud existuje; při chybě cache, pak `/offline` | `pwa-pages-{user}` |
 | `/build/*` a precache | cache-first | `pwa-static-{version}` |
-| obrázky, fonty | stale-while-revalidate, limit `cache.images.max_entries` | `pwa-images` |
+| obrázky, fonty | stale-while-revalidate, limit `cache.images.max_entries` | `pwa-images-{userHash}` |
 | GET z `cache.api` | síť, při chybě nebo 503 cache | `pwa-api-{user}` |
 | POST/PUT/PATCH/DELETE | síť; při výpadku fronta a `202` | IndexedDB `pwa` / `queue` |
 | `cache.never_cache`, cizí domény, `/sw.js` | SW nezasahuje | – |
@@ -95,7 +95,7 @@ pro ten požadavek neuplatní. Lokální soubory (`/…`) ovlivňují verzi SW o
 ## Ladění
 
 - Chrome DevTools → Application → Service workers: stav, Update on reload, Bypass for network.
-- Application → Cache storage: `pwa-static-*`, `pwa-pages-*`, `pwa-api-*`, `pwa-images`, `pwa-meta`.
+- Application → Cache storage: `pwa-static-*`, `pwa-pages-*`, `pwa-api-*`, `pwa-images-*`, `pwa-meta`.
 - Application → IndexedDB → `pwa` → `queue`: fronta offline akcí.
 - `await Pwa.version()` v konzoli vrátí verzi aktivního SW.
 - Chyby SW jsou v logu s prefixem `[pwa]` ([Bezpečnost](security.md#telemetrie)).

@@ -11,7 +11,7 @@
   const C = self.__PWA || {};
   const V = C.version || 'dev';
   const STATIC = `pwa-static-${V}`;
-  const IMAGES = 'pwa-images';
+  const IMAGES_PREFIX = 'pwa-images-';
   const META = 'pwa-meta';
   const PAGES_PREFIX = 'pwa-pages-';
   const API_PREFIX = 'pwa-api-';
@@ -50,7 +50,7 @@
 
   const userCaches = async (user) => {
     const keys = await caches.keys();
-    return keys.filter((k) => (k.startsWith(PAGES_PREFIX) || k.startsWith(API_PREFIX)) && (user === undefined || !k.endsWith(`-${user}`)));
+    return keys.filter((k) => (k.startsWith(PAGES_PREFIX) || k.startsWith(API_PREFIX) || k.startsWith(IMAGES_PREFIX)) && (user === undefined || !k.endsWith(`-${user}`)));
   };
 
   /* ------------------------------------------------------------------ *
@@ -236,7 +236,8 @@
     event.waitUntil((async () => {
       const keys = await caches.keys();
       await Promise.all(keys
-        .filter((k) => k.startsWith('pwa-static-') && k !== STATIC)
+        // 'pwa-images' = sdílená cache obrázků z dřívějších verzí, nově je po uživatelích.
+        .filter((k) => (k.startsWith('pwa-static-') && k !== STATIC) || k === 'pwa-images')
         .map((k) => caches.delete(k)));
       // Stránky odkazují na assety staré verze: po aktualizaci je zahodit.
       const meta_version = await meta.get('version');
@@ -428,7 +429,7 @@
     }
 
     if (['image', 'font'].includes(request.destination)) {
-      event.respondWith(staleWhileRevalidate(event, IMAGES, (C.images || {}).max_entries || 120));
+      event.respondWith(currentUserHash().then((user) => staleWhileRevalidate(event, `${IMAGES_PREFIX}${user}`, (C.images || {}).max_entries || 120)));
       return;
     }
 

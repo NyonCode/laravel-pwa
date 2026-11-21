@@ -41,7 +41,8 @@ Adaptér poslouchá DOM události `inertia:invalid` (odpověď, která není Ine
 202 z fronty) a `inertia:exception` (chyba sítě) a volá `preventDefault()`.
 
 Inertia používá vlastní instanci axios. Pokud ji aplikace vystaví jako `window.axios`, klient po 419
-request zopakuje; jinak token jen obnoví a uživatel akci zopakuje.
+request zopakuje (jen na vlastní origin, token nikdy neodejde jinam); jinak token jen obnoví a
+uživatel akci zopakuje.
 
 Formuláře přes `useForm` jsou XHR, takže se při výpadku uloží do fronty a odešlou po připojení.
 Kvůli zpožděnému odeslání posílejte s vytvářenými záznamy vlastní UUID.

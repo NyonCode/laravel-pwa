@@ -72,9 +72,7 @@ class Pwa
     {
         $request ??= request();
 
-        $mode = $request->header(self::DISPLAY_HEADER) ?? $request->cookie(self::DISPLAY_COOKIE);
-
-        if (is_string($mode) && in_array($mode, self::STANDALONE_MODES, true)) {
+        if ($this->isStandaloneClient($request)) {
             return true;
         }
 
@@ -83,6 +81,21 @@ class Pwa
         }
 
         return $request->hasSession() && (bool) $request->session()->get('pwa.standalone', false);
+    }
+
+    /**
+     * Hlásí nainstalovanou aplikaci sám klient (hlavička X-PWA-Display nebo cookie pwa_display)?
+     *
+     * Na rozdíl od isStandaloneRequest() nebere v úvahu ?source=pwa ani označení session:
+     * ty se dají podstrčit odkazem, proto se podle nich nesmí rozhodovat o bezpečnosti.
+     */
+    public function isStandaloneClient(?Request $request = null): bool
+    {
+        $request ??= request();
+
+        $mode = $request->header(self::DISPLAY_HEADER) ?? $request->cookie(self::DISPLAY_COOKIE);
+
+        return is_string($mode) && in_array($mode, self::STANDALONE_MODES, true);
     }
 
     /**

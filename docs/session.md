@@ -20,17 +20,25 @@ doručuje systém a při každém otevření se session obnoví a data načtou.
 | `?source=pwa` | `start_url` |
 | session `pwa.standalone` | nastaví `PwaWebMiddleware` po prvním `?source=pwa` |
 
+`Pwa::isStandaloneClient($request)` bere jen první dva signály (hlavička a cookie od klienta).
+`?source=pwa` i označení session se dají podstrčit odkazem, proto podle nich balíček nerozhoduje
+o ničem, co se týká bezpečnosti.
+
 ## Remember-me: `pwa.remember`
 
 ```php
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('pwa.remember');
 ```
 
-V nainstalované aplikaci doplní do požadavku `remember=on` (název pole: `session.remember_field`).
+V nainstalované aplikaci (`Pwa::isStandaloneClient()`) doplní do požadavku `remember=on` (název pole:
+`session.remember_field`). Pole, které formulář pošle výslovně jako nepravdivé (`0`, `false`, `off`),
+nepřepíše: volba uživatele má přednost. Nezaškrtnutý checkbox se neposílá, takže ho middleware doplní.
 Kontroler pak volá `Auth::attempt($credentials, $request->boolean('remember'))` jako obvykle a
 Laravel nastaví HttpOnly remember cookie ze serveru. Prohlížeče drží cookies nejvýš 400 dní.
 
 Breeze / Jetstream: `LoginRequest` čte `$this->boolean('remember')`, takže stačí middleware.
+Inertia (`useForm({ remember: false })`) posílá `false` vždy: výchozí hodnotu nastavte podle
+klienta, např. `remember: window.Pwa?.isInstalled() ?? false`.
 Fortify: přidejte middleware na routu `login.store` (vlastní routa nebo `Fortify::ignoreRoutes()`).
 
 Vypnutí: `session.standalone_remember = false`.

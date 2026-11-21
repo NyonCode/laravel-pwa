@@ -11,7 +11,7 @@ description: window.Pwa – API, události pwa:*, lišty, instalace, badge a jak
 
 1. Zvýší počítadlo návštěv (localStorage `pwa:visits`).
 2. Nastaví cookie `pwa_display` s režimem zobrazení.
-3. Obalí `fetch` pro opakování po 419 (s `session.refresh_csrf`).
+3. Obalí `fetch` a `window.axios` pro opakování po 419 (s `session.refresh_csrf`, jen požadavky na vlastní origin).
 4. Zapne adaptéry Livewire a Inertia.
 5. Zaregistruje service worker, nebo ho odregistruje (`enabled: false`).
 6. Spustí keep-alive interval.

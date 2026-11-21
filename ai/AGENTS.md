@@ -70,7 +70,7 @@ The `pwa` prefix is `config('pwa.route_prefix')`.
 
 | Alias / group | Class | Effect |
 |---|---|---|
-| `pwa.remember` | `Http\Middleware\RememberStandalone` | in the installed app merges `remember=on` (field `pwa.session.remember_field`) into the request; put it on the **login POST** route |
+| `pwa.remember` | `Http\Middleware\RememberStandalone` | when `isStandaloneClient()` merges `remember=on` (field `pwa.session.remember_field`) into the request, unless the field was sent explicitly falsy (`0`/`false`/`off`); put it on the **login POST** route |
 | `pwa.cache` | `Http\Middleware\CachePage` | adds `X-PWA-Cache: allow` to GET 200 responses → service worker may store the page for offline |
 | appended to `web` | `Http\Middleware\PwaWebMiddleware` | marks session from `?source=pwa`; sends `X-PWA-User` (HMAC hash of user id); after logout sends `X-PWA-Logout: 1` + `Clear-Site-Data: "cache"` |
 
@@ -86,6 +86,7 @@ to wire.
 | `manifest()` | `ManifestBuilder` | fluent manifest API (singleton) |
 | `serviceWorker()` | `ServiceWorkerBuilder` | build/compile the worker |
 | `isStandaloneRequest(?Request)` | bool | header `X-PWA-Display`, cookie `pwa_display`, `?source=pwa`, or session `pwa.standalone` |
+| `isStandaloneClient(?Request)` | bool | header `X-PWA-Display` or cookie `pwa_display` only; `?source=pwa` and the session flag can be planted by a link, so only this one drives `pwa.remember` |
 | `userHash(?Request)` | string | `guest` or 16-char HMAC of the auth id |
 | `clientConfig()` | array | JSON passed to the client in `#pwa-config` |
 | `cspNonce()` | ?string | `Vite::cspNonce()` |
@@ -148,7 +149,7 @@ stable). Keep the `@if($nonce) nonce=…` attributes.
 |---|---|---|
 | navigation | network (+ Navigation Preload); after `cache.navigation_timeout` s use cache if present; on error cache, then `/offline` | `pwa-pages-{userHash}` |
 | `/build/*`, precache list | cache-first | `pwa-static-{version}` |
-| images, fonts | stale-while-revalidate, max `cache.images.max_entries` | `pwa-images` |
+| images, fonts | stale-while-revalidate, max `cache.images.max_entries` | `pwa-images-{userHash}` |
 | GET matching `cache.api` (`*` wildcard) | network-first, cache fallback (also on 503) | `pwa-api-{userHash}` |
 | POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
 | `cache.never_cache`, other origins, `/sw.js` | untouched | — |
@@ -173,7 +174,7 @@ DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `res
 `csrf-refreshed`.
 
 On boot the client sets cookie `pwa_display`, wraps `window.fetch` and `window.axios` to retry a
-non-GET 419 once with a fresh token, registers or unregisters the worker, runs keep-alive on
+non-GET same-origin 419 once with a fresh token, registers or unregisters the worker, runs keep-alive on
 `visibilitychange`/`pageshow` and every `session.keepalive_minutes`. Fresh CSRF tokens are written
 to `meta[name=csrf-token]`, `input[name=_token]`, axios defaults and `livewireScriptConfig`.
 
@@ -227,6 +228,8 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
 11. **Session driver `array`/`cookie` or no shared cache store on multiple servers** → logouts,
     kill switch not seen by all servers.
 12. **Expecting push from this package** → there is none; see `docs/push.md`.
+13. **Inertia `useForm({ remember: false })` on login** → the explicit `false` wins over `pwa.remember`,
+    so the installed app is not remembered. Default it to `window.Pwa?.isInstalled() ?? false`.
 
 ## Before you call the work done
 

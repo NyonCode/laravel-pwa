@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use NyonCode\LaravelPwa\Pwa;
 
 beforeEach(function () {
     Route::middleware('web')->group(function () {
@@ -53,10 +54,25 @@ it('forces remember-me in the installed app', function (array $headers, array $c
     'hlavička standalone' => [['X-PWA-Display' => 'standalone'], [], '/login-test', true],
     'hlavička minimal-ui (Edge desktop)' => [['X-PWA-Display' => 'minimal-ui'], [], '/login-test', true],
     'cookie z klienta' => [[], ['pwa_display' => 'standalone'], '/login-test', true],
-    'start_url ?source=pwa' => [[], [], '/login-test?source=pwa', true],
+    'jen ?source=pwa (dá se podstrčit odkazem)' => [[], [], '/login-test?source=pwa', false],
     'běžný prohlížeč' => [['X-PWA-Display' => 'browser'], [], '/login-test', false],
     'nic' => [[], [], '/login-test', false],
 ]);
+
+it('does not force remember-me from a session marked by a link', function () {
+    $this->get('/page?source=pwa')->assertSessionHas('pwa.standalone', true);
+
+    $this->withoutMiddleware(ValidateCsrfToken::class)
+        ->post('/login-test')
+        ->assertJson(['remember' => false]);
+});
+
+it('keeps remember-me the user explicitly turned off', function (mixed $value) {
+    $this->withHeaders(['X-PWA-Display' => 'standalone'])
+        ->withoutMiddleware(ValidateCsrfToken::class)
+        ->post('/login-test', ['remember' => $value])
+        ->assertJson(['remember' => false]);
+})->with(['0', 'false', 'off', false]);
 
 it('does not force remember-me when disabled', function () {
     config(['pwa.session.standalone_remember' => false]);
@@ -100,4 +116,14 @@ it('logs telemetry from the service worker without csrf', function () {
 
 it('rejects invalid telemetry', function () {
     $this->postJson('/pwa/telemetry', ['source' => 'evil', 'events' => []])->assertUnprocessable();
+});
+
+it('treats ?source=pwa as standalone only outside security decisions', function () {
+    $pwa = app(Pwa::class);
+    $link = Request::create('/?source=pwa');
+    $client = Request::create('/', server: ['HTTP_X_PWA_DISPLAY' => 'standalone']);
+
+    expect($pwa->isStandaloneRequest($link))->toBeTrue()
+        ->and($pwa->isStandaloneClient($link))->toBeFalse()
+        ->and($pwa->isStandaloneClient($client))->toBeTrue();
 });

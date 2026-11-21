@@ -36,7 +36,7 @@ takže po nasazení s `pwa:build` se zařízení aktualizují sama.
 | `short_name` | ?string | `null` | Pod ikonou na ploše; do 12 znaků. Bez něj se použije `name`. |
 | `description` | ?string | `null` | Popis v instalačním dialogu (Chromium). |
 | `id` | string | `/` | Identita aplikace. **Po vydání neměnit**: změna = nová aplikace, stará zůstane nainstalovaná. |
-| `start_url` | string | `/?source=pwa` | Kam se aplikace otevře. `source=pwa` označí session jako nainstalovanou aplikaci. |
+| `start_url` | string | `/?source=pwa` | Kam se aplikace otevře. `source=pwa` označí session jako nainstalovanou aplikaci (ne pro remember-me). |
 | `scope` | string | `/` | Které URL patří aplikaci. `start_url` musí ležet uvnitř. |
 
 Texty `name`, `short_name` a `description` jdou přeložit v

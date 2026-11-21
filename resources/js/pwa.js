@@ -212,13 +212,25 @@ const installFetchRetry = () => {
   };
 };
 
+// Cílová adresa požadavku axios (stejně jako buildFullPath v axios): token jen na vlastní origin.
+const sameOriginAxios = (config) => {
+  const url = String(config.url || '');
+  const absolute = /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url);
+  const full = absolute || !config.baseURL ? url : `${String(config.baseURL).replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+  try {
+    return new URL(full, location.href).origin === location.origin;
+  } catch {
+    return false;
+  }
+};
+
 // axios z window (Laravel bootstrap.js): po 419 jednou zopakovat s novým tokenem.
 const installAxiosRetry = () => {
   const axios = window.axios;
   if (!C.session?.refreshCsrf || !axios?.interceptors?.response) return;
   axios.interceptors.response.use(undefined, async (error) => {
     const config = error?.config;
-    if (error?.response?.status !== 419 || !config || config.__pwaRetried) throw error;
+    if (error?.response?.status !== 419 || !config || config.__pwaRetried || !sameOriginAxios(config)) throw error;
     const data = await keepAlive(true);
     if (!data?.csrf) throw error;
     config.__pwaRetried = true;
