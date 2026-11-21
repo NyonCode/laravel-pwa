@@ -64,3 +64,25 @@ it('accepts generators and caps the list at offline.warm.max', function (): void
 
     expect(app(Pwa::class)->warmUrls(Request::create('/')))->toBe(['/p/1', '/p/2', '/p/3']);
 });
+
+it('keeps the query string of absolute same-host URLs and accepts http too', function (): void {
+    config(['pwa.offline.warm.urls' => [
+        'http://localhost/orders?tab=open',
+        'https://LOCALHOST/reports',
+        'https://localhost',
+        'ftp://localhost/files',
+        'https://evil.test/orders',
+        '//evil.test/x',
+    ]]);
+
+    expect(app(Pwa::class)->warmUrls())->toBe(['/orders?tab=open', '/reports', '/']);
+});
+
+it('lists each page once and stops at offline.warm.max', function (): void {
+    config(['pwa.offline.warm.urls' => ['/a', '/b', '/a', '/c', '/d'], 'pwa.offline.warm.max' => 3]);
+
+    expect(app(Pwa::class)->warmUrls())->toBe(['/a', '/b', '/c']);
+
+    config(['pwa.offline.warm.max' => 0]);
+    expect(app(Pwa::class)->warmUrls())->toBe([]);
+});
