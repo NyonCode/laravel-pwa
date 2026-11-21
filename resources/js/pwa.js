@@ -206,7 +206,7 @@ const installFetchRetry = () => {
 
     const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
     headers.set('X-CSRF-TOKEN', data.csrf);
-    let body = init.body;
+    const body = init.body;
     if (body instanceof FormData && body.has('_token')) body.set('_token', data.csrf);
     return nativeFetch(input, { ...init, headers, body, __pwaRetried: true });
   };

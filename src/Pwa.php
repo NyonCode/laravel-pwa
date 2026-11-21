@@ -170,6 +170,7 @@ class Pwa
      * SHA-256 hashe inline skriptů a stylů předrenderované obrazovky údržby,
      * pro CSP bez nonce (script-src / style-src).
      *
+     * @param  view-string  $view
      * @return array{script-src: list<string>, style-src: list<string>}
      */
     public function cspHashes(string $view = 'pwa::maintenance'): array

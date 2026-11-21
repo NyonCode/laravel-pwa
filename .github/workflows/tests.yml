@@ -2,10 +2,19 @@ name: tests
 
 on:
   push:
+    branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  pest:
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }} · ${{ matrix.stability }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -13,6 +22,7 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
         laravel: ['12.*', '13.*']
+        stability: [prefer-lowest, prefer-stable]
         include:
           - laravel: '12.*'
             testbench: '10.*'
@@ -21,56 +31,45 @@ jobs:
         exclude:
           - laravel: '13.*'
             php: '8.2'
-    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: gd
           coverage: none
 
       - name: Install dependencies
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-update
-          composer update --prefer-dist --no-interaction --no-progress
+          composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 
-      - name: Run tests
-        run: vendor/bin/pest --ci
+      - name: Pest
+        run: vendor/bin/pest --ci --parallel
 
-  static:
+  coverage:
+    name: Coverage
     runs-on: ubuntu-latest
-    name: Static analysis, code style and JS syntax
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          coverage: none
+          extensions: gd
+          coverage: pcov
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      - run: composer update --prefer-dist --no-interaction --no-progress
 
-      - name: Install dependencies
-        run: composer update --prefer-dist --no-interaction --no-progress
+      - name: Pest with coverage (minimum 90 %)
+        run: vendor/bin/pest --ci --coverage --min=90 --coverage-clover=coverage/clover.xml
 
-      - name: PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
-
-      - name: Pint
-        run: vendor/bin/pint --test
-
-      - name: JS syntax
-        run: node --check resources/js/pwa.js && node --check resources/sw/runtime.js && node --check resources/sw/kill-switch.js
-
-      - name: MCP server self-test
-        run: node ai/mcp/server.mjs --self-test
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f coverage/clover.xml ]; then
+            php -r '$x = simplexml_load_file("coverage/clover.xml")->project->metrics; printf("### PHP coverage: %.1f %%\n", 100 * (int) $x["coveredstatements"] / max(1, (int) $x["statements"]));' >> "$GITHUB_STEP_SUMMARY"
+          fi

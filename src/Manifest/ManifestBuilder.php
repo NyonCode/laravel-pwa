@@ -159,7 +159,7 @@ class ManifestBuilder
 
         $manifest = [...$manifest, ...$this->localized(), ...$this->overrides];
 
-        return array_filter($manifest, static fn (mixed $value): bool => $value !== null && $value !== '' && $value !== []);
+        return array_filter($manifest, static fn (mixed $value): bool => ! in_array($value, [null, '', []], true));
     }
 
     public function toJson(?Request $request = null): string
@@ -214,7 +214,8 @@ class ManifestBuilder
         foreach (['name', 'short_name', 'description'] as $member) {
             foreach ($locales as $locale) {
                 $key = "pwa::manifest.{$member}";
-                $value = trans($key, [], $locale);
+                // Without the fallback locale: a missing translation must not be labelled as this locale.
+                $value = app('translator')->get($key, [], $locale, false);
 
                 if (is_string($value) && $value !== $key && $value !== '') {
                     $result["{$member}_localized"][str_replace('_', '-', $locale)] = $value;

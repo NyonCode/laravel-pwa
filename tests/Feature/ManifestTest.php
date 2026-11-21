@@ -8,7 +8,7 @@ const CHROME_ANDROID = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537
 const ANDROID_TABLET_DESKTOP_UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
 const IPAD_SAFARI = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 
-it('defaults to standalone with minimal-ui override (desktop minimal-ui, mobile standalone)', function () {
+it('defaults to standalone with minimal-ui override (desktop minimal-ui, mobile standalone)', function (): void {
     $manifest = $this->get('/manifest.webmanifest')
         ->assertOk()
         ->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8')
@@ -21,7 +21,7 @@ it('defaults to standalone with minimal-ui override (desktop minimal-ui, mobile 
         ->and($manifest['id'])->toBe('/');
 });
 
-it('is identical for every device with the override strategy (cacheable)', function () {
+it('is identical for every device with the override strategy (cacheable)', function (): void {
     $edge = $this->withHeaders(['User-Agent' => EDGE_WINDOWS])->get('/manifest.webmanifest');
     $android = $this->withHeaders(['User-Agent' => CHROME_ANDROID])->get('/manifest.webmanifest');
 
@@ -29,7 +29,7 @@ it('is identical for every device with the override strategy (cacheable)', funct
     $edge->assertHeaderMissing('Vary');
 });
 
-it('decides on the server with the adaptive strategy', function (array $headers, string $expected) {
+it('decides on the server with the adaptive strategy', function (array $headers, string $expected): void {
     config(['pwa.display.strategy' => 'adaptive']);
 
     $response = $this->withHeaders($headers)->get('/manifest.webmanifest');
@@ -45,7 +45,7 @@ it('decides on the server with the adaptive strategy', function (array $headers,
     'iPad Safari (hlásí se jako Mac)' => [['User-Agent' => IPAD_SAFARI], 'standalone'],
 ]);
 
-it('supports the fixed strategy', function () {
+it('supports the fixed strategy', function (): void {
     config(['pwa.display.strategy' => 'fixed', 'pwa.display.value' => 'fullscreen']);
 
     expect($this->get('/manifest.webmanifest')->json())
@@ -53,7 +53,7 @@ it('supports the fixed strategy', function () {
         ->not->toHaveKey('display_override');
 });
 
-it('lists only icons that exist', function () {
+it('lists only icons that exist', function (): void {
     expect($this->get('/manifest.webmanifest')->json())->not->toHaveKey('icons');
 
     File::ensureDirectoryExists(public_path('pwa/icons'));
@@ -67,7 +67,7 @@ it('lists only icons that exist', function () {
         ->and($icons[1]['purpose'])->toBe('maskable');
 });
 
-it('applies fluent configuration from the application', function () {
+it('applies fluent configuration from the application', function (): void {
     Pwa::manifest()
         ->shortcut('Nová objednávka', '/orders/create')
         ->shareTarget('/share', 'POST', ['image/*'])
@@ -89,16 +89,60 @@ it('applies fluent configuration from the application', function () {
     Pwa::manifest()->flush();
 });
 
-it('answers 304 for an unchanged manifest', function () {
+it('answers 304 for an unchanged manifest', function (): void {
     $etag = $this->get('/manifest.webmanifest')->headers->get('ETag');
 
     $this->withHeaders(['If-None-Match' => $etag])->get('/manifest.webmanifest')->assertStatus(304);
 });
 
-it('sets lang from the application locale', function () {
+it('sets lang from the application locale', function (): void {
     app()->setLocale('cs');
 
     expect($this->get('/manifest.webmanifest')->json())
         ->lang->toBe('cs')
         ->dir->toBe('ltr');
+});
+
+it('translates name and adds localized variants for configured locales', function (): void {
+    $translator = app('translator');
+    $translator->addLines(['manifest.name' => 'Orders', 'manifest.short_name' => 'Orders'], 'en', 'pwa');
+    $translator->addLines(['manifest.name' => 'Objednávky', 'manifest.description' => 'Správa objednávek'], 'cs', 'pwa');
+    config(['pwa.locales' => ['en', 'cs']]);
+
+    $manifest = $this->get('/manifest.webmanifest')->json();
+
+    expect($manifest['name'])->toBe('Orders')
+        ->and($manifest['name_localized'])->toBe(['en' => 'Orders', 'cs' => 'Objednávky'])
+        ->and($manifest['short_name_localized'])->toBe(['en' => 'Orders'])
+        ->and($manifest['description_localized'])->toBe(['cs' => 'Správa objednávek']);
+});
+
+it('marks right-to-left locales', function (): void {
+    app()->setLocale('ar');
+
+    expect($this->get('/manifest.webmanifest')->json('dir'))->toBe('rtl');
+});
+
+it('adds the tabbed mode with its tab strip in front of other overrides', function (): void {
+    Pwa::manifest()->tabbed(['home_tab' => ['url' => '/']])->windowControlsOverlay();
+
+    $manifest = $this->get('/manifest.webmanifest')->json();
+
+    expect($manifest['display_override'])->toBe(['window-controls-overlay', 'tabbed', 'minimal-ui'])
+        ->and($manifest['tab_strip'])->toBe(['home_tab' => ['url' => '/']]);
+
+    Pwa::manifest()->flush();
+});
+
+it('lists only icons that exist, including maskable and SVG', function (): void {
+    File::ensureDirectoryExists(public_path('pwa/icons'));
+    foreach (['icon-192.png', 'maskable-512.png', 'icon.svg'] as $file) {
+        File::put(public_path("pwa/icons/{$file}"), 'x');
+    }
+
+    $icons = collect($this->get('/manifest.webmanifest')->json('icons'));
+
+    expect($icons->pluck('src')->all())->toBe(['/pwa/icons/icon-192.png', '/pwa/icons/maskable-512.png', '/pwa/icons/icon.svg'])
+        ->and($icons->firstWhere('purpose', 'maskable')['sizes'])->toBe('512x512')
+        ->and($icons->last()['type'])->toBe('image/svg+xml');
 });

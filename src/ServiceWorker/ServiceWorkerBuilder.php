@@ -185,7 +185,7 @@ class ServiceWorkerBuilder
      */
     public function imports(): array
     {
-        return array_values(array_map('strval', (array) config('pwa.sw.import', [])));
+        return array_values(array_map(strval(...), (array) config('pwa.sw.import', [])));
     }
 
     /**
@@ -199,7 +199,7 @@ class ServiceWorkerBuilder
 
         foreach ($this->imports() as $url) {
             $local = parse_url($url, PHP_URL_HOST) === null ? public_path(ltrim((string) parse_url($url, PHP_URL_PATH), '/')) : null;
-            $result[$url] = $local !== null && File::exists($local) ? hash_file('sha256', $local) : null;
+            $result[$url] = $local !== null && File::exists($local) ? (hash_file('sha256', $local) ?: null) : null;
         }
 
         return $result;

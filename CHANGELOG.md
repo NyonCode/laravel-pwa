@@ -1,20 +1,45 @@
 # Changelog
 
+All notable changes to `nyoncode/laravel-pwa` are documented here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [Unreleased]
+
+### Added
+- Unit tests for the service worker (`tests/js/sw`) and the browser client (`tests/js/client`),
+  run with `node:test` against the real source files.
+- Playwright browser tests (`tests/e2e`) in Chromium and Firefox, replacing the Python script.
+- GitHub Actions for Pest (PHP 8.2–8.5 × Laravel 12/13 × lowest/stable), coverage (minimum 90 %),
+  PHPStan, Pint, Rector, `composer audit`, ESLint, JS unit tests, e2e tests and releases from this file.
+- `composer check`, `composer test:coverage`, `composer rector`; contributor guide and issue templates.
+
+### Fixed
+- `cache.images.max_age` is now enforced: older images are refetched (and still served while offline).
+- Localised manifest members (`name_localized` …) no longer label the fallback locale's text as
+  another language when a translation is missing.
+- `pwa:icons` rejects an invalid `--background` colour instead of silently using white, and accepts
+  short `#rgb` colours.
+
+### Changed
+- PHPStan level raised from 6 to 8.
 
 ## [0.1.0] - 2026-11-21
 
-### Přidáno
-- Dynamický manifest se strategiemi zobrazení `override`, `adaptive`, `fixed` a fluent API.
-- Service worker: precache z Vite buildu, cache stránek jen se souhlasem serveru, oddělení
-  uživatelů, fronta offline akcí, rozlišení údržby (503), telemetrie chyb, `sw.import`.
-- Offline obrazovka a obrazovka údržby (`pwa:down`) s CSP nonce a hashi.
-- Trvalé přihlášení: `pwa.remember`, keep-alive `/pwa/session`, obnova CSRF, `X-PWA-Logout`.
-- Komponenty `<x-pwa::head/>`, `<x-pwa::nav/>`, `<x-pwa::install/>`.
-- Příkazy `pwa:install`, `pwa:build`, `pwa:clear`, `pwa:icons`, `pwa:down`, `pwa:disable`,
+### Added
+- Dynamic web app manifest with display strategies `override`, `adaptive` and `fixed`, and a fluent API.
+- Service worker: precache from the Vite build, page caching only with server consent, per-user cache
+  separation, offline queue for mutations, maintenance (503) detection, error telemetry, `sw.import`.
+- Offline and maintenance screens (`pwa:down`) with CSP nonce and hash support.
+- Persistent login: `pwa.remember`, keep-alive `/pwa/session`, CSRF refresh, `X-PWA-Logout`.
+- Components `<x-pwa::head/>`, `<x-pwa::nav/>`, `<x-pwa::install/>`.
+- Commands `pwa:install`, `pwa:build`, `pwa:clear`, `pwa:icons`, `pwa:down`, `pwa:disable`,
   `pwa:enable`, `pwa:doctor`.
-- Adaptéry pro Livewire 3 a Inertia (včetně opakování 419 přes `window.axios`).
-- AI podpora: `ai/AGENTS.md`, Claude Code skill `laravel-pwa`, MCP server bez závislostí
+- Livewire 3 and Inertia adapters (including the 419 retry through `window.axios`).
+- AI support: `ai/AGENTS.md`, the `laravel-pwa` Claude Code skill, a dependency-free MCP server
   (`search_docs`, `get_doc`, `describe_api`, `describe_config`, `list_commands`, `describe_client` …)
-  a instalátor `vendor/bin/pwa-ai`.
-- Podrobná dokumentace v `docs/` (21 stránek, pořadí v `docs/nav.json`).
+  and the `vendor/bin/pwa-ai` installer.
+- Documentation in `docs/` (21 pages, ordered by `docs/nav.json`).
+
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/NyonCode/laravel-pwa/releases/tag/v0.1.0

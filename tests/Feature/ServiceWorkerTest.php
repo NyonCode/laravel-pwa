@@ -10,7 +10,7 @@ function viteManifest(array $entries): void
     File::put(public_path('build/manifest.json'), json_encode($entries));
 }
 
-it('serves the service worker without caching', function () {
+it('serves the service worker without caching', function (): void {
     $response = $this->get('/sw.js')
         ->assertOk()
         ->assertHeader('Content-Type', 'application/javascript; charset=utf-8')
@@ -20,7 +20,7 @@ it('serves the service worker without caching', function () {
         ->and($response->getContent())->toContain('self.__PWA = ')->toContain("addEventListener('fetch'");
 });
 
-it('precaches the offline page and Vite entries', function () {
+it('precaches the offline page and Vite entries', function (): void {
     viteManifest([
         'resources/js/app.js' => ['file' => 'assets/app-abc123.js', 'isEntry' => true, 'css' => ['assets/app-def456.css']],
         'resources/js/lazy.js' => ['file' => 'assets/lazy-999.js'],
@@ -33,7 +33,7 @@ it('precaches the offline page and Vite entries', function () {
     ]);
 });
 
-it('changes version when assets change', function () {
+it('changes version when assets change', function (): void {
     viteManifest(['a.js' => ['file' => 'assets/a-1.js', 'isEntry' => true]]);
     $first = app(ServiceWorkerBuilder::class)->runtimeConfig()['version'];
 
@@ -43,7 +43,7 @@ it('changes version when assets change', function () {
     expect($first)->not->toBe($second);
 });
 
-it('imports scripts from sw.import and versions them by content', function () {
+it('imports scripts from sw.import and versions them by content', function (): void {
     config(['pwa.sw.import' => ['/push-sw.js']]);
     File::put(public_path('push-sw.js'), '// v1');
 
@@ -57,7 +57,7 @@ it('imports scripts from sw.import and versions them by content', function () {
     File::delete(public_path('push-sw.js'));
 });
 
-it('builds with pwa:build and serves the compiled file', function () {
+it('builds with pwa:build and serves the compiled file', function (): void {
     viteManifest(['a.js' => ['file' => 'assets/a-1.js', 'isEntry' => true]]);
 
     $this->artisan('pwa:build')->assertSuccessful();
@@ -72,7 +72,7 @@ it('builds with pwa:build and serves the compiled file', function () {
     expect($builder->isCompiled())->toBeFalse();
 });
 
-it('serves the kill switch after pwa:disable and restores after pwa:enable', function () {
+it('serves the kill switch after pwa:disable and restores after pwa:enable', function (): void {
     $this->artisan('pwa:disable', ['--force' => true])->assertSuccessful();
 
     expect(app(Pwa::class)->killed())->toBeTrue()
@@ -83,19 +83,19 @@ it('serves the kill switch after pwa:disable and restores after pwa:enable', fun
     expect($this->get('/sw.js')->getContent())->toContain('self.__PWA');
 });
 
-it('serves the kill switch when the package is disabled (local development)', function () {
+it('serves the kill switch when the package is disabled (local development)', function (): void {
     config(['pwa.enabled' => false]);
 
     expect($this->get('/sw.js')->getContent())->toContain('registration.unregister()');
 });
 
-it('serves the client script with a long cache', function () {
+it('serves the client script with a long cache', function (): void {
     $response = $this->get('/pwa/client.js')->assertOk();
 
     expect($response->headers->get('Cache-Control'))->toContain('immutable')
         ->and($response->getContent())->toContain('window.Pwa');
 });
 
-it('answers ping without caching', function () {
+it('answers ping without caching', function (): void {
     $this->get('/pwa/ping')->assertNoContent()->assertHeader('Cache-Control', 'no-store, private');
 });

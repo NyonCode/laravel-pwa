@@ -32,7 +32,7 @@ class RememberStandalone
 
         if (config('pwa.session.standalone_remember', true)
             && $this->pwa->isStandaloneClient($request)
-            && ! ($request->exists($field) && ! $request->boolean($field))) {
+            && (! $request->exists($field) || $request->boolean($field))) {
             $request->merge([$field => 'on']);
         }
 

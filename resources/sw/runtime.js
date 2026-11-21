@@ -161,7 +161,7 @@
     try {
       let token = null;
       for (const entry of await queueAll()) {
-        let init = { method: entry.method, headers: entry.headers, body: entry.body, credentials: 'same-origin' };
+        const init = { method: entry.method, headers: entry.headers, body: entry.body, credentials: 'same-origin' };
         let res;
         try {
           res = await fetch(entry.url, init);
@@ -353,22 +353,35 @@
     await Promise.all(keys.slice(0, Math.max(0, keys.length - maxEntries)).map((k) => cache.delete(k)));
   };
 
-  const staleWhileRevalidate = async (event, cacheName, maxEntries) => {
+  // Stored copies carry their storage time so max_age can be enforced on read.
+  const CACHED_AT = 'X-PWA-Cached-At';
+
+  const stamp = async (response) => {
+    const headers = new Headers(response.headers);
+    headers.set(CACHED_AT, String(Date.now()));
+    return new Response(await response.arrayBuffer(), { status: response.status, statusText: response.statusText, headers });
+  };
+
+  const fresh = (response, maxAge) =>
+    !maxAge || Date.now() - Number(response.headers.get(CACHED_AT) || 0) <= maxAge * 1000;
+
+  const staleWhileRevalidate = async (event, cacheName, maxEntries, maxAge) => {
     const { request } = event;
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
     const network = fetch(request).then(async (response) => {
       if (cacheable(response)) {
-        await cache.put(request, response.clone());
+        await cache.put(request, await stamp(response.clone()));
         await trim(cacheName, maxEntries);
       }
       return response;
     });
-    if (cached) {
+    if (cached && fresh(cached, maxAge)) {
       event.waitUntil(network.catch(() => {}));
       return cached;
     }
-    return network;
+    // Expired copy: prefer the network, but an old image beats none while offline.
+    return cached ? network.catch(() => cached) : network;
   };
 
   const networkFirstApi = async (request) => {
@@ -429,7 +442,7 @@
     }
 
     if (['image', 'font'].includes(request.destination)) {
-      event.respondWith(currentUserHash().then((user) => staleWhileRevalidate(event, `${IMAGES_PREFIX}${user}`, (C.images || {}).max_entries || 120)));
+      event.respondWith(currentUserHash().then((user) => staleWhileRevalidate(event, `${IMAGES_PREFIX}${user}`, (C.images || {}).max_entries || 120, (C.images || {}).max_age)));
       return;
     }
 

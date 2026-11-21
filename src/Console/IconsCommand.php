@@ -110,6 +110,10 @@ class IconsCommand extends Command
             throw new \RuntimeException('Obrázek nejde načíst.');
         }
 
+        if ($size < 1) {
+            throw new \InvalidArgumentException("Icon size must be positive, {$size} given.");
+        }
+
         $canvas = imagecreatetruecolor($size, $size);
         imagesavealpha($canvas, true);
 
@@ -118,8 +122,8 @@ class IconsCommand extends Command
             imagefill($canvas, 0, 0, (int) imagecolorallocatealpha($canvas, 0, 0, 0, 127));
             imagealphablending($canvas, true);
         } else {
-            [$r, $g, $b] = sscanf(ltrim($background, '#'), '%02x%02x%02x') ?: [255, 255, 255];
-            imagefill($canvas, 0, 0, (int) imagecolorallocate($canvas, (int) $r, (int) $g, (int) $b));
+            [$r, $g, $b] = $this->rgb($background);
+            imagefill($canvas, 0, 0, (int) imagecolorallocate($canvas, $r, $g, $b));
         }
 
         $inner = (int) round($size * (1 - 2 * $padding));
@@ -135,5 +139,25 @@ class IconsCommand extends Command
         imagepng($canvas);
 
         return (string) ob_get_clean();
+    }
+
+    /**
+     * @return array{int<0, 255>, int<0, 255>, int<0, 255>}
+     */
+    protected function rgb(string $hex): array
+    {
+        $hex = ltrim($hex, '#');
+
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        if (preg_match('/^[0-9a-f]{6}$/i', $hex) !== 1) {
+            throw new \InvalidArgumentException("Invalid background colour [#{$hex}], expected #rgb or #rrggbb.");
+        }
+
+        $channel = static fn (int $offset): int => max(0, min(255, (int) hexdec(substr($hex, $offset, 2))));
+
+        return [$channel(0), $channel(2), $channel(4)];
     }
 }

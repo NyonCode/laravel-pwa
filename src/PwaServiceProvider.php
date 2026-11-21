@@ -53,7 +53,7 @@ class PwaServiceProvider extends PackageServiceProvider
                 IconsCommand::class,
             ])
             ->hasOptimizeCommands(optimize: 'pwa:build', clear: 'pwa:clear', key: 'pwa')
-            ->hasInstallCommand(fn (InstallCommand $command) => $command
+            ->hasInstallCommand(fn (InstallCommand $command): InstallCommand => $command
                 ->publishConfig()
                 ->afterInstallation(function (InstallCommand $command): void {
                     $command->newLine();
@@ -72,9 +72,9 @@ class PwaServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(Pwa::class);
         $this->app->singleton(ManifestBuilder::class);
-        $this->app->singleton(ServiceWorkerBuilder::class, fn () => new ServiceWorkerBuilder(
-            runtimePath: dirname(__DIR__).'/resources/sw/runtime.js',
-            killSwitchPath: dirname(__DIR__).'/resources/sw/kill-switch.js',
+        $this->app->singleton(ServiceWorkerBuilder::class, fn (): ServiceWorkerBuilder => new ServiceWorkerBuilder(
+            runtimePath: __DIR__.'/../resources/sw/runtime.js',
+            killSwitchPath: __DIR__.'/../resources/sw/kill-switch.js',
         ));
     }
 
@@ -92,10 +92,10 @@ class PwaServiceProvider extends PackageServiceProvider
     public function aboutData(): array
     {
         return [
-            'Enabled' => fn () => app(Pwa::class)->enabled() ? '<fg=green;options=bold>ENABLED</>' : '<fg=yellow;options=bold>DISABLED</>',
-            'Kill switch' => fn () => app(Pwa::class)->killed() ? '<fg=red;options=bold>ACTIVE</>' : 'off',
-            'Service worker' => fn () => app(ServiceWorkerBuilder::class)->isCompiled() ? 'compiled' : '<fg=yellow>not built (pwa:build)</>',
-            'Display' => fn () => (string) config('pwa.display.strategy', 'override'),
+            'Enabled' => fn (): string => app(Pwa::class)->enabled() ? '<fg=green;options=bold>ENABLED</>' : '<fg=yellow;options=bold>DISABLED</>',
+            'Kill switch' => fn (): string => app(Pwa::class)->killed() ? '<fg=red;options=bold>ACTIVE</>' : 'off',
+            'Service worker' => fn (): string => app(ServiceWorkerBuilder::class)->isCompiled() ? 'compiled' : '<fg=yellow>not built (pwa:build)</>',
+            'Display' => fn (): string => (string) config('pwa.display.strategy', 'override'),
         ];
     }
 }

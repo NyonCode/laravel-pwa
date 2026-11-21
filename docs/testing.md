@@ -48,14 +48,15 @@ očekávaný obsah z cache; navigace jinam, očekávaná offline obrazovka.
 ## Vývoj balíčku
 
 ```bash
-composer install
-composer test          # Pest
-composer analyse       # PHPStan / Larastan (úroveň 6)
-composer format        # Pint
-node --check resources/js/pwa.js
-node --check resources/sw/runtime.js
-node ai/mcp/server.mjs --self-test
+composer install && npm install
+composer check           # Pint, Rector, PHPStan (level 8), Pest, MCP self-test
+composer test:coverage   # Pest s pokrytím (pcov), selže pod 90 %
+npm run test:js          # unit testy service workeru a klienta (node:test)
+npm run lint:js          # ESLint
+npm run test:e2e         # Playwright (Chromium + Firefox) proti workbenchi
 ```
+
+Jeden test: `vendor/bin/pest --filter="název"` nebo `node --test tests/js/sw/runtime.test.mjs`.
 
 ### Workbench
 
@@ -66,17 +67,33 @@ na `/items`.
 vendor/bin/testbench serve --port=8123
 ```
 
-### Prohlížečový test
+### Testy service workeru a klienta
 
-`tests/Browser/e2e.py` (Playwright, Python) proti běžícímu workbenchi ověří: registraci SW,
+`tests/js/sw/` spouští skutečný `resources/sw/runtime.js` v simulovaném prostředí service workeru
+(`tests/js/support/sw-env.mjs`: Cache Storage v paměti, skriptovaný `fetch`, fake IndexedDB).
+Ověřuje precache, souhlas `X-PWA-Cache`, oddělení uživatelů a mazání po odhlášení, 503 vs. offline,
+limity a stáří obrázků, network-first API, frontu a její odeslání s obnovou CSRF.
+
+`tests/js/client/` spouští `resources/js/pwa.js` v happy-dom (`tests/js/support/client-env.mjs`):
+registrace, události, keep-alive a CSRF, opakování po 419 jen na vlastní origin, adaptéry, instalace.
+
+### Prohlížečové testy
+
+`tests/e2e/pwa.spec.mjs` (`@playwright/test`) si sám spustí workbench a ověří: registraci SW,
 precache, cache jen povolených stránek, offline obrazovku, frontu a její odeslání, keep-alive,
-údržbu (503, cache zůstane), `pwa:disable` a `pwa:enable`.
+údržbu (503, cache zůstane), `pwa:disable` a `pwa:enable`. Testy offline režimu (`@offline`) běží
+jen v Chromiu, protože Playwright ve Firefoxu neomezí požadavky service workeru.
 
 ```bash
-pip install playwright && playwright install chromium
-vendor/bin/testbench serve --port=8123 &
-PHP=php python3 tests/Browser/e2e.py
+npx playwright install chromium firefox
+npm run test:e2e
 ```
+
+### CI
+
+GitHub Actions: `tests.yml` (Pest na PHP 8.2–8.5 × Laravel 12/13 × lowest/stable a pokrytí),
+`static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml` (ESLint a unit testy
+na Node 20/22/24), `e2e.yml` (Playwright) a `release.yml` (tag `v*` vytvoří release z `CHANGELOG.md`).
 
 ### Struktura
 

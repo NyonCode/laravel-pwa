@@ -38,11 +38,9 @@ class DownCommand extends Command
 
         $retry = $this->option('retry');
 
-        if ($retry === null) {
-            $retry = $until !== null
-                ? max(15, min(300, (int) now()->diffInSeconds($until, false)))
-                : (int) config('pwa.maintenance.retry', 60);
-        }
+        $retry ??= $until instanceof Carbon
+            ? max(15, min(300, (int) now()->diffInSeconds($until, false)))
+            : (int) config('pwa.maintenance.retry', 60);
 
         // Šablona se předrenderuje v tomto procesu, proto stačí upravit config.
         config([
@@ -57,7 +55,7 @@ class DownCommand extends Command
             '--refresh' => $this->option('refresh') ?? config('pwa.maintenance.refresh'),
             '--secret' => $this->option('secret'),
             '--with-secret' => $this->option('with-secret') ?: null,
-        ], static fn (mixed $value): bool => $value !== null && $value !== false && $value !== '');
+        ], static fn (mixed $value): bool => ! in_array($value, [null, false, ''], true));
 
         return $this->call('down', $arguments);
     }

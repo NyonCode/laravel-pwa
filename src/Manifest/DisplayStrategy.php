@@ -34,10 +34,7 @@ enum DisplayStrategy: string
 
         return match ($this) {
             self::Fixed => ['display' => $value],
-            self::Override => array_filter([
-                'display' => $value,
-                'display_override' => array_values((array) config('pwa.display.override', [])) ?: null,
-            ]),
+            self::Override => ['display' => $value, ...$this->overrideModes()],
             self::Adaptive => [
                 'display' => self::isDesktop($request ?? request())
                     ? (string) config('pwa.display.desktop', 'minimal-ui')
@@ -59,6 +56,16 @@ enum DisplayStrategy: string
         }
 
         return (bool) preg_match('/Windows NT|X11; Linux|CrOS/', (string) $request->userAgent());
+    }
+
+    /**
+     * @return array{display_override?: list<string>}
+     */
+    protected function overrideModes(): array
+    {
+        $modes = array_values(array_map(strval(...), (array) config('pwa.display.override', [])));
+
+        return $modes === [] ? [] : ['display_override' => $modes];
     }
 
     public function varies(): bool

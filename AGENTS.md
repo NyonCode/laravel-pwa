@@ -46,21 +46,31 @@ Code comments, docs and `composer.json` are in Czech; `AGENTS.md` and `ai/` are 
 ## Commands
 
 ```bash
-composer test              # Pest + Testbench (CI: vendor/bin/pest --ci)
-vendor/bin/pest tests/Feature/ManifestTest.php   # one file
+composer check             # Pint --test, Rector --dry-run, PHPStan, Pest, MCP self-test
+composer test              # Pest + Testbench (CI: vendor/bin/pest --ci --parallel)
+vendor/bin/pest tests/Feature/ManifestTest.php      # one file
 vendor/bin/pest --filter="serves a valid manifest"  # one test
-vendor/bin/pint --test     # style check only, as CI runs it
-composer analyse           # PHPStan/Larastan level 6, src only
-composer format            # Pint
-composer mcp:self-test     # MCP server parses docs, src, config, commands, client
-node --check resources/js/pwa.js resources/sw/runtime.js resources/sw/kill-switch.js
-vendor/bin/testbench serve --port=8123   # workbench demo app
-PHP=php python3 tests/Browser/e2e.py     # browser test against the running workbench (Playwright)
-php anvil list                           # package generators (make:command, make:controller, …)
+composer test:coverage     # pcov, fails below 90 %
+composer analyse           # PHPStan/Larastan level 8, src only
+composer format            # Pint (required: the MCP server parses Pint-formatted source)
+vendor/bin/rector          # apply Rector refactorings (CI only checks)
+npm run test:js            # node:test: tests/js/sw (runtime.js) and tests/js/client (pwa.js)
+node --test tests/js/sw/runtime.test.mjs            # one JS file
+npm run lint:js            # ESLint
+npm run test:e2e           # Playwright (Chromium + Firefox) against the workbench, starts testbench serve
+vendor/bin/testbench serve --port=8123              # workbench demo app
+php anvil list             # package generators (make:command, make:controller, …)
 ```
 
-CI (`.github/workflows/tests.yml`) runs Pest on PHP 8.2–8.5 × Laravel 12/13 (Laravel 13 is
-skipped on 8.2), then PHPStan, `pint --test`, `node --check` and the MCP self-test.
+JS tests run the real source files: `tests/js/support/sw-env.mjs` evaluates `resources/sw/runtime.js`
+in a `vm` context with in-memory Cache Storage, a scripted `fetch` and fake IndexedDB;
+`tests/js/support/client-env.mjs` runs `resources/js/pwa.js` in happy-dom. Offline e2e specs are
+tagged `@offline` and run in Chromium only (Playwright's Firefox offline mode skips worker requests).
+
+CI: `tests.yml` (Pest on PHP 8.2–8.5 × Laravel 12/13 × lowest/stable, Laravel 13 skipped on 8.2,
+plus coverage), `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml`
+(ESLint + unit tests on Node 20/22/24), `e2e.yml` (Playwright), `release.yml` (a `v*` tag creates the
+GitHub release from the matching `CHANGELOG.md` section).
 
 `tests/Feature/AiTest.php` fails when a command, config section or `window.Pwa` member is not
 mentioned in `ai/AGENTS.md`, so update that file whenever you add one.

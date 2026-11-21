@@ -125,7 +125,7 @@ class DoctorCommand extends Command
         }
 
         $needed = ['manifest.webmanifest', ltrim((string) config('pwa.sw.url', '/sw.js'), '/'), trim((string) config('pwa.route_prefix', 'pwa'), '/').'/*'];
-        $missing = array_values(array_diff($needed, array_map(fn ($p) => trim((string) $p, '/'), $except)));
+        $missing = array_values(array_diff($needed, array_map(fn ($p): string => trim((string) $p, '/'), $except)));
 
         $this->add(
             $missing === [] ? 'ok' : 'warn',
