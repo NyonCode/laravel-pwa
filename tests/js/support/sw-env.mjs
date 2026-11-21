@@ -270,6 +270,8 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
       const event = { notification: { ...notification.options, data: notification.options.data, close: () => { event.closed = true; } }, action };
       return dispatch('notificationclick', event).then((result) => ({ ...result, closed: event.closed === true }));
     },
+    /** The user closed a notification shown before. */
+    close: (notification) => dispatch('notificationclose', { notification: { ...notification.options, data: notification.options.data } }),
     install: () => dispatch('install'),
     activate: () => dispatch('activate'),
   };

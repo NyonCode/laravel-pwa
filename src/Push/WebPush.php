@@ -7,11 +7,13 @@ namespace NyonCode\LaravelPwa\Push;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use NyonCode\LaravelPwa\Contracts\PushTransport;
 use NyonCode\LaravelPwa\Events\PushFailed;
+use NyonCode\LaravelPwa\Events\PushSent;
 use NyonCode\LaravelPwa\Events\PushSubscribed;
 use NyonCode\LaravelPwa\Events\PushSubscriptionExpired;
 use NyonCode\LaravelPwa\Events\PushUnsubscribed;
@@ -71,6 +73,83 @@ class WebPush
     }
 
     /**
+     * Sends in the background: one SendWebPush job per `pwa.push.queue.chunk` notifiables, on
+     * `pwa.push.queue.connection` / `pwa.push.queue.queue`. A query is walked with chunkById, so
+     * any number of users works. The message is checked (title, size) before anything is queued.
+     *
+     * @param  Builder<covariant Model>|iterable<object>  $notifiables
+     * @return int the number of jobs dispatched
+     */
+    public function queue(Builder|iterable $notifiables, WebPushMessage $message): int
+    {
+        $message->toJson();
+        $size = max(1, config()->integer('pwa.push.queue.chunk', 100));
+        $jobs = 0;
+
+        if ($notifiables instanceof Builder) {
+            $notifiables->chunkById($size, function (EloquentCollection $chunk) use ($message, &$jobs): void {
+                $this->dispatchChunk($chunk, $message);
+                $jobs++;
+            });
+
+            return $jobs;
+        }
+
+        $chunk = [];
+
+        foreach ($notifiables as $notifiable) {
+            $chunk[] = $notifiable;
+
+            if (count($chunk) === $size) {
+                $this->dispatchChunk($this->collect($chunk), $message);
+                $jobs++;
+                $chunk = [];
+            }
+        }
+
+        if ($chunk !== []) {
+            $this->dispatchChunk($this->collect($chunk), $message);
+            $jobs++;
+        }
+
+        return $jobs;
+    }
+
+    /**
+     * @param  iterable<object>  $chunk
+     */
+    protected function dispatchChunk(iterable $chunk, WebPushMessage $message): void
+    {
+        $job = new SendWebPush($chunk, $message);
+        $connection = config('pwa.push.queue.connection');
+        $queue = config('pwa.push.queue.queue');
+
+        if (is_string($connection) && $connection !== '') {
+            $job->onConnection($connection);
+        }
+
+        if (is_string($queue) && $queue !== '') {
+            $job->onQueue($queue);
+        }
+
+        dispatch($job);
+    }
+
+    /**
+     * Models of one class as an Eloquent collection, so the job serializes their ids only.
+     *
+     * @param  list<object>  $chunk
+     * @return iterable<object>
+     */
+    protected function collect(array $chunk): iterable
+    {
+        $models = array_values(array_filter($chunk, static fn (object $item): bool => $item instanceof Model));
+        $classes = array_unique(array_map(static fn (Model $model): string => $model::class, $models));
+
+        return count($models) === count($chunk) && count($classes) === 1 ? new EloquentCollection($models) : $chunk;
+    }
+
+    /**
      * @param  iterable<PushSubscription>  $subscriptions
      * @param  object|null  $notifiable  for the per-user check in the worker
      * @return list<PushReport>
@@ -94,13 +173,15 @@ class WebPush
             $messages[] = ['subscription' => $subscription, 'payload' => $payload, 'options' => $options];
         }
 
-        if ($messages === []) {
-            return $reports;
+        if ($messages !== []) {
+            foreach ($this->transport()->send($messages) as $index => $report) {
+                $this->settle($messages[$index]['subscription'], $report);
+                $reports[] = $report;
+            }
         }
 
-        foreach ($this->transport()->send($messages) as $index => $report) {
-            $this->settle($messages[$index]['subscription'], $report);
-            $reports[] = $report;
+        if ($reports !== []) {
+            PushSent::dispatch($message, $reports, $notifiable);
         }
 
         return $reports;

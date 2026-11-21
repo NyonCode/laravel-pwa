@@ -20,6 +20,10 @@ in `AppServiceProvider::boot()` with `Event::listen()` or in auto-discovered lis
 | `PushUnsubscribed` | a subscription was removed (unsubscribe, logout, device limit) | `$subscription` |
 | `PushSubscriptionExpired` | the push service answered 404/410; the subscription was deleted | `$subscription`, `$report` |
 | `PushFailed` | delivery failed otherwise (413, 429, 5xx, network, endpoint not allowed) | `$subscription`, `$report` |
+| `PushSent` | a message went out to a notifiable's devices; `delivered()`, `expired()`, `failed()` | `$message`, `$reports`, `$notifiable` |
+| `PushDisplayed` | the worker showed a notification (`push.analytics`) | `$id`, `$tag`, `$userAgent` |
+| `PushClicked` | a notification or one of its actions was clicked (`push.analytics`) | `$id`, `$tag`, `$action`, `$userAgent` |
+| `PushDismissed` | a notification was closed without a click (`push.analytics`) | `$id`, `$tag`, `$userAgent` |
 
 Maintenance mode (`pwa:down`) calls `artisan down`, so Laravel's own
 `Illuminate\Foundation\Events\MaintenanceModeEnabled` and `MaintenanceModeDisabled` events apply.

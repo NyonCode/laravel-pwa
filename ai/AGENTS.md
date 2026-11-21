@@ -65,6 +65,7 @@ Deploy: `npm run build` → `php artisan pwa:build` (also run by `php artisan op
 | GET | `/pwa/session` | `pwa.session` | web | keep-alive: `{authenticated, user, csrf, lifetime}` |
 | POST | `/pwa/telemetry` | `pwa.telemetry` | web, throttle:30,1, no CSRF | service-worker error log |
 | GET | `/offline` (`pwa.offline.route`) | `pwa.offline` | web | offline screen |
+| POST | `/pwa/push/events` | `pwa.push.events` | no session, no CSRF, throttle:60,1 | `{events: [{type: shown|click|close, id, tag, action}]}` → 202; only with `push.enabled` + `push.analytics` |
 | POST | `/pwa/push/subscriptions` | `pwa.push.subscribe` | web, `push.middleware` (`auth`), throttle:20,1 | store `PushSubscription.toJSON()` + `contentEncoding` (+ `replaces`); only with `push.enabled` |
 | DELETE | `/pwa/push/subscriptions` | `pwa.push.unsubscribe` | same | `{endpoint}`; removes the signed-in user's own subscription |
 
@@ -313,6 +314,7 @@ public function toWebPush(object $notifiable): WebPushMessage
 }
 
 WebPush::send($user, WebPushMessage::create('Export ready')); // Facades\WebPush, also one PushSubscription or a list
+WebPush::queue(User::query(), $message); // SendWebPush jobs per push.queue.chunk (100), chunkById; returns job count
 ```
 
 `Push\WebPushMessage`: `create(title)`, `title`, `body`, `icon`, `badge`, `image`, `url` (same origin
@@ -341,7 +343,8 @@ key and POSTs with a fresh CSRF token and `replaces`. Broadcasts `push-received`
 `notification-click` `{url, action}`, `push-renewed`.
 
 Testing: `WebPush::fake()` → `assertSentTo($notifiable, ?fn(WebPushMessage): bool)`,
-`assertNotSentTo`, `assertSent`, `assertSentCount(n)`, `assertNothingSent()`, `sent(?notifiable)`;
+`assertNotSentTo`, `assertSent`, `assertSentCount(n)`, `assertNothingSent()`, `sent(?notifiable)`,
+`assertQueued(?fn, ?$to)`, `assertNothingQueued()` (the fake's `queue()` records instead of dispatching);
 messages are built and size-checked, nothing is sent.
 
 ## Client `window.Pwa` (`resources/js/pwa.js`)
@@ -384,6 +387,8 @@ bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia
 | `PushSubscribed` / `PushUnsubscribed` | subscription stored or renewed / removed (DELETE, logout, device limit) | `subscription` |
 | `PushSubscriptionExpired` | push service answered 404/410, row deleted | `subscription`, `report` |
 | `PushFailed` | other delivery failure or endpoint not allowed | `subscription`, `report` |
+| `PushSent` | after every send; `delivered()`, `expired()`, `failed()` | `message`, `reports`, `notifiable` |
+| `PushDisplayed` / `PushClicked` / `PushDismissed` | worker reports with `push.analytics` (POST `/pwa/push/events`, no cookies, throttle:60,1) | `id` (`WebPushMessage::id()`), `tag`, `action` (click), `userAgent` |
 
 `pwa:down` wraps `artisan down`: use Laravel's `MaintenanceModeEnabled` / `MaintenanceModeDisabled`.
 Telemetry is logged by the `LogTelemetry` listener (`pwa.telemetry.channel`); set
@@ -429,7 +434,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`, `updates.bar`,
-`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker}`,
+`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker,queue.{chunk,connection,queue},batch_size,analytics}`,
 `adapters.{livewire,inertia,reload_on_resume}`,
 `route_prefix`. Use the MCP tool `describe_config` for defaults and comments.
 

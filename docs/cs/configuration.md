@@ -181,3 +181,7 @@ Viz [Push notifikace](push.md).
 | `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
 | `push.icon`, `push.badge` | ?string | `null` | Výchozí hodnoty zpráv; `null` = `icon-192.png` a `monochrome-512.png` z `icons.path`, pokud existují. |
 | `push.handle_in_worker` | bool | `true` | Worker zobrazuje notifikace a obsluhuje kliknutí; `false`, když to dělá skript v `sw.import`. |
+| `push.queue.chunk` | int | `100` | Příjemců v jednom jobu `WebPush::queue()`. |
+| `push.queue.connection`, `push.queue.queue` | ?string | `null` | Připojení a fronta těchto jobů. |
+| `push.batch_size` | int | `1000` | Požadavků na push služby najednou. |
+| `push.analytics` | bool | `false` | Worker hlásí zobrazené, kliknuté a zavřené notifikace ([Statistika](push.md#statistika)). |

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace NyonCode\LaravelPwa\Facades;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Facade;
 use NyonCode\LaravelPwa\Push\PushReport;
@@ -27,6 +28,9 @@ use NyonCode\LaravelPwa\Testing\WebPushFake;
  * @method static void assertSentCount(int $count)
  * @method static void assertNothingSent()
  * @method static list<WebPushMessage> sent(?object $notifiable = null)
+ * @method static int queue(Builder<covariant Model>|iterable<object> $notifiables, WebPushMessage $message)
+ * @method static void assertQueued(?\Closure(WebPushMessage): bool $callback = null, ?object $to = null)
+ * @method static void assertNothingQueued()
  *
  * @see Service
  * @see WebPushFake

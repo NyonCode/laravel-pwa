@@ -335,6 +335,17 @@ return [
         'icon' => null,                 // null = /{icons.path}/icon-192.png when it exists
         'badge' => null,                // null = /{icons.path}/monochrome-512.png when it exists
         'handle_in_worker' => true,
+        // WebPush::queue(): recipients per queued job, and where the jobs run.
+        'queue' => [
+            'chunk' => 100,
+            'connection' => null,
+            'queue' => null,
+        ],
+        // Requests sent to the push services at once inside one send (minishlink flush).
+        'batch_size' => 1000,
+        // The worker reports shown, clicked and closed notifications (PushDisplayed, PushClicked,
+        // PushDismissed). No user data: only the message id(), tag and action.
+        'analytics' => false,
     ],
 
     /*

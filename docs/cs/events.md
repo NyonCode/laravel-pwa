@@ -20,6 +20,10 @@ objevováním. Všechny jsou ve jmenném prostoru `NyonCode\LaravelPwa\Events`.
 | `PushUnsubscribed` | odběr byl odebrán (odhlášení odběru, odhlášení, limit zařízení) | `$subscription` |
 | `PushSubscriptionExpired` | push služba odpověděla 404/410; odběr byl smazán | `$subscription`, `$report` |
 | `PushFailed` | doručení selhalo jinak (413, 429, 5xx, síť, nepovolený endpoint) | `$subscription`, `$report` |
+| `PushSent` | zpráva odešla na zařízení příjemce; `delivered()`, `expired()`, `failed()` | `$message`, `$reports`, `$notifiable` |
+| `PushDisplayed` | worker zobrazil notifikaci (`push.analytics`) | `$id`, `$tag`, `$userAgent` |
+| `PushClicked` | uživatel klikl na notifikaci nebo její akci (`push.analytics`) | `$id`, `$tag`, `$action`, `$userAgent` |
+| `PushDismissed` | uživatel notifikaci zavřel bez kliknutí (`push.analytics`) | `$id`, `$tag`, `$userAgent` |
 
 Režim údržby (`pwa:down`) volá `artisan down`, takže platí Laravel události
 `Illuminate\Foundation\Events\MaintenanceModeEnabled` a `MaintenanceModeDisabled`.

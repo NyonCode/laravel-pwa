@@ -181,3 +181,7 @@ See [Push notifications](push.md).
 | `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
 | `push.icon`, `push.badge` | ?string | `null` | Defaults for messages; `null` = `icon-192.png` and `monochrome-512.png` from `icons.path` when they exist. |
 | `push.handle_in_worker` | bool | `true` | The worker shows notifications and handles clicks; `false` when a `sw.import` script does it. |
+| `push.queue.chunk` | int | `100` | Recipients per `WebPush::queue()` job. |
+| `push.queue.connection`, `push.queue.queue` | ?string | `null` | Queue connection and name of those jobs. |
+| `push.batch_size` | int | `1000` | Requests sent to the push services at once. |
+| `push.analytics` | bool | `false` | The worker reports shown, clicked and closed notifications ([Statistics](push.md#statistics)). |

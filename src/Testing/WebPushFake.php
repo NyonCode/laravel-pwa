@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace NyonCode\LaravelPwa\Testing;
 
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use NyonCode\LaravelPwa\Push\PushReport;
 use NyonCode\LaravelPwa\Push\WebPush;
@@ -22,6 +23,46 @@ class WebPushFake extends WebPush
 {
     /** @var list<array{notifiable: object|null, message: WebPushMessage, subscriptions: int}> */
     protected array $sent = [];
+
+    /** @var list<array{notifiables: list<object>, message: WebPushMessage}> */
+    protected array $queued = [];
+
+    /**
+     * Records the recipients instead of dispatching jobs (a query is run right away).
+     *
+     * @param  Builder<covariant Model>|iterable<object>  $notifiables
+     */
+    public function queue(Builder|iterable $notifiables, WebPushMessage $message): int
+    {
+        $message->toJson();
+        $list = [];
+
+        foreach ($notifiables instanceof Builder ? $notifiables->get() : $notifiables as $notifiable) {
+            $list[] = $notifiable;
+        }
+
+        $this->queued[] = ['notifiables' => $list, 'message' => $message];
+
+        return (int) ceil(count($list) / max(1, config()->integer('pwa.push.queue.chunk', 100)));
+    }
+
+    /**
+     * WebPush::queue() was called with a matching message (and, if given, this notifiable among the recipients).
+     *
+     * @param  (Closure(WebPushMessage): bool)|null  $callback
+     */
+    public function assertQueued(?Closure $callback = null, ?object $to = null): void
+    {
+        $matching = array_filter($this->queued, fn (array $entry): bool => (! $callback instanceof Closure || $callback($entry['message']))
+            && ($to === null || array_filter($entry['notifiables'], fn (object $n): bool => $this->same($n, $to)) !== []));
+
+        Assert::assertNotEmpty($matching, 'No matching web push was queued'.($to !== null ? ' for '.$to::class : '').'.');
+    }
+
+    public function assertNothingQueued(): void
+    {
+        Assert::assertCount(0, $this->queued, count($this->queued).' unexpected web push messages were queued.');
+    }
 
     public function sendToSubscriptions(iterable $subscriptions, WebPushMessage $message, ?object $notifiable = null): array
     {
