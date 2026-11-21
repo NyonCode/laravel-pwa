@@ -43,9 +43,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - The worker now reads the user identity (`X-PWA-User`, `X-PWA-Logout`) from every same-origin
   response, not only from navigations. Before, an XHR logout and login of another user (Inertia,
   Livewire) on the same device left the previous user's API data readable through `pwa.cache.api`.
-  `never_cache` fetch/XHR requests now pass through the worker for this (still never stored or
-  queued), per-user caches only store responses of their owner, identity headers of other origins
-  are ignored, and the client forwards the identity from each keep-alive (`IDENTITY` message).
+  `never_cache` fetch/XHR requests and mutations (also with `offline.queue = false`) now pass
+  through the worker for this (never_cache still never stored or queued), per-user caches only store
+  responses of their owner, identity headers of other origins (also after a redirect) are ignored,
+  and the client forwards the identity from each keep-alive (`IDENTITY` message).
 
 ### Changed
 - API and image caches are rule caches now (`pwa-rule-api-*`, `pwa-rule-images-*`); the worker

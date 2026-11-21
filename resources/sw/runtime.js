@@ -616,8 +616,10 @@
     }
 
     if (request.method !== 'GET') {
-      if (local && C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && request.mode !== 'navigate') {
-        event.respondWith(handleMutation(request));
+      // Always through the worker (identity of XHR logins), queued only with offline.queue.
+      if (local && request.mode !== 'navigate') {
+        const queueable = C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+        event.respondWith(queueable ? handleMutation(request) : passThrough(request));
       }
       return;
     }

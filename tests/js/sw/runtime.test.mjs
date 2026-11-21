@@ -272,7 +272,8 @@ describe('offline queue', () => {
   it('does not queue when the queue is disabled', async () => {
     const worker = createWorker({ config: { queue: false } });
 
-    assert.equal((await post(worker, '/items')).handled, false);
+    await assert.rejects(post(worker, '/items'), /Failed to fetch/);
+    assert.ok(!worker.messages.some((m) => m.type === 'queued'));
   });
 });
 

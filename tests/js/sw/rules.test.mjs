@@ -359,6 +359,18 @@ describe('identity outside navigations (Inertia, Livewire)', () => {
     assert.ok(!worker.messages.some((m) => m.type === 'logout'));
   });
 
+  it('reads the identity from mutations even with the queue disabled', async () => {
+    const worker = createWorker({ config: { ...apiRules, queue: false } });
+    await signIn(worker);
+    worker.network(() => json({ secret: 'alice' }, { 'X-PWA-User': ALICE }));
+    await worker.fetchEvent('/api/me');
+
+    worker.network(() => json({}, { 'X-PWA-User': BOB }));
+    await post(worker, '/session/switch');
+
+    assert.ok(!(await worker.caches.keys()).includes(`pwa-rule-api-${ALICE}`));
+  });
+
   it('passes never_cache requests through without storing or queueing them', async () => {
     const worker = createWorker();
 
