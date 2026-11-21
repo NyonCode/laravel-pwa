@@ -9,7 +9,7 @@ description: Per-user cache separation, cookies, CSP (nonces and hashes), teleme
 
 - **HTML only when allowed**: without `X-PWA-Cache: allow` (the `pwa.cache` middleware), the service worker stores no page
   at all. The default is safe.
-- **Per-user separation**: pages and API responses live in `pwa-pages-{hash}` and `pwa-api-{hash}`.
+- **Per-user separation**: pages and API responses live in `pwa-pages-{hash}` and `pwa-rule-{name}-{hash}`.
   The hash is `HMAC-SHA256(user id, APP_KEY)` truncated to 16 characters (the `X-PWA-User` header).
   When the service worker sees a different hash, it deletes the previous user's cache and the offline queue.
 - **Logout**: `X-PWA-Logout` + `Clear-Site-Data: "cache"` clears the cache and the queue.

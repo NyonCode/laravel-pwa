@@ -119,6 +119,9 @@ You can translate `name`, `short_name` and `description` in
 | `offline.route` | string | `/offline` | URL of the offline screen (precached). |
 | `offline.precache` | list | `[]` | Additional URLs to precache, for example `['/manifest.webmanifest', '/img/logo.svg']`. |
 | `offline.queue` | bool | `true` | Queue POST/PUT/PATCH/DELETE requests during a network failure. |
+| `offline.warm.urls` | `list<string>` | `[]` | Pages downloaded ahead of time; per user with `Pwa::warmUsing()`, see [Warm-up](offline.md#warm-up). |
+| `offline.warm.max` | int | `20` | Maximum number of pages per warm-up. |
+| `offline.warm.interval` | int | `60` | Minutes between automatic warm-ups (a sign-in always warms). |
 
 ## Session
 

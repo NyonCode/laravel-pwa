@@ -7,6 +7,7 @@ namespace NyonCode\LaravelPwa\ServiceWorker;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 use NyonCode\LaravelPwa\Events\ServiceWorkerBuilt;
+use NyonCode\LaravelPwa\Pwa;
 use RuntimeException;
 
 /**
@@ -166,6 +167,7 @@ class ServiceWorkerBuilder
             'buildPrefix' => '/'.trim(config()->string('pwa.sw.build_directory', 'build'), '/').'/',
             'telemetry' => config()->boolean('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'sessionUrl' => $prefix.'/session',
+            'warm' => app(Pwa::class)->warmsPages(),
             'scope' => config()->string('pwa.scope', '/'),
         ];
 

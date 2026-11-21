@@ -27,6 +27,9 @@
   const QUEUE = 'queue';
   const SYNC_TAG = 'pwa-queue';
   const CACHED_AT = 'X-PWA-Cached-At';
+  const WARM_TAG = 'pwa-warm';
+  const WARM_LIMIT = 50;
+  const WARM_CONCURRENCY = 2;
 
   /* ------------------------------------------------------------------ *
    * Helpers
@@ -55,6 +58,9 @@
     async set(key, value) {
       await (await caches.open(META)).put(`/__pwa/${key}`, new Response(String(value)));
     },
+    async delete(key) {
+      await (await caches.open(META)).delete(`/__pwa/${key}`);
+    },
   };
 
   const timeout = (ms) => new Promise((resolve) => setTimeout(() => resolve(null), ms));
@@ -81,6 +87,7 @@
     const stale = await userCaches(keepUser);
     await Promise.all(stale.map((k) => caches.delete(k)));
     await queueClear();
+    await meta.delete('warm'); // the warm-up list names the previous user's pages
   };
 
   const switchUser = async (user) => {
@@ -91,6 +98,7 @@
   // Valid identities: 'guest' or the 16-hex HMAC from Pwa::userHash().
   const validUser = (user) => user === 'guest' || /^[a-f0-9]{16}$/.test(user || '');
 
+  /** Resolves to true when another user signed in (not on logout). */
   const observeIdentity = async (response) => {
     const logout = response.headers.get('X-PWA-Logout') === '1';
     const user = response.headers.get('X-PWA-User');
@@ -99,13 +107,17 @@
       await purgeUserData();
       await switchUser('guest');
       await broadcast({ type: 'logout' });
-      return;
+      return false;
     }
 
     if (validUser(user) && user !== (await currentUserHash())) {
       await purgeUserData(user);
       await switchUser(user);
+      await broadcast({ type: 'identity', user });
+      return user !== 'guest';
     }
+
+    return false;
   };
 
   // Only our own server may change the identity. Checked on the final response, not the request:
@@ -115,9 +127,8 @@
     return sameOrigin(new URL(response.url || request.url));
   };
 
-  const observeFrom = async (request, response) => {
-    if (ownResponse(request, response)) await observeIdentity(response);
-  };
+  const observeFrom = async (request, response) =>
+    ownResponse(request, response) ? observeIdentity(response) : false;
 
   /* ------------------------------------------------------------------ *
    * Offline queue (IndexedDB "pwa" / "queue")
@@ -464,7 +475,8 @@
     const network = (async () => {
       const preloaded = await event.preloadResponse;
       const response = preloaded || (await fetch(request));
-      await observeFrom(request, response);
+      // A sign-in navigation: download the new user's warm-up pages in the background.
+      if (await observeFrom(request, response)) event.waitUntil(warmFromServer());
 
       if (response.status === 503) {
         await maintenance(response);
@@ -515,6 +527,88 @@
     const response = await fetch(request);
     await observeFrom(request, response);
     return response;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Warm-up (offline.warm, Pwa::warmUsing): pages downloaded ahead of time.
+   * Stored under the same rule as navigations: only with X-PWA-Cache: allow,
+   * only for the user who asked, never redirects.
+   * ------------------------------------------------------------------ */
+
+  let warming = Promise.resolve();
+  let lastWarm = { user: null, at: 0 };
+
+  const warmable = (path) => {
+    let url;
+    try { url = new URL(path, origin); } catch { return null; }
+    if (!sameOrigin(url) || url.pathname === workerPath || matches(neverCache, url.pathname)) return null;
+    url.hash = '';
+    return url.href;
+  };
+
+  const warmNow = async (urls, user, force) => {
+    if (self.navigator?.connection?.saveData) return { count: 0, skipped: 0, failed: 0 };
+    if (user !== undefined) {
+      if (!validUser(user)) return { count: 0, skipped: 0, failed: 0 };
+      await observeIdentity(new Response(null, { headers: { 'X-PWA-User': user } }));
+    }
+
+    const owner = await currentUserHash();
+    // The client and a sign-in navigation can both ask within moments of each other.
+    if (!force && lastWarm.user === owner && Date.now() - lastWarm.at < 30_000) return null;
+    lastWarm = { user: owner, at: Date.now() };
+
+    const list = [...new Set((Array.isArray(urls) ? urls : []).map(String).map(warmable).filter(Boolean))].slice(0, WARM_LIMIT);
+    await meta.set('warm', JSON.stringify({ user: owner, urls: list }));
+
+    const cache = await caches.open(`${PAGES_PREFIX}${owner}`);
+    const result = { count: 0, skipped: 0, failed: 0 };
+    const queue = [...list];
+
+    const next = async () => {
+      for (let url = queue.shift(); url; url = queue.shift()) {
+        if ((await currentUserHash()) !== owner) return; // signed out meanwhile
+        try {
+          const request = new Request(url, { credentials: 'same-origin', headers: { Accept: 'text/html', 'X-PWA-Warm': '1' } });
+          const response = await fetch(request);
+          await observeFrom(request, response);
+          const pageUser = response.headers.get('X-PWA-User');
+          if (!response.redirected && pageCacheable(response) && (!pageUser || pageUser === owner)
+            && (await currentUserHash()) === owner) {
+            await cache.put(url, response);
+            result.count++;
+          } else {
+            result.skipped++;
+          }
+        } catch {
+          result.failed++;
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: WARM_CONCURRENCY }, next));
+    await broadcast({ type: 'warmed', ...result });
+    return result;
+  };
+
+  /** One warm-up at a time; a later one waits for the running one. */
+  const warm = (urls, user, force = false) => {
+    const run = warming.then(() => warmNow(urls, user, force));
+    warming = run.catch(() => null);
+    return run;
+  };
+
+  // The worker asks the server itself after a sign-in navigation (the page that asked is gone).
+  const warmFromServer = async () => {
+    if (!C.warm || !C.sessionUrl) return;
+    try {
+      const response = await fetch(new Request(C.sessionUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } }));
+      if (!response.ok) return;
+      const data = await response.json();
+      if (Array.isArray(data.warm) && data.warm.length > 0) await warm(data.warm, data.user);
+    } catch (error) {
+      report('warm', error);
+    }
   };
 
   const precached = (url) => url.pathname.startsWith(C.buildPrefix || '/build/') || (C.precache || []).includes(url.pathname);
@@ -585,6 +679,10 @@
           event.waitUntil(observeIdentity(new Response(null, { headers: { 'X-PWA-User': data.user } })));
         }
         break;
+      case 'WARM':
+        // From the client (keep-alive, Pwa.warm()) with the list from /pwa/session.
+        event.waitUntil(warm(data.urls, data.user, data.force === true));
+        break;
       case 'GET_VERSION':
         if (event.ports[0]) event.ports[0].postMessage({ version: V });
         break;
@@ -594,6 +692,15 @@
 
   self.addEventListener('sync', (event) => {
     if (event.tag === SYNC_TAG) event.waitUntil(replayQueue());
+  });
+
+  // Periodic Background Sync (installed Chromium apps): refresh the last list for the same user.
+  self.addEventListener('periodicsync', (event) => {
+    if (event.tag !== WARM_TAG) return;
+    event.waitUntil((async () => {
+      const saved = JSON.parse((await meta.get('warm')) || 'null');
+      if (saved && saved.user === (await currentUserHash())) await warm(saved.urls, undefined, true);
+    })());
   });
 
   /* ------------------------------------------------------------------ *
@@ -667,6 +774,8 @@
     /** Cache name for your data: per user (purged on logout) unless { shared: true }. */
     cacheName: cacheNameFor,
     currentUser: currentUserHash,
+    /** Downloads pages for offline use (stored only with X-PWA-Cache: allow). */
+    warm: (urls) => warm(urls, undefined, true),
     broadcast,
   });
 })();

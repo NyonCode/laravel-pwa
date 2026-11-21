@@ -12,8 +12,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `<x-pwa::head/>` links the ones that exist. Configured under `pwa.icons.splash`.
 - `monochrome-512.png` (`purpose: monochrome`) generated from the alpha channel of the source and
   listed in the manifest.
+- Offline warm-up: `offline.warm.urls` and `Pwa::warmUsing()` list pages the worker downloads ahead
+  of time, so they open offline without a prior visit. The list travels in `/pwa/session`
+  (`no-store`); only responses with `X-PWA-Cache: allow` for the same user are stored. It runs after
+  a sign-in, at most once per `offline.warm.interval` on keep-alive, on Periodic Background Sync in
+  installed Chromium apps and on `Pwa.warm()`. New client events `pwa:identity` and `pwa:warmed`,
+  `self.PwaWorker.warm()` for `sw.extend` files.
 - `pwa:doctor` checks screenshots (a `wide` and a `narrow` one, file exists, `sizes` and `type`
   match the file) and reports iOS splash screens.
+
+### Fixed
+- Client status bar texts that were still in Czech ("Jste offline.") are now English.
+- Docs named the 0.1 cache `pwa-api-{user}`; rule caches are `pwa-rule-{name}-{user}`.
 
 ### Changed
 - Icon rendering moved from `pwa:icons` into `Icons\IconGenerator` with GD and Imagick drivers

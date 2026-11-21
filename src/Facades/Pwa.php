@@ -19,6 +19,8 @@ use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
  * @method static bool isStandaloneRequest(?Request $request = null)
  * @method static bool isStandaloneClient(?Request $request = null)
  * @method static string userHash(?Request $request = null)
+ * @method static \NyonCode\LaravelPwa\Pwa warmUsing(\Closure(Request): iterable<mixed> $callback)
+ * @method static list<string> warmUrls(?Request $request = null)
  * @method static array<string, mixed> clientConfig()
  * @method static array{script-src: list<string>, style-src: list<string>} cspHashes(string $view = 'pwa::maintenance')
  *

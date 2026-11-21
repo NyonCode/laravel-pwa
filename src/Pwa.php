@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace NyonCode\LaravelPwa;
 
+use Closure;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Str;
 use NyonCode\LaravelPwa\Events\KillSwitchActivated;
 use NyonCode\LaravelPwa\Events\KillSwitchDeactivated;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
@@ -28,9 +30,85 @@ class Pwa
 
     public const STANDALONE_MODES = ['standalone', 'minimal-ui', 'window-controls-overlay', 'fullscreen', 'tabbed'];
 
+    /** @var list<Closure(Request): iterable<mixed>> */
+    protected array $warmers = [];
+
     public function __construct(
         protected Application $app,
     ) {}
+
+    /**
+     * Adds pages to warm for the current user, e.g. their latest orders.
+     *
+     * The callback runs on every keep-alive request (/pwa/session), so keep it cheap.
+     *
+     * @param  Closure(Request): iterable<mixed>  $callback  Returns paths or same-origin URLs.
+     */
+    public function warmUsing(Closure $callback): static
+    {
+        $this->warmers[] = $callback;
+
+        return $this;
+    }
+
+    /**
+     * Is a warm-up configured (offline.warm.urls or a warmUsing() callback)?
+     */
+    public function warmsPages(): bool
+    {
+        return $this->warmers !== [] || (array) config('pwa.offline.warm.urls', []) !== [];
+    }
+
+    /**
+     * Pages the worker should download for offline use: offline.warm.urls plus warmUsing().
+     *
+     * Same-origin paths only, never_cache paths removed, at most offline.warm.max.
+     *
+     * @return list<string>
+     */
+    public function warmUrls(?Request $request = null): array
+    {
+        $request ??= request();
+        $candidates = (array) config('pwa.offline.warm.urls', []);
+
+        foreach ($this->warmers as $warmer) {
+            foreach ($warmer($request) as $url) {
+                $candidates[] = $url;
+            }
+        }
+
+        $never = array_map(Value::string(...), (array) config('pwa.cache.never_cache', []));
+        $urls = [];
+
+        foreach ($candidates as $candidate) {
+            $url = $this->localPath(Value::string($candidate), $request);
+
+            if ($url !== null && ! Str::is($never, Value::string(parse_url($url, PHP_URL_PATH)))) {
+                $urls[$url] = true;
+            }
+        }
+
+        return array_slice(array_keys($urls), 0, max(0, config()->integer('pwa.offline.warm.max', 20)));
+    }
+
+    /**
+     * "/path?query" for a path or a URL on the request's host, otherwise null.
+     */
+    protected function localPath(string $url, Request $request): ?string
+    {
+        if (str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
+            return $url;
+        }
+
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! in_array($parts['scheme'] ?? null, ['http', 'https'], true)
+            || strcasecmp($parts['host'] ?? '', $request->getHost()) !== 0) {
+            return null;
+        }
+
+        return ($parts['path'] ?? '/').(isset($parts['query']) ? '?'.$parts['query'] : '');
+    }
 
     /**
      * Is the service worker enabled in this installation (config) and the kill switch inactive?
@@ -140,6 +218,10 @@ class Pwa
                 'url' => $prefix.'/session',
                 'keepalive' => config()->integer('pwa.session.keepalive_minutes', 10),
                 'refreshCsrf' => config()->boolean('pwa.session.refresh_csrf', true),
+            ],
+            'warm' => [
+                'enabled' => $this->warmsPages(),
+                'interval' => config()->integer('pwa.offline.warm.interval', 60),
             ],
             'ping' => $prefix.'/ping',
             'telemetry' => config('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,

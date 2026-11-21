@@ -1,15 +1,16 @@
 ---
 title: Offline
-description: The offline screen, pages available without a connection (pwa.cache), the API cache and the offline queue.
+description: The offline screen, pages available without a connection (pwa.cache), warm-up of unvisited pages, the API cache and the offline queue.
 ---
 
 # Offline
 
-## Three levels
+## Four levels
 
 1. **Offline screen**: shown whenever a navigation fails and the page is not in the cache.
 2. **Pages available offline**: whatever the `pwa.cache` middleware allows is stored when the user visits it.
-3. **Offline queue**: forms and API calls sent without a connection are sent later.
+3. **Warm-up**: chosen pages are downloaded ahead of time, without a visit.
+4. **Offline queue**: forms and API calls sent without a connection are sent later.
 
 ## Offline screen
 
@@ -52,13 +53,57 @@ What not to allow:
 
 On a shared device, the cache is cleared on logout ([Security](security.md)).
 
+## Warm-up
+
+Pages the user has never opened can be downloaded ahead of time, so they work offline right after
+sign-in:
+
+```php
+// config/pwa.php
+'offline' => [
+    'warm' => ['urls' => ['/dashboard', '/orders'], 'max' => 20, 'interval' => 60],
+],
+
+// AppServiceProvider::boot(): per-user pages, e.g. the latest orders
+Pwa::warmUsing(fn (Request $request) => $request->user()
+    ? $request->user()->orders()->latest()->limit(10)->pluck('id')->map(fn ($id) => "/orders/{$id}")
+    : []);
+```
+
+The rules are the same as for visited pages:
+
+- only responses with `X-PWA-Cache: allow` are stored, so the pages still need the `pwa.cache`
+  middleware; everything else is skipped,
+- pages go into `pwa-pages-{user}` of the user who asked and are deleted on logout,
+- only same-origin paths outside `cache.never_cache`, no redirects (a login page is never stored).
+
+The list is sent in the `/pwa/session` response (`no-store`), never in `sw.js`. The `warmUsing()`
+callback runs on every keep-alive request, so keep it cheap. The worker downloads two pages at a time
+and sends `X-PWA-Warm: 1`, so you can tell these requests apart (logs, rate limits).
+
+When it runs:
+
+| Trigger | Details |
+| --- | --- |
+| sign-in | after a sign-in navigation the worker asks `/pwa/session` itself; XHR sign-ins (Inertia, Livewire) through the client |
+| keep-alive | at most once per `offline.warm.interval` minutes |
+| Periodic Background Sync | installed Chromium apps with the permission granted, tag `pwa-warm` |
+| `Pwa.warm()` | right away, resolves with `{count, skipped, failed}` |
+
+Nothing is downloaded with Save-Data on or while offline.
+
+```js
+const { count } = await Pwa.warm()
+Pwa.on('warmed', ({ count, skipped }) => console.log(`${count} pages ready offline`))
+```
+
 ## API cache
 
 ```php
 'cache' => ['api' => ['/api/catalog*', '/api/me']],
 ```
 
-GET requests to these paths go to the network, and 200 responses are stored in `pwa-api-{user}`. During a network failure or
+GET requests to these paths go to the network, and 200 responses are stored in `pwa-rule-api-{user}`. During a network failure or
 maintenance mode (503), the service worker returns the stored response. `no-store` responses are not stored.
 
 ## Offline queue

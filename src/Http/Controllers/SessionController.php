@@ -29,6 +29,7 @@ class SessionController
             'user' => $pwa->userHash($request),
             'csrf' => csrf_token(),
             'lifetime' => config()->integer('session.lifetime', 120),
+            'warm' => $pwa->warmUrls($request),
         ], 200, ['Cache-Control' => 'no-store']);
     }
 

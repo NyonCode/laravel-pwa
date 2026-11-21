@@ -9,7 +9,7 @@ description: Oddělení uživatelů v cache, cookies, CSP (nonce a hashe), telem
 
 - **HTML jen na povolení**: bez `X-PWA-Cache: allow` (middleware `pwa.cache`) SW žádnou stránku
   neuloží. Výchozí stav je tedy bezpečný.
-- **Oddělení uživatelů**: stránky a API odpovědi jsou v `pwa-pages-{hash}` a `pwa-api-{hash}`.
+- **Oddělení uživatelů**: stránky a API odpovědi jsou v `pwa-pages-{hash}` a `pwa-rule-{name}-{hash}`.
   Hash je `HMAC-SHA256(id uživatele, APP_KEY)` zkrácený na 16 znaků (hlavička `X-PWA-User`).
   Když SW uvidí jiný hash, smaže cache předchozího uživatele i frontu offline akcí.
 - **Odhlášení**: `X-PWA-Logout` + `Clear-Site-Data: "cache"` smaže cache a frontu.

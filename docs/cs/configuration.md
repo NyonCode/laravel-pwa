@@ -119,6 +119,9 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `offline.route` | string | `/offline` | URL offline obrazovky (precache). |
 | `offline.precache` | list | `[]` | Další URL do precache, např. `['/manifest.webmanifest', '/img/logo.svg']`. |
 | `offline.queue` | bool | `true` | Ukládat POST/PUT/PATCH/DELETE při výpadku sítě do fronty. |
+| `offline.warm.urls` | `list<string>` | `[]` | Stránky stažené dopředu; pro konkrétního uživatele `Pwa::warmUsing()`, viz [Předehřátí](offline.md#předehřátí). |
+| `offline.warm.max` | int | `20` | Nejvyšší počet stránek na jedno předehřátí. |
+| `offline.warm.interval` | int | `60` | Minuty mezi automatickými předehřátími (přihlášení předehřeje vždy). |
 
 ## Session
 

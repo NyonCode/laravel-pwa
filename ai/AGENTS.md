@@ -89,6 +89,9 @@ to wire.
 | `isStandaloneRequest(?Request)` | bool | header `X-PWA-Display`, cookie `pwa_display`, `?source=pwa`, or session `pwa.standalone` |
 | `isStandaloneClient(?Request)` | bool | header `X-PWA-Display` or cookie `pwa_display` only; `?source=pwa` and the session flag can be planted by a link, so only this one drives `pwa.remember` |
 | `userHash(?Request)` | string | `guest` or 16-char HMAC of the auth id |
+| `warmUsing(Closure(Request): iterable)` | static | adds pages to warm for the current user; runs on every `/pwa/session` request, keep it cheap |
+| `warmUrls(?Request)` | `list<string>` | `offline.warm.urls` + `warmUsing()`: same-origin paths only, `never_cache` removed, at most `offline.warm.max` |
+| `warmsPages()` | bool | a warm-up is configured |
 | `clientConfig()` | array | JSON passed to the client in `#pwa-config` |
 | `cspNonce()` | ?string | `Vite::cspNonce()` |
 | `cspHashes(string $view = 'pwa::maintenance')` | `['script-src' => [...], 'style-src' => [...]]` | SHA-256 hashes of the prerendered maintenance screen |
@@ -244,8 +247,8 @@ frozen `self.PwaWorker`: `route(match, handler)` (match = path pattern on the sa
 on the full URL, or `({url, request, event}) => bool`; handler returns a `Response`), `strategies`
 (`networkFirst`, `cacheFirst`, `staleWhileRevalidate`, `networkOnly`, `cacheOnly`, each
 `(event, {cacheName, maxEntries, maxAge, timeout, shared})`), `cacheName(name, {shared})` →
-`pwa-rule-{name}-{user}` or `pwa-shared-{name}`, `currentUser()`, `broadcast(message)`, `version`,
-`config`. Routes never see navigations, mutations or `never_cache` paths.
+`pwa-rule-{name}-{user}` or `pwa-shared-{name}`, `currentUser()`, `broadcast(message)`,
+`warm(urls)` (downloads pages for offline use, same rules as below), `version`, `config`. Routes never see navigations, mutations or `never_cache` paths.
 
 ```js
 // public/pwa-extend.js
@@ -256,12 +259,20 @@ route('/reports/*', async (event) => strategies.cacheFirst(event, { cacheName: a
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
-`update()`, `keepAlive()`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`.
+`update()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`.
 
 DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `resume`, `online`,
 `offline`, `maintenance`, `logout`, `queue` `{count}`, `replayed` `{url,status}`,
 `update-available` `{worker}`, `activated` `{version}`, `installed`, `csrf` `{token}`,
-`csrf-refreshed`.
+`csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`.
+
+Warm-up (`offline.warm`, `Pwa::warmUsing()`): `/pwa/session` returns `warm: [paths]` for the current
+user (`no-store`, never in `sw.js`). The worker fetches them (2 at a time, max 50, request header
+`X-PWA-Warm: 1`) into `pwa-pages-{userHash}` and stores **only** responses with `X-PWA-Cache: allow`
+for that same user, never redirects. Triggers: a sign-in navigation (the worker asks `/pwa/session`
+itself), the client keep-alive at most once per `offline.warm.interval` minutes or on a user change,
+the `identity` message (XHR sign-ins), Periodic Background Sync tag `pwa-warm` in installed Chromium
+apps, and `Pwa.warm()`. Skipped with Save-Data or offline. The list is forgotten on logout.
 
 On boot the client sets cookie `pwa_display`, wraps `window.fetch` and `window.axios` to retry a
 non-GET same-origin 419 once with a fresh token, registers or unregisters the worker, runs keep-alive on
@@ -320,7 +331,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `icons.{source,path,maskable_padding,sizes}`, `icons.splash.{background,dark_background,icon_size,orientations,devices}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
 `locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
-`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`,
+`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
 `telemetry.{enabled,channel,max_events}`, `adapters.{livewire,inertia,reload_on_resume}`,

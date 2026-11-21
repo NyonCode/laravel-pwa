@@ -28,6 +28,7 @@ description: window.Pwa – API, události pwa:*, lišty, instalace, badge a jak
 | `install()` | `Promise<string>` | `accepted`, `dismissed`, `unavailable`; použije `navigator.install()` nebo uloženou výzvu |
 | `update()` | Promise | ručně zkontroluje novou verzi SW |
 | `keepAlive()` | `Promise<object\|null>` | zavolá `/pwa/session` hned |
+| `warm()` | `Promise<object\|null>` | stáhne stránky k předehřátí hned; `{count, skipped, failed}` ([Offline](offline.md#předehřátí)) |
 | `version()` | `Promise<string\|null>` | verze aktivního SW |
 | `on(event, fn)` | function | posluchač bez prefixu `pwa:`; vrací funkci pro odhlášení |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
@@ -60,6 +61,8 @@ Všechny jako `CustomEvent` na `document` (`pwa:jméno`) i přes `Pwa.on('jméno
 | `pwa:installed` | `{}` | `appinstalled` |
 | `pwa:csrf` | `{token}` | nový CSRF token propsán |
 | `pwa:csrf-refreshed` | `{}` | Livewire 419 vyřešeno |
+| `pwa:identity` | `{user}` | přihlásil se jiný uživatel (hash) |
+| `pwa:warmed` | `{count, skipped, failed}` | předehřátí skončilo |
 
 ```js
 document.addEventListener('pwa:resume', () => refreshDashboard())
@@ -85,5 +88,6 @@ okna aplikace. Vlastní UI: `pwa:update-available` a `detail.worker.postMessage(
 | --- | --- |
 | `pwa:visits` | počet návštěv |
 | `pwa:install-dismissed` | čas odmítnutí instalace |
+| `pwa:warm` | hash uživatele a čas posledního předehřátí |
 
 Přístup je v `try/catch` (soukromý režim, plné úložiště). Přihlášení na localStorage nikdy nezávisí.

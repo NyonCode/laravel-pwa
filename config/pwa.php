@@ -198,6 +198,13 @@ return [
         'route' => '/offline',
         'precache' => [],
         'queue' => true,                // queue POST/PUT/PATCH/DELETE while the network is down
+        // Pages the worker downloads ahead of time, so they open offline without a prior visit.
+        // Only pages with the pwa.cache middleware are stored. Per-user lists: Pwa::warmUsing().
+        'warm' => [
+            'urls' => [],               // e.g. ['/dashboard', '/orders']
+            'max' => 20,                // at most this many URLs per warm-up
+            'interval' => 60,           // minutes between automatic warm-ups (login always warms)
+        ],
     ],
 
     /*
