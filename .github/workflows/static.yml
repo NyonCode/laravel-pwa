@@ -37,7 +37,8 @@ jobs:
         run: vendor/bin/rector --dry-run --no-progress-bar
 
       - name: Composer audit
-        run: composer audit
+        # Abandoned dev-only transitive packages are reported, vulnerabilities fail the job.
+        run: composer audit --abandoned=report
 
       - name: MCP server self-test
         run: node ai/mcp/server.mjs --self-test

@@ -43,6 +43,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Rector runs only in static.yml; rector-laravel needs PHP 8.3+.
+          composer remove driftingly/rector-laravel rector/rector --dev --no-interaction --no-update
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 

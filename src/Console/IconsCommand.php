@@ -32,6 +32,15 @@ class IconsCommand extends Command
         }
 
         $background = (string) ($this->option('background') ?: config('pwa.theme.background', '#ffffff'));
+
+        // Validate once for both drivers (Imagick would accept colour names, GD would not).
+        try {
+            $background = vsprintf('#%02x%02x%02x', $this->rgb($background));
+        } catch (\InvalidArgumentException $e) {
+            $this->components->error($e->getMessage());
+
+            return self::FAILURE;
+        }
         $padding = (float) config('pwa.icons.maskable_padding', 0.1);
         $target = public_path(trim((string) config('pwa.icons.path', 'pwa/icons'), '/'));
         File::ensureDirectoryExists($target);
