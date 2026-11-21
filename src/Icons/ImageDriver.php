@@ -6,6 +6,8 @@ namespace NyonCode\LaravelPwa\Icons;
 
 /**
  * Renders the source image centred on a canvas and returns PNG bytes.
+ *
+ * @internal
  */
 interface ImageDriver
 {

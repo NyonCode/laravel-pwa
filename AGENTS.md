@@ -59,7 +59,7 @@ vendor/bin/rector          # apply Rector refactorings (CI only checks)
 npm run test:js            # node:test: tests/js/sw (runtime.js) and tests/js/client (pwa.js)
 node --test tests/js/sw/runtime.test.mjs            # one JS file
 npm run lint:js            # ESLint
-npm run test:e2e           # Playwright (Chromium + Firefox) against the workbench, starts testbench serve
+npm run test:e2e           # Playwright (Chromium, Firefox, WebKit, iPhone) against the workbench, starts testbench serve
 npm run docs:check         # docs/en ↔ docs/cs parity, links, anchors (scripts/docs-check.mjs)
 vendor/bin/testbench serve --port=8123              # workbench demo app
 php anvil list             # package generators (make:command, make:controller, …)
@@ -68,19 +68,35 @@ php anvil list             # package generators (make:command, make:controller, 
 JS tests run the real source files: `tests/js/support/sw-env.mjs` evaluates `resources/sw/runtime.js`
 in a `vm` context with in-memory Cache Storage, a scripted `fetch` and fake IndexedDB;
 `tests/js/support/client-env.mjs` runs `resources/js/pwa.js` in happy-dom. Offline e2e specs are
-tagged `@offline` and run in Chromium only (Playwright's Firefox offline mode skips worker requests).
+tagged `@offline` and skipped in Firefox (Playwright's Firefox offline mode skips worker requests).
+Specs tagged `@ios` run only in the `iphone` project (WebKit + iPhone emulation, `PushManager` removed
+like Safari outside the Home Screen app); the other projects skip them. In Playwright's WebKit,
+`pushManager.getSubscription()` blocks the next navigation: never call the push API on page load for
+devices that did not subscribe.
 `tests/e2e/push.spec.mjs` delivers pushes over CDP to the real worker in the full Chromium build
 (`channel: 'chromium'`; the headless shell has no notifications).
 
 CI: `tests.yml` (Pest on PHP 8.2–8.5 × Laravel 12/13 × lowest/stable, Laravel 13 skipped on 8.2,
 plus coverage), `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml`
-(ESLint + unit tests on Node 20/22/24, docs check), `e2e.yml` (Playwright), `release.yml` (a `v*` tag creates the
-GitHub release from the matching `CHANGELOG.md` section).
+(ESLint + unit tests on Node 20/22/24, docs check), `e2e.yml` (Playwright), `mutation.yml` (weekly
+and manual Pest mutation testing), `release.yml` (a `v*` tag creates the GitHub release from the
+matching `CHANGELOG.md` section).
 
 `tests/Feature/AiTest.php` fails when a command, config section or `window.Pwa` member is not
 mentioned in `ai/AGENTS.md`, so update that file whenever you add one.
 
+Demo and media: `php scripts/demo-build.php` renders the static demo into `docs/public/demo`
+(gitignored; `docs.yml` builds it before VitePress) with the package configured for the scope
+`/laravel-pwa/demo/`; `scripts/demo/shim.js` stands in for the `X-PWA-Cache` header that GitHub Pages
+cannot send. `node scripts/media.mjs` takes the README screenshots from it into `.github/media`.
+
 ## Conventions
+
+- **Semantic Versioning from 1.0.** The public API is listed in `docs/en/versioning.md`; never break
+  it outside a major release. New config keys need defaults that keep the old behaviour. Classes
+  outside the public API carry `@internal` (`tests/ArchTest.php` enforces it for controllers,
+  requests, listeners, console commands, `Support` and the listed helpers); events stay `final`.
+  Changelog: one `## [Unreleased]` section, grouped by area.
 
 - Web push is an **opt-in module** (`pwa.push.enabled = false` by default; `minishlink/web-push`
   is only a `suggest`). Its migration is published, never loaded. It keeps the per-user rule: logout

@@ -10,7 +10,13 @@
 připojení a nikdy neukáže jednomu uživateli data jiného, nainstalovaná zůstane přihlášená, má
 skutečnou obrazovku údržby a service worker jde jedním příkazem vypnout na všech zařízeních.
 
-[Dokumentace](https://nyoncode.github.io/laravel-pwa/cs/) · [English](README.md) · [Changelog](CHANGELOG.md) · [Upgrade](UPGRADE.md)
+[Dokumentace](https://nyoncode.github.io/laravel-pwa/cs/) · [Živé demo](https://nyoncode.github.io/laravel-pwa/demo/) · [English](README.md) · [Changelog](CHANGELOG.md) · [Upgrade](UPGRADE.md)
+
+| Toast aktualizace | Offline: uložená stránka | Offline: neotevřená stránka | Instalace na iPhonu |
+| --- | --- | --- | --- |
+| ![Je k dispozici nová verze, s tlačítky Později a Aktualizovat](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/update-toast.png) | ![Dříve otevřená stránka z cache s lištou offline](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/offline-cached.png) | ![Offline obrazovka s tlačítkem Zkusit znovu](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/offline.png) | ![Sdílet a pak Přidat na plochu](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/ios-install.png) |
+
+Snímky z [živého dema](https://nyoncode.github.io/laravel-pwa/demo/) (anglicky), statické kopie aplikace s nainstalovaným balíčkem.
 
 ## Rychlý start
 
@@ -120,19 +126,17 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | | [Service worker](docs/cs/service-worker.md) | [Livewire a Inertia](docs/cs/adapters.md) | [Podpora platforem](docs/cs/platforms.md) |
 | | [Offline](docs/cs/offline.md) | [Push notifikace](docs/cs/push.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
 | | [Trvalé přihlášení](docs/cs/session.md) | [AI agenti](docs/cs/ai.md) | [Testování](docs/cs/testing.md) |
-| | [Údržba](docs/cs/maintenance.md) | | |
-| | [Nouzové vypnutí](docs/cs/kill-switch.md) | | |
+| | [Údržba](docs/cs/maintenance.md) | | [Verzování](docs/cs/versioning.md) |
+| | [Nouzové vypnutí](docs/cs/kill-switch.md) | [Recepty: startovací sady, Fortify, Filament](docs/cs/recipes.md) | |
 
 ## Podpora verzí
 
 | Verze | PHP | Laravel | Stav |
 | --- | --- | --- | --- |
-| 0.4 | 8.2 – 8.5 | 12, 13 | Aktivní |
-| 0.3 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.4.0 |
-| 0.2 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.3.0 |
-| 0.1 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.2.0 |
+| 1.x | 8.2 – 8.5 | 12, 13 | Aktivní |
 
-Laravel 11 a starší jsou po konci podpory a balíček je nepodporuje. Každé vydání se testuje
+Balíček se řídí [sémantickým verzováním](docs/cs/versioning.md): minor verze nikdy nerozbijí veřejné
+API. Laravel 11 a starší jsou po konci podpory a balíček je nepodporuje. Každé vydání se testuje
 s nejnižšími i nejnovějšími závislostmi na všech podporovaných verzích PHP a Laravelu.
 
 ## AI agenti a MCP
@@ -148,7 +152,7 @@ Viz [AI agenti](docs/cs/ai.md).
 ## Přispívání a bezpečnost
 
 Viz [CONTRIBUTING.md](CONTRIBUTING.md). Zranitelnosti hlaste neveřejně podle
-[SECURITY.md](SECURITY.md), ne ve veřejných issues.
+[SECURITY.cs.md](SECURITY.cs.md), ne ve veřejných issues.
 
 ## Licence
 

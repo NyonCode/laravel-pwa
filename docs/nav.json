@@ -15,11 +15,11 @@
     },
     {
       "title": { "en": "Integrations", "cs": "Integrace" },
-      "pages": ["client.md", "events.md", "adapters.md", "tenancy.md", "push.md"]
+      "pages": ["client.md", "events.md", "adapters.md", "recipes.md", "tenancy.md", "push.md"]
     },
     {
       "title": { "en": "Operations", "cs": "Provoz" },
-      "pages": ["commands.md", "deployment.md", "security.md", "platforms.md", "troubleshooting.md"]
+      "pages": ["commands.md", "deployment.md", "security.md", "versioning.md", "platforms.md", "troubleshooting.md"]
     },
     {
       "title": { "en": "Development", "cs": "Vývoj" },

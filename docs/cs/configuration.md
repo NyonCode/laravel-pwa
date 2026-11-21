@@ -98,6 +98,9 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `sw.extend` | list | `[]` | Skripty načtené **po** runtime; mají `self.PwaWorker` (vlastní trasy a strategie), viz [Service worker](service-worker.md#swextend). |
 | `sw.vite_manifest` | string | `build/manifest.json` | Vite manifest v `public/` pro precache. |
 | `sw.build_directory` | string | `build` | Prefix assetů Vite (cache-first). |
+| `sw.precache_vite` | string\|false | `imports` | Co předcachovat z Vite: `imports`, `entries`, `all`, `false` ([Service worker](service-worker.md#co-se-předcachuje)). |
+| `sw.precache_exclude` | list | `[]` | Soubory buildu vynechané z precache (vzory `Str::is` relativně k adresáři buildu). |
+| `sw.precache_warn_kb` | int | `5120` | `pwa:build` a `pwa:doctor` varují nad touto velikostí precache; `0` vypne. |
 | `sw.compiled_path` | string | `bootstrap/cache/pwa` | Kam `pwa:build` uloží sestavený SW. |
 | `sw.kill_switch_store` | ?string | `null` | Cache store pro `pwa:disable`; při více serverech sdílený (Redis, databáze). |
 
@@ -144,13 +147,14 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `maintenance.retry` | int (s) | `60` | Výchozí `Retry-After` a interval kontrol (15–300 s). |
 | `maintenance.refresh` | ?int | `null` | Výchozí `--refresh` pro `pwa:down`. |
 
-## Instalace, telemetrie, adaptéry
+## Instalace, aktualizace, telemetrie, adaptéry
 
 | Klíč | Typ | Výchozí | Popis |
 | --- | --- | --- | --- |
 | `install.min_visits` | int | `2` | Od kolikáté návštěvy ukazovat `<x-pwa::install/>`. |
 | `install.dismiss_days` | int | `30` | Jak dlouho po odmítnutí výzvu neukazovat. |
 | `install.ios_hint` | bool | `true` | Nápověda „Sdílet → Přidat na plochu“ na iPhonu a iPadu. |
+| `updates.bar` | bool | `true` | Vestavěná lišta „nová verze“; vypněte pro vlastní UI (na stránkách s `<x-pwa::update-toast/>` se neukáže). |
 | `telemetry.log` | bool | `true` | Zapisovat `TelemetryReceived` do logu; vypněte, když události zpracováváte sami ([Události](events.md)). |
 | `telemetry.enabled` | bool | `true` | Posílat chyby service workeru na `/pwa/telemetry`. |
 | `telemetry.channel` | ?string | `null` | Log kanál; neexistující kanál = výchozí log. |
@@ -177,3 +181,7 @@ Viz [Push notifikace](push.md).
 | `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
 | `push.icon`, `push.badge` | ?string | `null` | Výchozí hodnoty zpráv; `null` = `icon-192.png` a `monochrome-512.png` z `icons.path`, pokud existují. |
 | `push.handle_in_worker` | bool | `true` | Worker zobrazuje notifikace a obsluhuje kliknutí; `false`, když to dělá skript v `sw.import`. |
+| `push.queue.chunk` | int | `100` | Příjemců v jednom jobu `WebPush::queue()`. |
+| `push.queue.connection`, `push.queue.queue` | ?string | `null` | Připojení a fronta těchto jobů. |
+| `push.batch_size` | int | `1000` | Požadavků na push služby najednou. |
+| `push.analytics` | bool | `false` | Worker hlásí zobrazené, kliknuté a zavřené notifikace ([Statistika](push.md#statistika)). |

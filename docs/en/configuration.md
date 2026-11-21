@@ -98,6 +98,9 @@ You can translate `name`, `short_name` and `description` in
 | `sw.extend` | list | `[]` | Scripts loaded **after** the runtime; they get `self.PwaWorker` (custom routes and strategies). See [Service worker](service-worker.md#swextend). |
 | `sw.vite_manifest` | string | `build/manifest.json` | Vite manifest in `public/` used for precaching. |
 | `sw.build_directory` | string | `build` | Vite asset prefix (cache-first). |
+| `sw.precache_vite` | string\|false | `imports` | What to precache from Vite: `imports`, `entries`, `all`, `false` ([Service worker](service-worker.md#what-is-precached)). |
+| `sw.precache_exclude` | list | `[]` | Build files to leave out of the precache (`Str::is` patterns relative to the build directory). |
+| `sw.precache_warn_kb` | int | `5120` | `pwa:build` and `pwa:doctor` warn above this precache size; `0` turns it off. |
 | `sw.compiled_path` | string | `bootstrap/cache/pwa` | Where `pwa:build` stores the built service worker. |
 | `sw.kill_switch_store` | ?string | `null` | Cache store for `pwa:disable`; with multiple servers, use a shared one (Redis, database). |
 
@@ -144,13 +147,14 @@ You can translate `name`, `short_name` and `description` in
 | `maintenance.retry` | int (s) | `60` | Default `Retry-After` and check interval (15–300 s). |
 | `maintenance.refresh` | ?int | `null` | Default `--refresh` for `pwa:down`. |
 
-## Install, telemetry, adapters
+## Install, updates, telemetry, adapters
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `install.min_visits` | int | `2` | The visit from which `<x-pwa::install/>` is shown. |
 | `install.dismiss_days` | int | `30` | How long to hide the prompt after the user dismisses it. |
 | `install.ios_hint` | bool | `true` | The "Share → Add to Home Screen" hint on iPhone and iPad. |
+| `updates.bar` | bool | `true` | The built-in "new version" bar; off for your own UI (skipped anyway on pages with `<x-pwa::update-toast/>`). |
 | `telemetry.log` | bool | `true` | Write `TelemetryReceived` to the log; turn it off when you handle the events yourself ([Events](events.md)). |
 | `telemetry.enabled` | bool | `true` | Send service worker errors to `/pwa/telemetry`. |
 | `telemetry.channel` | ?string | `null` | Log channel; a channel that does not exist falls back to the default log. |
@@ -177,3 +181,7 @@ See [Push notifications](push.md).
 | `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
 | `push.icon`, `push.badge` | ?string | `null` | Defaults for messages; `null` = `icon-192.png` and `monochrome-512.png` from `icons.path` when they exist. |
 | `push.handle_in_worker` | bool | `true` | The worker shows notifications and handles clicks; `false` when a `sw.import` script does it. |
+| `push.queue.chunk` | int | `100` | Recipients per `WebPush::queue()` job. |
+| `push.queue.connection`, `push.queue.queue` | ?string | `null` | Queue connection and name of those jobs. |
+| `push.batch_size` | int | `1000` | Requests sent to the push services at once. |
+| `push.analytics` | bool | `false` | The worker reports shown, clicked and closed notifications ([Statistics](push.md#statistics)). |

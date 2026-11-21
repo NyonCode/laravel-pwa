@@ -746,6 +746,12 @@
 
     if (local && url.pathname === workerPath) return;
 
+    // The client script (?v=hash) is precached: pages served from the cache offline need it.
+    if (local && C.client && url.pathname === C.client && request.method === 'GET') {
+      event.respondWith(strategies.cacheFirst(event, { cacheName: STATIC }));
+      return;
+    }
+
     // never_cache: never stored or queued. Fetch/XHR requests still pass through the worker so it
     // sees identity changes (XHR login/logout of Inertia and Livewire hit /login, /logout).
     if (local && matches(neverCache, url.pathname)) {
@@ -831,6 +837,29 @@
     };
   };
 
+  // pwa.push.analytics: shown / click / close with the message id() and tag, sent without cookies.
+  const pushEvents = [];
+  let pushEventTimer = null;
+
+  const track = (type, data = {}, tag = null, action = null) => {
+    if (!P?.events || pushEvents.length >= 20) return Promise.resolve();
+    pushEvents.push({ type, id: data.id ?? null, tag: tag ?? null, action: action || null });
+    clearTimeout(pushEventTimer);
+    // A short delay batches a burst; the push and click events wait for it with waitUntil.
+    return new Promise((resolve) => {
+      pushEventTimer = setTimeout(() => {
+        const events = pushEvents.splice(0);
+        fetch(P.events, {
+          method: 'POST',
+          keepalive: true,
+          credentials: 'omit',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ events }),
+        }).catch(() => {}).finally(resolve);
+      }, 500);
+    });
+  };
+
   const showPush = async (data) => {
     const message = data.web_push === 8030 ? fromDeclarative(data) : data;
     let title = message.title || P.name;
@@ -853,6 +882,7 @@
       } catch { /* Badging API unavailable */ }
     }
     await broadcast({ type: 'push-received', tag: options.tag ?? null });
+    await track('shown', options.data || {}, options.tag);
   };
 
   /** Focuses a window showing the target, else navigates a window of the app, else opens one. */
@@ -904,7 +934,11 @@
       event.notification.close();
       const data = event.notification.data || {};
       const target = pushTarget((event.action && data.actions?.[event.action]) || data.url);
-      event.waitUntil(openFromNotification(target, event.action));
+      event.waitUntil(Promise.all([openFromNotification(target, event.action), track('click', data, event.notification.tag, event.action)]));
+    });
+
+    self.addEventListener('notificationclose', (event) => {
+      event.waitUntil(track('close', event.notification.data || {}, event.notification.tag));
     });
 
     self.addEventListener('pushsubscriptionchange', (event) => {

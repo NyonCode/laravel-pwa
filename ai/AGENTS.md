@@ -5,7 +5,10 @@ This is the complete public surface, written from the source of the installed re
 inside the package (`vendor/nyoncode/laravel-pwa/ai/AGENTS.md`), so it matches `composer.lock`.
 Prefer it — and the package's MCP server, if registered — over recalling the API.
 
-Requires PHP 8.2+ (8.3+ with Laravel 13) and Laravel 12.x or 13.x. Built on
+Requires PHP 8.2+ (8.3+ with Laravel 13) and Laravel 12.x or 13.x. Semantic Versioning from 1.0:
+everything below is public API; classes marked `@internal` (controllers, listeners, command classes,
+icon drivers, `Support`, `MinishlinkTransport`, `SendWebPush`, `Vapid`) are not, so never extend or
+call them from app code. Built on
 `nyoncode/laravel-package-toolkit`; short name `pwa` (views `pwa::`, translations `pwa::`, publish
 tags `pwa::config`, `pwa::views`, `pwa::translations`, `pwa::migrations`).
 
@@ -65,6 +68,7 @@ Deploy: `npm run build` → `php artisan pwa:build` (also run by `php artisan op
 | GET | `/pwa/session` | `pwa.session` | web | keep-alive: `{authenticated, user, csrf, lifetime}` |
 | POST | `/pwa/telemetry` | `pwa.telemetry` | web, throttle:30,1, no CSRF | service-worker error log |
 | GET | `/offline` (`pwa.offline.route`) | `pwa.offline` | web | offline screen |
+| POST | `/pwa/push/events` | `pwa.push.events` | no session, no CSRF, throttle:60,1 | `{events: [{type: shown|click|close, id, tag, action}]}` → 202; only with `push.enabled` + `push.analytics` |
 | POST | `/pwa/push/subscriptions` | `pwa.push.subscribe` | web, `push.middleware` (`auth`), throttle:20,1 | store `PushSubscription.toJSON()` + `contentEncoding` (+ `replaces`); only with `push.enabled` |
 | DELETE | `/pwa/push/subscriptions` | `pwa.push.unsubscribe` | same | `{endpoint}`; removes the signed-in user's own subscription |
 
@@ -109,13 +113,15 @@ that session (session key `pwa.push.endpoints`).
 
 ```php
 Pwa::manifest()
-    ->shortcut(string $name, string $url, ?string $icon = null, ?string $description = null)
+    ->shortcut(string $name, string $url, ?string $icon = null, ?string $description = null, string $iconSizes = '96x96')
     ->shareTarget(string $action, string $method = 'POST', array $accept = [], string $filesField = 'files')
     ->fileHandler(string $action, array $accept, ?string $name = null)   // ['text/csv' => ['.csv']]
     ->protocolHandler(string $protocol, string $url)                      // 'web+orders', '/orders/%s'
     ->windowControlsOverlay()                                             // prepends to display_override
     ->tabbed(array $tabStrip = [])                                        // prepends 'tabbed'
     ->launchHandler(string|array $clientMode)
+    ->screenshot(string $src, string $sizes, ?string $formFactor = null, ?string $label = null, string $type = 'image/png')
+    ->category(string ...$categories)
     ->name(string) ->shortName(string) ->description(string) ->id(string) ->startUrl(string)
     ->scope(string) ->themeColor(string) ->backgroundColor(string)
     ->icon(string $src, string $sizes, ?string $type = null, string $purpose = 'any') // replaces pwa:icons files
@@ -178,11 +184,22 @@ Safari reports Mac even on iPad; without Client Hints macOS is therefore not tre
   (browser draws them) and on phones. Prop `start-url`.
 - `<x-pwa::install>Text</x-pwa::install>` — hidden `[data-pwa-install]` button + hidden
   `[data-pwa-ios-hint]`; client reveals them when installable, visits ≥ `install.min_visits`, not
-  dismissed within `install.dismiss_days`. Prop `dismissible` (default true). Any element with
+  dismissed within `install.dismiss_days`. Props `dismissible` (true), `ios` (`sheet` steps with the
+  Share icon | `hint` one line | `none`), `styles` (true), slot `ios-hint`. Any element with
   `data-pwa-install` works as an install trigger; `data-pwa-install-dismiss` dismisses.
+- `<x-pwa::update-toast/>` — hidden `[data-pwa-update]` toast with `[data-pwa-update-apply]`
+  (→ `Pwa.applyUpdate()`) and `[data-pwa-update-dismiss]`; shown while a new worker waits. Its
+  presence (or `updates.bar = false`) suppresses the built-in update bar. Props `dismissible`, `styles`, slot `apply`.
+- `<x-pwa::push-toggle/>` — `[data-pwa-push]` wrapper with `[data-pwa-push-toggle]` button
+  (→ `Pwa.push.toggle()`); client sets `data-pwa-push-state` and `aria-pressed`, shows the matching
+  `[data-pwa-push-label]`; hidden when push is unavailable. Slots `enable`, `disable`, `denied`, `install-required`.
+- Base styles (`partials/ui-styles`) print once per page with the CSP nonce, `:where()` rules,
+  CSS variables `--pwa-surface|on-surface|muted|action|radius|shadow|font`; `:styles="false"` opts out.
+  No inline scripts: `pwa.js` drives every `[data-pwa-*]` element; `Pwa.refreshUi()` (also on
+  `livewire:navigated`, `inertia:navigate`, `pageshow`) re-scans elements added later.
 
 Views to customise (`php artisan vendor:publish --tag="pwa::views"`): `offline.blade.php`,
-`maintenance.blade.php`, `components/{head,nav,install}.blade.php`. Offline and maintenance pages
+`maintenance.blade.php`, `components/{head,nav,install,update-toast,push-toggle}.blade.php`, `partials/ui-styles.blade.php`. Offline and maintenance pages
 must stay self-contained (inline CSS/SVG/JS, no external URLs). In `maintenance.blade.php` pass PHP
 data only via `data-*` attributes on `#pwa-maintenance`, never inside `<script>` (keeps the CSP hash
 stable). Keep the `@if($nonce) nonce=…` attributes.
@@ -194,6 +211,7 @@ Requests are handled in this order; the first row that applies wins.
 | Request | Handling | Cache name |
 |---|---|---|
 | `/sw.js`; navigations to `cache.never_cache` paths | untouched | — |
+| the client script `/pwa/client.js?v=…` (precached, despite `/pwa/*` in never_cache) | cache-first | `pwa-static-{version}` |
 | fetch/XHR to `cache.never_cache` paths | passed to the network, never stored or queued; identity headers are read | — |
 | POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
 | navigation | network (+ Navigation Preload); after `cache.navigation_timeout` s use cache if present; on error cache, then `/offline` | `pwa-pages-{userHash}` |
@@ -211,8 +229,9 @@ other origins never change the identity, and a per-user cache only stores respon
 User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's `pwa-pages-*` and
 `pwa-rule-*` caches and the queue; `pwa-shared-*` caches survive. Version = hash of runtime config
 (incl. rules) + precache list + `sw.import`/`sw.extend` contents + runtime file. New versions wait;
-the client asks the user, then sends `SKIP_WAITING`. Activation removes caches of rules that no
-longer exist and 0.1.x caches (`pwa-api-*`, `pwa-images*`).
+the client asks the user (bar or update toast), then `Pwa.applyUpdate()` sends `SKIP_WAITING`
+and reloads after `controllerchange`. Never post `SKIP_WAITING` from app code: the page would not reload. Activation removes caches of rules that no
+longer exist and pre-1.0 caches (`pwa-api-*`, `pwa-images*`).
 
 Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION` (with a port).
 Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503.
@@ -298,6 +317,7 @@ public function toWebPush(object $notifiable): WebPushMessage
 }
 
 WebPush::send($user, WebPushMessage::create('Export ready')); // Facades\WebPush, also one PushSubscription or a list
+WebPush::queue(User::query(), $message); // SendWebPush jobs per push.queue.chunk (100), chunkById; returns job count
 ```
 
 `Push\WebPushMessage`: `create(title)`, `title`, `body`, `icon`, `badge`, `image`, `url` (same origin
@@ -326,19 +346,20 @@ key and POSTs with a fresh CSRF token and `replaces`. Broadcasts `push-received`
 `notification-click` `{url, action}`, `push-renewed`.
 
 Testing: `WebPush::fake()` → `assertSentTo($notifiable, ?fn(WebPushMessage): bool)`,
-`assertNotSentTo`, `assertSent`, `assertSentCount(n)`, `assertNothingSent()`, `sent(?notifiable)`;
+`assertNotSentTo`, `assertSent`, `assertSentCount(n)`, `assertNothingSent()`, `sent(?notifiable)`,
+`assertQueued(?fn, ?$to)`, `assertNothingQueued()` (the fake's `queue()` records instead of dispatching);
 messages are built and size-checked, nothing is sent.
 
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
-`update()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
+`canInstall()`, `update()` (check only), `updateAvailable()`, `applyUpdate()` → bool, `refreshUi()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
 `push.supported()`, `push.permission()`, `push.state()` → `subscribed|unsubscribed|denied|install-required|unsupported`,
-`push.subscribe()` (call from a click) → subscription or `null`, `push.unsubscribe()`, `push.subscription()`.
+`push.subscribe()` (call from a click) → subscription or `null`, `push.unsubscribe()`, `push.toggle()`, `push.subscription()`.
 
 DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `resume`, `online`,
 `offline`, `maintenance`, `logout`, `queue` `{count}`, `replayed` `{url,status}`,
-`update-available` `{worker}`, `activated` `{version}`, `installed`, `csrf` `{token}`,
+`update-available` `{worker}`, `activated` `{version}`, `installable` `{prompt, ios}`, `installed`, `csrf` `{token}`,
 `csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`,
 `push` `{state, lost?, error?}`, `push-received` `{tag}`, `push-renewed`, `notification-click` `{url, action}`.
 
@@ -369,6 +390,8 @@ bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia
 | `PushSubscribed` / `PushUnsubscribed` | subscription stored or renewed / removed (DELETE, logout, device limit) | `subscription` |
 | `PushSubscriptionExpired` | push service answered 404/410, row deleted | `subscription`, `report` |
 | `PushFailed` | other delivery failure or endpoint not allowed | `subscription`, `report` |
+| `PushSent` | after every send; `delivered()`, `expired()`, `failed()` | `message`, `reports`, `notifiable` |
+| `PushDisplayed` / `PushClicked` / `PushDismissed` | worker reports with `push.analytics` (POST `/pwa/push/events`, no cookies, throttle:60,1) | `id` (`WebPushMessage::id()`), `tag`, `action` (click), `userAgent` |
 
 `pwa:down` wraps `artisan down`: use Laravel's `MaintenanceModeEnabled` / `MaintenanceModeDisabled`.
 Telemetry is logged by the `LogTelemetry` listener (`pwa.telemetry.channel`); set
@@ -410,11 +433,11 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `orientation`, `desktop_nav.{enabled,min_width}`, `theme.{light,dark,accent_dark,background}`,
 `icons.{source,path,maskable_padding,sizes}`, `icons.splash.{background,dark_background,icon_size,orientations,devices}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
-`locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
+`locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,precache_vite,precache_exclude,precache_warn_kb,compiled_path,kill_switch_store}`,
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
-`maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
-`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker}`,
+`maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`, `updates.bar`,
+`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker,queue.{chunk,connection,queue},batch_size,analytics}`,
 `adapters.{livewire,inertia,reload_on_resume}`,
 `route_prefix`. Use the MCP tool `describe_config` for defaults and comments.
 
@@ -433,6 +456,12 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
    logout, but still stored). Prefer `Cache-Control: no-store` there.
 5. **`pwa.remember` on the GET login page instead of the POST** → no effect.
 6. **`pwa:build` before `npm run build`** → stale precache; `pwa:doctor` reports "not current".
+   Precache (`sw.precache_vite`): `imports` (default: entries + static imports + CSS + assets),
+   `entries`, `all`, `false`; `sw.precache_exclude` (`Str::is`, relative to the build dir); `pwa:build`
+   and `pwa:doctor` warn above `sw.precache_warn_kb` (5120). `ManifestValidator::capabilities()`
+   (used by doctor and `assertValidManifest()`) warns about shortcuts/share_target/file_handlers/
+   protocol_handlers/launch_handler outside the scope or malformed. A share target POST is a
+   navigation: the worker never queues it.
 7. **Changing `id`** → browsers treat it as a new app.
 8. **Classic (non-fetch) form POST offline** → not queued; only fetch/XHR mutations are.
 9. **PHP data inside `<script>` of a customised maintenance view** → CSP hash changes on every render.

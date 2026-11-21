@@ -26,14 +26,18 @@ description: window.Pwa – API, události pwa:*, lišty, instalace, badge a jak
 | `isInstalled()` | bool | `displayMode() !== 'browser'` (na iOS i `navigator.standalone`) |
 | `isIos()` | bool | iPhone, iPod, iPad (i iPad hlásící se jako Mac) |
 | `install()` | `Promise<string>` | `accepted`, `dismissed`, `unavailable`; použije `navigator.install()` nebo uloženou výzvu |
+| `canInstall()` | bool | instalace má teď smysl: je k dispozici výzva, nebo platí iOS návod |
 | `update()` | Promise | ručně zkontroluje novou verzi SW |
+| `updateAvailable()` | bool | čeká nová verze |
+| `applyUpdate()` | bool | aktivuje čekající verzi a po jejím převzetí stránku znovu načte; `false`, když nic nečeká |
+| `refreshUi()` | – | ukáže nebo skryje prvky `[data-pwa-*]` přidané po načtení (instalace, aktualizace, push) |
 | `keepAlive()` | `Promise<object\|null>` | zavolá `/pwa/session` hned |
 | `warm()` | `Promise<object\|null>` | stáhne stránky k předehřátí hned; `{count, skipped, failed}` ([Offline](offline.md#předehřátí)) |
 | `version()` | `Promise<string\|null>` | verze aktivního SW |
 | `on(event, fn)` | function | posluchač bez prefixu `pwa:`; vrací funkci pro odhlášení |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
 | `badge.clear()` | Promise | |
-| `push.*` | | `supported()`, `permission()`, `state()`, `subscribe()`, `unsubscribe()`, `subscription()`; viz [Push notifikace](push.md#přihlášení-k-odběru-v-prohlížeči) |
+| `push.*` | | `supported()`, `permission()`, `state()`, `subscribe()`, `unsubscribe()`, `toggle()`, `subscription()`; viz [Push notifikace](push.md#přihlášení-k-odběru-v-prohlížeči) |
 
 ```js
 if (!Pwa.isInstalled() && Pwa.isIos()) showIosHelp()
@@ -59,6 +63,7 @@ Všechny jako `CustomEvent` na `document` (`pwa:jméno`) i přes `Pwa.on('jméno
 | `pwa:replayed` | `{url, status}` | akce z fronty odeslána |
 | `pwa:update-available` | `{worker}` | čeká nová verze SW |
 | `pwa:activated` | `{version}` | aktivovala se verze SW |
+| `pwa:installable` | `{prompt, ios}` | instalace je možná (výzva, nebo iOS návod) |
 | `pwa:installed` | `{}` | `appinstalled` |
 | `pwa:csrf` | `{token}` | nový CSRF token propsán |
 | `pwa:csrf-refreshed` | `{}` | Livewire 419 vyřešeno |
@@ -79,13 +84,23 @@ document.addEventListener('pwa:logout', () => pushSystem.unsubscribe())
 Pro offline, údržbu, frontu a aktualizaci klient ukáže malou lištu dole (`.pwa-bar`, `role=status`,
 `aria-live=polite`, respektuje safe-area). Texty z `pwa::messages`. Styl se nastavuje přes
 `element.style` (CSP-safe). Vlastní UI: lištu skryjte (`.pwa-bar { display: none !important }`)
-a reagujte na události.
+a reagujte na události. U aktualizací stačí `updates.bar = false` nebo `<x-pwa::update-toast/>` na stránce.
 
 ## Aktualizace service workeru
 
-Nová verze čeká; lišta nabídne „Načíst“. Po kliknutí klient pošle `SKIP_WAITING` a po
-`controllerchange` stránku znovu načte. Bez kliknutí se nová verze aktivuje, až se zavřou všechna
-okna aplikace. Vlastní UI: `pwa:update-available` a `detail.worker.postMessage({type: 'SKIP_WAITING'})`.
+Nová verze čeká, dokud ji uživatel nepřijme; do té doby stránka běží s verzí, se kterou se načetla.
+Lišta (nebo [`<x-pwa::update-toast/>`](components.md#x-pwaupdate-toast)) nabídne aktualizaci. Po kliknutí
+klient pošle čekajícímu workeru `SKIP_WAITING` a po `controllerchange` stránku znovu načte. Bez kliknutí
+se nová verze aktivuje, až se zavřou všechna okna aplikace.
+
+Vlastní UI: nastavte `updates.bar` na `false`, poslouchejte `pwa:update-available` a volejte `Pwa.applyUpdate()`:
+
+```js
+Pwa.on('update-available', () => showMyToast({ onAccept: () => Pwa.applyUpdate() }))
+```
+
+`SKIP_WAITING` neposílejte sami: klient by nevěděl, že má stránku znovu načíst, a stránka by spouštěla
+starý JavaScript proti novému workeru.
 
 ## Úložiště
 

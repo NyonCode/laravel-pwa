@@ -128,7 +128,8 @@ test('maintenance: 503 screen, page cache untouched', async () => {
 
 test('kill switch: pwa:disable removes the worker and caches, pwa:enable restores it', async () => {
   artisan('pwa:disable', '--force');
-  await page.goto('/');
+  // The retiring worker reloads open windows itself; that reload may interrupt this navigation.
+  await page.goto('/').catch(() => page.waitForLoadState());
 
   await expect.poll(() => page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length)), { timeout: 10_000 }).toBe(0);
   await expect.poll(() => page.evaluate(() => caches.keys().then((k) => k.filter((n) => n.startsWith('pwa-')).length))).toBe(0);

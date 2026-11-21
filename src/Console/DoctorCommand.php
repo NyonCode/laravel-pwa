@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\Facades\Schema;
 use NyonCode\LaravelPwa\Contracts\PushTransport;
 use NyonCode\LaravelPwa\Icons\SplashScreens;
+use NyonCode\LaravelPwa\Manifest\ManifestValidator;
 use NyonCode\LaravelPwa\Push\MinishlinkTransport;
 use NyonCode\LaravelPwa\Push\Vapid;
 use NyonCode\LaravelPwa\Push\WebPush;
@@ -21,6 +22,9 @@ use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:doctor', description: 'Check the PWA setup (manifest, icons, service worker, maintenance, session)')]
 class DoctorCommand extends Command
 {
@@ -101,6 +105,10 @@ class DoctorCommand extends Command
 
         $this->checkScreenshots(is_array($manifest['screenshots'] ?? null) ? $manifest['screenshots'] : []);
 
+        foreach ((new ManifestValidator)->capabilities($manifest) as $problem) {
+            $this->add('warn', 'Manifest: '.$problem);
+        }
+
         $scope = Value::string($manifest['scope'] ?? '/', '/');
         $start = Value::string(parse_url(Value::string($manifest['start_url'] ?? '/', '/'), PHP_URL_PATH));
         $this->add(str_starts_with($start ?: '/', $scope) ? 'ok' : 'error', 'start_url inside scope');
@@ -161,6 +169,14 @@ class DoctorCommand extends Command
             File::exists(public_path(config()->string('pwa.sw.vite_manifest', 'build/manifest.json'))) ? 'ok' : 'warn',
             'Vite manifest for precache (npm run build)',
         );
+
+        try {
+            $kilobytes = (int) ceil($builder->precacheBytes() / 1024);
+            $limit = config()->integer('pwa.sw.precache_warn_kb', 5120);
+            $this->add($limit > 0 && $kilobytes > $limit ? 'warn' : 'ok', "Precache size {$kilobytes} KB (warning above {$limit} KB, pwa.sw.precache_exclude)");
+        } catch (Throwable $e) {
+            $this->add('error', 'Precache: '.$e->getMessage());
+        }
 
         if (! $this->checkCacheRules($builder)) {
             return;

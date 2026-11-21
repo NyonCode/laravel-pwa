@@ -10,6 +10,9 @@ use InvalidArgumentException;
 use NyonCode\LaravelPwa\Support\Color;
 use RuntimeException;
 
+/**
+ * @internal
+ */
 class GdDriver implements ImageDriver
 {
     /** @var array<string, GdImage> */

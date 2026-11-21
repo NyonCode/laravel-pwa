@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace NyonCode\LaravelPwa\ServiceWorker;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use NyonCode\LaravelPwa\Events\ServiceWorkerBuilt;
 use NyonCode\LaravelPwa\Pwa;
@@ -168,6 +169,7 @@ class ServiceWorkerBuilder
             'buildPrefix' => '/'.trim(config()->string('pwa.sw.build_directory', 'build'), '/').'/',
             'telemetry' => config()->boolean('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'sessionUrl' => $prefix.'/session',
+            'client' => strtok(app(Pwa::class)->clientUrl(), '?'),
             'warm' => app(Pwa::class)->warmsPages(),
             'scope' => config()->string('pwa.scope', '/'),
             'push' => $this->pushConfig($prefix),
@@ -201,6 +203,7 @@ class ServiceWorkerBuilder
         return [
             'key' => config('pwa.push.vapid.public_key'),
             'url' => $prefix.'/push/subscriptions',
+            'events' => config()->boolean('pwa.push.analytics', false) ? $prefix.'/push/events' : null,
             'name' => Value::string(config('pwa.short_name')) ?: Value::string(config('pwa.name'), 'Laravel'),
             'icon' => config('pwa.push.icon') ?? $existing($icons.'/icon-192.png'),
             'badge' => config('pwa.push.badge') ?? $existing($icons.'/monochrome-512.png'),
@@ -210,7 +213,7 @@ class ServiceWorkerBuilder
     }
 
     /**
-     * Precache: the offline page, URLs from the config and the Vite manifest entries.
+     * Precache: the offline page, the browser client, URLs from the config and the Vite manifest entries.
      *
      * @return list<string>
      */
@@ -221,6 +224,9 @@ class ServiceWorkerBuilder
         if (config()->boolean('pwa.offline.enabled', true)) {
             $urls[] = config()->string('pwa.offline.route', '/offline');
         }
+
+        // Pages served from the cache offline still need the client (status bar, queue, install).
+        $urls[] = app(Pwa::class)->clientUrl();
 
         foreach ($this->stringList('pwa.offline.precache') as $url) {
             $urls[] = $url;
@@ -234,12 +240,30 @@ class ServiceWorkerBuilder
     }
 
     /**
-     * Files of the Vite manifest (entry points and their CSS), prefixed with the build directory.
+     * Files of the Vite manifest, prefixed with the build directory (`pwa.sw.precache_vite`):
+     *
+     * - `imports` (default): entry points with their static imports, CSS and assets (fonts, images),
+     *   everything an entry needs to run offline;
+     * - `entries`: entry points and their CSS only;
+     * - `all`: every chunk, including dynamic imports;
+     * - `false`: nothing from Vite.
+     *
+     * `pwa.sw.precache_exclude` drops files matching a pattern (`Str::is`, relative to the build directory).
      *
      * @return list<string>
      */
     public function viteFiles(): array
     {
+        $mode = config('pwa.sw.precache_vite', 'imports');
+
+        if (in_array($mode, [false, null, 'none'], true)) {
+            return [];
+        }
+
+        if (! in_array($mode, ['imports', 'entries', 'all'], true)) {
+            throw new RuntimeException('[pwa.sw.precache_vite] must be imports, entries, all or false.');
+        }
+
         $manifestPath = public_path(config()->string('pwa.sw.vite_manifest', 'build/manifest.json'));
 
         if (! File::exists($manifestPath)) {
@@ -252,28 +276,81 @@ class ServiceWorkerBuilder
             throw new RuntimeException("The Vite manifest [{$manifestPath}] is not valid JSON.");
         }
 
+        $chunks = array_filter($manifest, is_array(...));
+        $keys = match ($mode) {
+            'all' => array_keys($chunks),
+            'entries' => array_keys(array_filter($chunks, static fn (array $chunk): bool => (bool) ($chunk['isEntry'] ?? false))),
+            default => $this->withImports($chunks),
+        };
+
+        $exclude = $this->stringList('pwa.sw.precache_exclude');
         $prefix = '/'.trim(config()->string('pwa.sw.build_directory', 'build'), '/').'/';
         $files = [];
 
-        foreach ($manifest as $chunk) {
-            if (! is_array($chunk) || ! ($chunk['isEntry'] ?? false)) {
-                continue;
+        foreach ($keys as $key) {
+            $chunk = $chunks[$key];
+            $own = [$chunk['file'] ?? null, ...(array) ($chunk['css'] ?? [])];
+
+            if ($mode !== 'entries') {
+                $own = [...$own, ...(array) ($chunk['assets'] ?? [])];
             }
 
-            if (isset($chunk['file']) && is_string($chunk['file'])) {
-                $files[] = $prefix.$chunk['file'];
-            }
-
-            foreach ((array) ($chunk['css'] ?? []) as $css) {
-                if (is_string($css)) {
-                    $files[] = $prefix.$css;
+            foreach ($own as $file) {
+                if (is_string($file) && $file !== '' && ! Str::is($exclude, $file)) {
+                    $files[] = $prefix.$file;
                 }
             }
         }
 
+        $files = array_values(array_unique($files));
         sort($files);
 
-        return array_values(array_unique($files));
+        return $files;
+    }
+
+    /**
+     * Entry chunks and every chunk they import statically (recursively).
+     *
+     * @param  array<array-key, array<array-key, mixed>>  $chunks
+     * @return list<array-key>
+     */
+    protected function withImports(array $chunks): array
+    {
+        $queue = array_keys(array_filter($chunks, static fn (array $chunk): bool => (bool) ($chunk['isEntry'] ?? false)));
+        $seen = [];
+
+        while ($queue !== []) {
+            $key = array_shift($queue);
+
+            if (isset($seen[$key]) || ! isset($chunks[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+
+            foreach ((array) ($chunks[$key]['imports'] ?? []) as $import) {
+                if (is_string($import) || is_int($import)) {
+                    $queue[] = $import;
+                }
+            }
+        }
+
+        return array_keys($seen);
+    }
+
+    /**
+     * Total size of the precached files found in public/ (bytes); routes like /offline are not counted.
+     */
+    public function precacheBytes(): int
+    {
+        $bytes = 0;
+
+        foreach ($this->precache() as $url) {
+            $path = public_path(ltrim((string) parse_url($url, PHP_URL_PATH), '/'));
+            $bytes += is_file($path) ? (int) filesize($path) : 0;
+        }
+
+        return $bytes;
     }
 
     /**

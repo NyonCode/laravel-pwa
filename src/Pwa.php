@@ -311,6 +311,9 @@ class Pwa
                 'dismissDays' => config()->integer('pwa.install.dismiss_days', 30),
                 'iosHint' => config()->boolean('pwa.install.ios_hint', true),
             ],
+            'updates' => [
+                'bar' => config()->boolean('pwa.updates.bar', true),
+            ],
             'nav' => [
                 'enabled' => config()->boolean('pwa.desktop_nav.enabled', true),
                 'minWidth' => config()->integer('pwa.desktop_nav.min_width', 900),
@@ -338,6 +341,17 @@ class Pwa
         $key = config('pwa.push.vapid.public_key');
 
         return filter_var(config('pwa.push.enabled', false), FILTER_VALIDATE_BOOL) && is_string($key) && $key !== '';
+    }
+
+    /**
+     * URL of the browser client with its content hash (?v=), so it can be cached forever and
+     * precached by the worker for offline pages.
+     */
+    public function clientUrl(): string
+    {
+        $hash = substr((string) hash_file('sha256', __DIR__.'/../resources/js/pwa.js'), 0, 12);
+
+        return route('pwa.client', absolute: false).'?v='.$hash;
     }
 
     public function cspNonce(): ?string

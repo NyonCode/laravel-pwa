@@ -63,6 +63,9 @@ button.addEventListener('click', async () => {
 Pwa.on('push', ({ state }) => (button.hidden = state === 'subscribed'))
 ```
 
+Or drop in [`<x-pwa::push-toggle/>`](components.md#x-pwapush-toggle): one button that does the same,
+with texts for the blocked and the iPhone cases.
+
 | `Pwa.push` | Returns | Description |
 | --- | --- | --- |
 | `supported()` | bool | push enabled on the server and in this browser |
@@ -70,6 +73,7 @@ Pwa.on('push', ({ state }) => (button.hidden = state === 'subscribed'))
 | `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unsupported` |
 | `subscribe()` | `Promise<PushSubscription\|null>` | asks for permission, subscribes, stores the subscription on the server |
 | `unsubscribe()` | `Promise<bool>` | removes it on the server and in the browser |
+| `toggle()` | Promise | `unsubscribe()` when subscribed, otherwise `subscribe()` |
 | `subscription()` | `Promise<PushSubscription\|null>` | the browser's current subscription |
 
 The client keeps the subscription in step on its own:
@@ -130,6 +134,7 @@ WebPush::send($user->pushSubscriptions()->latest()->first(), $message); // one d
 | `requireInteraction()`, `silent()`, `lang()`, `dir()`, `timestamp()` | as in `showNotification()` |
 | `appBadge($n)` | number on the app icon, `0` clears it |
 | `data([...])` | extra data for your own `sw.extend` code |
+| `id($id)` | your identifier of the message, reported back by [statistics](#statistics) |
 | `ttl()`, `urgency()`, `topic()` | delivery: defaults `pwa.push.ttl` (28 days), `pwa.push.urgency` |
 | `declarative()` | [Declarative Web Push](#declarative-web-push) |
 | `public()` | may be shown to anyone on the device (see [Shared devices](#shared-devices)) |
@@ -148,6 +153,43 @@ Keep the details on the page the notification opens.
 `WebPush::send()` and the channel return a list of `Push\PushReport` (`endpoint`, `success`, `status`,
 `reason`). Subscriptions whose browser announced an `expirationTime` are removed by
 `php artisan model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`.
+
+Every send also dispatches `PushSent` with the message, the reports and the notifiable;
+`delivered()`, `expired()` and `failed()` count them.
+
+## Sending to many users
+
+`WebPush::queue()` sends in the background: one `Push\SendWebPush` job per chunk of recipients. A
+query is walked with `chunkById()`, so it works for any number of users; Eloquent recipients travel
+in the job as ids only.
+
+```php
+WebPush::queue(User::query()->where('wants_news', true), WebPushMessage::create('Spring sale')->url('/sale')->id('sale-2027'));
+```
+
+| Config | Default | |
+| --- | --- | --- |
+| `push.queue.chunk` | `100` | recipients per job |
+| `push.queue.connection`, `push.queue.queue` | `null` | where the jobs run |
+| `push.batch_size` | `1000` | requests sent to the push services at once inside one job |
+
+Each recipient still gets a payload with its own user hash ([shared devices](#shared-devices)). The
+message is checked (title, size) before anything is queued. For Laravel notifications,
+`Notification::send($users, new OrderShipped($order))` with `ShouldQueue` does the same per user.
+
+## Statistics
+
+With `push.analytics = true`, the worker reports each notification it shows, each click (with the
+action) and each close to `POST /pwa/push/events`, without cookies. The package dispatches
+`PushDisplayed`, `PushClicked` and `PushDismissed` with the message `id()`, its `tag` and the user agent,
+and never knows which user it was.
+
+```php
+Event::listen(PushClicked::class, fn (PushClicked $event) => Metrics::increment("push.click.{$event->id}"));
+```
+
+Delivered (`PushSent`) minus shown tells you how many messages the browser received but did not show
+(rare: Safari requires a notification for every push), and clicks over shown give the click rate.
 
 ## Shared devices
 
@@ -213,10 +255,15 @@ WebPush::assertSentTo($user, fn (WebPushMessage $message) => $message->getTitle(
 WebPush::assertNotSentTo($otherUser);
 WebPush::assertSentCount(1);
 WebPush::assertNothingSent();
+
+WebPush::queue(User::query(), $message);
+WebPush::assertQueued(fn (WebPushMessage $message) => $message->getTitle() === 'Spring sale', $user);
+WebPush::assertNothingQueued();
 ```
 
-The fake builds every message (title, payload size) but sends nothing. `Notification::fake()` works
-as usual when you only care that a notification was dispatched.
+The fake builds every message (title, payload size) but sends nothing; `queue()` records the recipients
+instead of dispatching jobs. `Notification::fake()` works as usual when you only care that a
+notification was dispatched.
 
 ## Your own push system
 

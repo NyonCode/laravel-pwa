@@ -39,7 +39,8 @@ Laravel nastaví HttpOnly remember cookie ze serveru. Prohlížeče drží cooki
 Breeze / Jetstream: `LoginRequest` čte `$this->boolean('remember')`, takže stačí middleware.
 Inertia (`useForm({ remember: false })`) posílá `false` vždy: výchozí hodnotu nastavte podle
 klienta, např. `remember: window.Pwa?.isInstalled() ?? false`.
-Fortify: přidejte middleware na routu `login.store` (vlastní routa nebo `Fortify::ignoreRoutes()`).
+Fortify: přidejte middleware do `config/fortify.php` (`'middleware' => ['web', 'pwa.remember']`).
+Přihlášení přes Livewire jde na `/livewire/update`: nastavte `remember` v komponentě ([Recepty](recipes.md#livewire)).
 
 Vypnutí: `session.standalone_remember = false`.
 

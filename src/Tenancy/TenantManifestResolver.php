@@ -15,6 +15,8 @@ use NyonCode\LaravelPwa\Pwa;
  *
  * Registered automatically, before every other resolver, when a TenantResolver is configured.
  * The page adds ?tenant={key}; the manifest route looks the key up with TenantResolver::find().
+ *
+ * @internal
  */
 final class TenantManifestResolver implements ManifestParameters, ManifestResolver
 {

@@ -38,15 +38,17 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
  * @param {string} [options.displayMode] value matched by (display-mode: …)
  * @param {boolean} [options.serviceWorker] expose navigator.serviceWorker
  * @param {(window: Window) => void} [options.before] runs before the client (e.g. set window.axios)
+ * @param {string} [options.userAgent] navigator.userAgent (e.g. an iPhone)
+ * @param {string} [options.body] HTML of <body> (components rendered by the server)
  */
-export const createClient = async ({ config = {}, fetch: network, displayMode = 'browser', serviceWorker = true, before } = {}) => {
-  const window = new Window({ url: `${ORIGIN}/dashboard` });
+export const createClient = async ({ config = {}, fetch: network, displayMode = 'browser', serviceWorker = true, before, userAgent, body = '' } = {}) => {
+  const window = new Window({ url: `${ORIGIN}/dashboard`, ...(userAgent ? { settings: { navigator: { userAgent } } } : {}) });
   const { document } = window;
 
   document.head.innerHTML = `
     <meta name="csrf-token" content="old">
     <script type="application/json" id="pwa-config">${JSON.stringify(baseConfig(config))}</script>`;
-  document.body.innerHTML = '<form><input name="_token" value="old"></form>';
+  document.body.innerHTML = `<form><input name="_token" value="old"></form>${body}`;
 
   const calls = [];
   const fetchImpl = async (input, init = {}) => {
@@ -88,30 +90,62 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
       waiting: null,
       installing: null,
       update: async () => {},
-      addEventListener() {},
+      listeners: new Map(),
+      addEventListener(type, fn) { this.listeners.set(type, [...(this.listeners.get(type) ?? []), fn]); },
     },
     get ready() {
       return Promise.resolve(sw.registration);
     },
     /** Simulates a message from the worker. */
     receive: (data) => (sw.listeners.get('message') ?? []).forEach((fn) => fn({ data })),
+    /** Simulates a new worker that installed and now waits (updatefound → statechange 'installed'). */
+    installUpdate: () => {
+      const worker = fakeWorker('installing');
+      sw.registration.installing = worker;
+      (sw.registration.listeners.get('updatefound') ?? []).forEach((fn) => fn());
+      worker.state = 'installed';
+      sw.registration.installing = null;
+      sw.registration.waiting = worker;
+      worker.fire('statechange');
+      return worker;
+    },
+    /** Simulates the waiting worker taking control (after SKIP_WAITING). */
+    takeControl: () => (sw.listeners.get('controllerchange') ?? []).forEach((fn) => fn()),
   };
+
+  function fakeWorker(state) {
+    const handlers = new Map();
+    return {
+      state,
+      posted: [],
+      postMessage(message) { this.posted.push(message); },
+      addEventListener: (type, fn) => handlers.set(type, [...(handlers.get(type) ?? []), fn]),
+      fire: (type) => (handlers.get(type) ?? []).forEach((fn) => fn()),
+    };
+  }
+  sw.fakeWorker = fakeWorker;
 
   if (serviceWorker) Object.defineProperty(window.navigator, 'serviceWorker', { value: sw, configurable: true });
 
   const events = [];
   const record = (name) => document.addEventListener(name, (e) => events.push({ name, detail: e.detail }));
-  for (const name of ['ready', 'csrf', 'offline', 'maintenance', 'logout', 'queue', 'replayed', 'resume', 'online', 'csrf-refreshed', 'installed', 'update-available', 'activated', 'push', 'push-received', 'notification-click', 'identity']) {
+  for (const name of ['ready', 'csrf', 'offline', 'maintenance', 'logout', 'queue', 'replayed', 'resume', 'online', 'csrf-refreshed', 'installed', 'update-available', 'activated', 'push', 'push-received', 'notification-click', 'identity', 'installable', 'warmed', 'push-renewed']) {
     record(`pwa:${name}`);
   }
 
   before?.(window);
 
+  // location.reload() is counted instead of reloading happy-dom.
+  const reloads = { count: 0 };
+  const location = new Proxy(window.location, {
+    get: (target, key) => (key === 'reload' ? () => { reloads.count += 1; } : Reflect.get(target, key)),
+  });
+
   const globals = {
     window,
     document,
     navigator: window.navigator,
-    location: window.location,
+    location,
     localStorage: window.localStorage,
     CustomEvent: window.CustomEvent,
     MessageChannel: window.MessageChannel ?? globalThis.MessageChannel,
@@ -137,6 +171,7 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
     sw,
     calls,
     events,
+    reloads,
     flush,
     close: () => window.happyDOM.close(),
   };

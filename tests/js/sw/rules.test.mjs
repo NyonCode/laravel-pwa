@@ -164,6 +164,18 @@ describe('rule matching', () => {
 
     assert.equal(await (await worker.fetchEvent('/build/app.js')).response.text(), 'js');
   });
+
+  it('serves the precached client script offline although /pwa/* is never cached', async () => {
+    const worker = createWorker({
+      config: { precache: ['/offline', '/pwa/client.js?v=abc'], client: '/pwa/client.js', neverCache: ['/pwa/*'] },
+      fetch: () => new Response('client'),
+    });
+    await worker.install();
+    worker.network(offline);
+
+    assert.equal(await (await worker.fetchEvent('/pwa/client.js?v=abc')).response.text(), 'client');
+    await assert.rejects(worker.fetchEvent('/pwa/client.js?v=new').then((e) => e.response));
+  });
 });
 
 describe('per-user and shared rule caches', () => {

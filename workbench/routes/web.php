@@ -8,6 +8,7 @@ use NyonCode\LaravelPwa\Facades\Pwa;
 Route::get('/', fn () => view('demo', ['title' => 'Úvod']))->middleware('pwa.cache');
 Route::get('/orders', fn () => view('demo', ['title' => 'Objednávky']))->middleware('pwa.cache');
 Route::get('/private', fn () => view('demo', ['title' => 'Bez cache']));
+Route::get('/components', fn () => view('components', ['title' => 'Komponenty']));
 Route::get('/reports', fn () => view('demo', ['title' => 'Reporty']))->middleware('pwa.cache');
 
 // Warm-up demo: /reports is available offline without ever being visited.

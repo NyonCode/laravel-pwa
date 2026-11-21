@@ -83,7 +83,7 @@ composer check           # Pint, Rector, PHPStan (level max), Pest, MCP self-tes
 composer test:coverage   # Pest s pokrytím (pcov), selže pod 90 %
 npm run test:js          # unit testy service workeru a klienta (node:test)
 npm run lint:js          # ESLint
-npm run test:e2e         # Playwright (Chromium + Firefox) proti workbenchi
+npm run test:e2e         # Playwright (Chromium, Firefox, WebKit, iPhone) proti workbenchi
 ```
 
 Jeden test: `vendor/bin/pest --filter="název"` nebo `node --test tests/js/sw/runtime.test.mjs`.
@@ -111,11 +111,23 @@ registrace, události, keep-alive a CSRF, opakování po 419 jen na vlastní ori
 
 `tests/e2e/pwa.spec.mjs` (`@playwright/test`) si sám spustí workbench a ověří: registraci SW,
 precache, cache jen povolených stránek, offline obrazovku, frontu a její odeslání, keep-alive,
-údržbu (503, cache zůstane), `pwa:disable` a `pwa:enable`. Testy offline režimu (`@offline`) běží
-jen v Chromiu, protože Playwright ve Firefoxu neomezí požadavky service workeru.
+údržbu (503, cache zůstane), `pwa:disable` a `pwa:enable`. `update.spec.mjs` nasadí nový worker a přijme
+ho v `<x-pwa::update-toast/>`, `push.spec.mjs` doručí push skutečnému workeru, `ios.spec.mjs` ověří
+instalační kroky na iPhonu.
+
+| Projekt | Spouští |
+| --- | --- |
+| `chromium` | vše kromě `@ios`; push jen zde (CDP) |
+| `firefox` | vše kromě `@offline` (offline režim Playwright vynechá požadavky workeru) a `@ios` |
+| `webkit` | vše kromě `@ios` (jádro desktopového Safari) |
+| `iphone` | jen `@ios`: Safari na iPhonu mimo aplikaci z plochy |
+
+Sestavení WebKitu v Playwright nabízí push API, ale `pushManager.getSubscription()` v něm zablokuje
+další navigaci. Klient volá push API jen na zařízeních, která se přihlásila k odběru, a projekt iPhone
+odebere `PushManager`, jako to dělá Safari mimo aplikaci z plochy.
 
 ```bash
-npx playwright install chromium firefox
+npx playwright install chromium firefox webkit
 npm run test:e2e
 ```
 
@@ -123,7 +135,10 @@ npm run test:e2e
 
 GitHub Actions: `tests.yml` (Pest na PHP 8.2–8.5 × Laravel 12/13 × lowest/stable a pokrytí),
 `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml` (ESLint a unit testy
-na Node 20/22/24), `e2e.yml` (Playwright) a `release.yml` (tag `v*` vytvoří release z `CHANGELOG.md`).
+na Node 20/22/24), `e2e.yml` (Playwright), `mutation.yml` (týdně a na vyžádání: mutační testy Pest pro
+push, manifest, service worker a HTTP vrstvu) a `release.yml` (tag `v*` vytvoří release z `CHANGELOG.md`).
+`tests/ArchTest.php` hlídá hranice API: kontrakty jsou rozhraní, události jsou `final`, zdroj je striktně
+typovaný a třídy mimo veřejné API jsou `@internal`.
 
 ### Struktura
 
