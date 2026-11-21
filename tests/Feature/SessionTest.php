@@ -1,13 +1,13 @@
 <?php
 
-use Illuminate\Support\Facades\Event;
-use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Pwa;
 
 beforeEach(function (): void {
