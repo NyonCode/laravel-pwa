@@ -145,9 +145,27 @@ argumentem: `resolveUsing($resolver, fn (Request $page) => ['team' => …])`.
 | --- | --- |
 | `icon-192.png`, `icon-512.png` | `purpose: any` – povinné pro instalaci |
 | `maskable-512.png` | `purpose: maskable` – adaptivní ikona Androidu |
+| `monochrome-512.png` | `purpose: monochrome` – jen tvar, barvu dodá systém (tematické ikony Androidu, odznaky notifikací) |
 | `icon.svg` | `sizes: any` (jen ze SVG zdroje) |
 | `apple-touch-icon.png` | iPhone a iPad (přes `<x-pwa::head/>`, ne manifest) |
 | `favicon-32.png` | pro vlastní `<link rel="icon">` |
+| `splash/apple-splash-*.png` | úvodní obrazovky iOS (s `--splash`, přes `<x-pwa::head/>`) |
+
+## Screenshoty
+
+Chrome na Androidu a desktopu ukáže se screenshoty bohatší instalační dialog. Přidejte aspoň jeden
+`wide` (desktop) a jeden `narrow` (telefon):
+
+```php
+// config/pwa.php
+'screenshots' => [
+    ['src' => '/pwa/screenshots/desktop.png', 'sizes' => '1280x800', 'type' => 'image/png', 'form_factor' => 'wide', 'label' => 'Přehled'],
+    ['src' => '/pwa/screenshots/phone.png', 'sizes' => '750x1334', 'type' => 'image/png', 'form_factor' => 'narrow', 'label' => 'Objednávky'],
+],
+```
+
+Screenshot, jehož `sizes` nebo `type` neodpovídá souboru, Chrome ignoruje. `pwa:doctor` otevře
+každý lokální screenshot a porovná je.
 
 ## Lokalizace
 

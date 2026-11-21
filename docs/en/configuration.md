@@ -66,7 +66,12 @@ You can translate `name`, `short_name` and `description` in
 | `icons.path` | string | `pwa/icons` | Icon folder inside `public/`. |
 | `icons.sizes` | `list<int>` | `[192, 512]` | Sizes of `icon-{size}.png`. |
 | `icons.maskable_padding` | float | `0.1` | Padding of the maskable icon (the safe zone is 80%). |
-| `screenshots` | list | `[]` | Screenshots for the richer install dialog (`src`, `sizes`, `type`, `form_factor`). |
+| `icons.splash.background` | ?hex | `null` | Background of the iOS startup images; `null` = `theme.background`. |
+| `icons.splash.dark_background` | ?hex | `null` | Adds `prefers-color-scheme: dark` variants with this background. |
+| `icons.splash.icon_size` | float | `0.3` | Icon edge as a fraction of the shorter screen edge. |
+| `icons.splash.orientations` | `list<string>` | `['portrait', 'landscape']` | Orientations to generate. |
+| `icons.splash.devices` | `?list<string>` | `null` | Keys of `AppleDevices::SCREENS`; `null` = all iPhones and iPads. |
+| `screenshots` | list | `[]` | Screenshots for the richer install dialog (`src`, `sizes`, `type`, `form_factor`), see [Manifest](manifest.md#screenshots). |
 
 ## OS integration
 

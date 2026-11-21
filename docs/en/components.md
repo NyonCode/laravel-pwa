@@ -21,11 +21,13 @@ Goes in `<head>`. It renders:
 <meta name="apple-mobile-web-app-title" content="My App">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="/pwa/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/pwa/icons/splash/apple-splash-1206x2622.png">
 <script type="application/json" id="pwa-config">{…}</script>
 <script type="module" src="/pwa/client.js?v=…" nonce="…"></script>
 ```
 
-- `apple-touch-icon` is rendered only if the file exists.
+- `apple-touch-icon` is rendered only if the file exists; `apple-touch-startup-image` once per splash
+  image from `pwa:icons --splash`, with a media query for its screen.
 - `#pwa-config` carries the client configuration (`Pwa::clientConfig()`); CSP doesn't block the `application/json` type.
 - The client script gets a `nonce` from `Vite::useCspNonce()` when your app sets one.
 - `?v=` is the file hash, so `Cache-Control: immutable` is safe.

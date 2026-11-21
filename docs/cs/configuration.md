@@ -66,7 +66,12 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `icons.path` | string | `pwa/icons` | Složka ikon v `public/`. |
 | `icons.sizes` | `list<int>` | `[192, 512]` | Velikosti `icon-{size}.png`. |
 | `icons.maskable_padding` | float | `0.1` | Okraj maskable ikony (bezpečná zóna je 80 %). |
-| `screenshots` | list | `[]` | Screenshoty pro bohatší instalační dialog (`src`, `sizes`, `type`, `form_factor`). |
+| `icons.splash.background` | ?hex | `null` | Pozadí úvodních obrazovek iOS; `null` = `theme.background`. |
+| `icons.splash.dark_background` | ?hex | `null` | Přidá varianty pro `prefers-color-scheme: dark` s tímto pozadím. |
+| `icons.splash.icon_size` | float | `0.3` | Hrana ikony jako podíl kratší hrany obrazovky. |
+| `icons.splash.orientations` | `list<string>` | `['portrait', 'landscape']` | Orientace, které se vytvoří. |
+| `icons.splash.devices` | `?list<string>` | `null` | Klíče `AppleDevices::SCREENS`; `null` = všechny iPhony a iPady. |
+| `screenshots` | list | `[]` | Screenshoty pro bohatší instalační dialog (`src`, `sizes`, `type`, `form_factor`), viz [Manifest](manifest.md#screenshoty). |
 
 ## Integrace do systému
 

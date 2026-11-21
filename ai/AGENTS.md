@@ -139,7 +139,9 @@ render: keep them cheap. Built-in `Manifest\LocaleResolver` (active when `pwa.lo
 `?lang={page locale}` and builds the manifest in it; only locales listed in `pwa.locales` are
 accepted (list the default too). A throwing resolver shows up in `pwa:doctor`.
 Icons are listed only if the files exist in `public/{pwa.icons.path}` (`icon-192.png`,
-`icon-512.png`, `maskable-512.png`, `icon.svg`).
+`icon-512.png`, `maskable-512.png`, `monochrome-512.png`, `icon.svg`). iOS startup images from
+`pwa:icons --splash` live in `{icons.path}/splash/` and `<x-pwa::head/>` links only those that exist
+(`Icons\SplashScreens`, screen list in `Icons\AppleDevices::SCREENS`).
 
 A share-target route receives a POST from the OS: exclude it from CSRF
 (`->withoutMiddleware(ValidateCsrfToken::class)`).
@@ -304,7 +306,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | Command | Notes |
 |---|---|
 | `pwa:install` | publish config, print next steps |
-| `pwa:icons {source?} {--background=}` | writes `icon-{size}.png`, `maskable-512.png`, `apple-touch-icon.png`, `favicon-32.png` (+ `icon.svg`) |
+| `pwa:icons {source?} {--background=} {--splash}` | writes `icon-{size}.png`, `maskable-512.png`, `monochrome-512.png`, `apple-touch-icon.png`, `favicon-32.png` (+ `icon.svg`); `--splash` adds `splash/apple-splash-{w}x{h}[-dark].png`. Logic in `Icons\IconGenerator` (GD or Imagick driver) |
 | `pwa:build` | writes `{sw.compiled_path}/sw.js`; run after `npm run build`; hooked to `optimize` |
 | `pwa:clear` | deletes compiled worker; hooked to `optimize:clear` |
 | `pwa:doctor {--ci}` | checks; `--ci` exits 1 on errors |
@@ -315,7 +317,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 
 `enabled`, `name`, `short_name`, `description`, `id`, `start_url`, `scope`, `display.{strategy,value,override,desktop}`,
 `orientation`, `desktop_nav.{enabled,min_width}`, `theme.{light,dark,accent_dark,background}`,
-`icons.{source,path,maskable_padding,sizes}`, `screenshots`, `categories`, `shortcuts`,
+`icons.{source,path,maskable_padding,sizes}`, `icons.splash.{background,dark_background,icon_size,orientations,devices}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
 `locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`,

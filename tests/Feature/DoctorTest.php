@@ -21,6 +21,27 @@ it('passes the icon checks once icons exist', function (): void {
     $this->artisan('pwa:doctor', ['--ci' => true])->assertSuccessful();
 });
 
+it('checks screenshots against their files', function (): void {
+    File::ensureDirectoryExists(public_path('pwa/screenshots'));
+    imagepng(imagecreatetruecolor(40, 20), public_path('pwa/screenshots/wide.png'));
+
+    config(['pwa.screenshots' => [
+        ['src' => '/pwa/screenshots/wide.png', 'sizes' => '40x20', 'type' => 'image/png', 'form_factor' => 'wide'],
+        ['src' => '/pwa/screenshots/narrow.png', 'sizes' => '20x40', 'type' => 'image/png', 'form_factor' => 'narrow'],
+        ['src' => '/pwa/screenshots/wide.png', 'sizes' => '1280x800', 'type' => 'image/jpeg'],
+    ]]);
+
+    $this->artisan('pwa:doctor')
+        ->expectsOutputToContain('sizes "40x20" match the file (40x20)')
+        ->expectsOutputToContain('Screenshot /pwa/screenshots/narrow.png exists')
+        ->expectsOutputToContain('sizes "1280x800" match the file (40x20)')
+        ->expectsOutputToContain('type "image/jpeg" matches the file (image/png)')
+        ->expectsOutputToContain('form_factor wide and narrow')
+        ->assertSuccessful();
+
+    File::deleteDirectory(public_path('pwa/screenshots'));
+});
+
 it('flags a static public/sw.js that would survive the kill switch', function (): void {
     File::put(public_path('sw.js'), '// static');
 

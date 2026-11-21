@@ -384,6 +384,10 @@ class ManifestBuilder
             $icons[] = ['src' => "/{$path}/maskable-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'];
         }
 
+        if (File::exists(public_path("{$path}/monochrome-512.png"))) {
+            $icons[] = ['src' => "/{$path}/monochrome-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'monochrome'];
+        }
+
         if (File::exists(public_path("{$path}/icon.svg"))) {
             $icons[] = ['src' => "/{$path}/icon.svg", 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any'];
         }

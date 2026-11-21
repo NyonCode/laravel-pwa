@@ -86,8 +86,18 @@ return [
         'path' => 'pwa/icons',          // directory inside public/
         'maskable_padding' => 0.1,
         'sizes' => [192, 512],
+        // iOS startup images (php artisan pwa:icons --splash), linked by <x-pwa::head/>.
+        'splash' => [
+            'background' => null,       // null = theme.background
+            'dark_background' => null,  // e.g. '#0b1220' adds prefers-color-scheme: dark variants
+            'icon_size' => 0.3,         // icon edge as a fraction of the shorter screen edge
+            'orientations' => ['portrait', 'landscape'],
+            'devices' => null,          // null = all, or keys of NyonCode\LaravelPwa\Icons\AppleDevices::SCREENS
+        ],
     ],
 
+    // Richer install dialog on Android and desktop Chrome: at least one 'wide' and one 'narrow'.
+    // ['src' => '/pwa/screenshots/desktop.png', 'sizes' => '1280x800', 'type' => 'image/png', 'form_factor' => 'wide']
     'screenshots' => [],
 
     /*

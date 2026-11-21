@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- iOS startup images: `php artisan pwa:icons --splash` renders `apple-touch-startup-image` files for
+  every current iPhone and iPad screen (portrait and landscape, optional dark variants) and
+  `<x-pwa::head/>` links the ones that exist. Configured under `pwa.icons.splash`.
+- `monochrome-512.png` (`purpose: monochrome`) generated from the alpha channel of the source and
+  listed in the manifest.
+- `pwa:doctor` checks screenshots (a `wide` and a `narrow` one, file exists, `sizes` and `type`
+  match the file) and reports iOS splash screens.
+
+### Changed
+- Icon rendering moved from `pwa:icons` into `Icons\IconGenerator` with GD and Imagick drivers
+  behind `Icons\ImageDriver`. Invalid colour messages now read "Invalid colour […]".
+
 ## [0.2.0] - 2026-11-21
 
 Upgrading from 0.1? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).

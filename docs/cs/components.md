@@ -21,11 +21,13 @@ Patří do `<head>`. Vykreslí:
 <meta name="apple-mobile-web-app-title" content="Moje aplikace">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="/pwa/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/pwa/icons/splash/apple-splash-1206x2622.png">
 <script type="application/json" id="pwa-config">{…}</script>
 <script type="module" src="/pwa/client.js?v=…" nonce="…"></script>
 ```
 
-- `apple-touch-icon` jen pokud soubor existuje.
+- `apple-touch-icon` jen pokud soubor existuje; `apple-touch-startup-image` pro každou úvodní
+  obrazovku z `pwa:icons --splash`, s media query pro její displej.
 - `#pwa-config` nese konfiguraci klienta (`Pwa::clientConfig()`); typ `application/json` CSP neblokuje.
 - Klientský skript má `nonce` z `Vite::useCspNonce()`, když ho aplikace nastavuje.
 - `?v=` je hash souboru, takže `Cache-Control: immutable` je bezpečný.

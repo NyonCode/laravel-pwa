@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
 use NyonCode\LaravelPwa\Pwa;
 
@@ -50,6 +51,58 @@ describe('pwa:icons', function (): void {
         expect(imagecolorsforindex($any, imagecolorat($any, 0, 0))['alpha'])->toBe(127)
             ->and(imagecolorsforindex($maskable, imagecolorat($maskable, 0, 0)))->toMatchArray(['red' => 0, 'green' => 255, 'blue' => 0, 'alpha' => 0])
             ->and(imagecolorsforindex($apple, imagecolorat($apple, 0, 0)))->toMatchArray(['green' => 255, 'alpha' => 0]);
+    });
+
+    it('generates a monochrome icon from the alpha channel and lists it in the manifest', function (): void {
+        $this->artisan('pwa:icons', ['source' => sourceIcon()])->assertSuccessful();
+
+        $mono = imagecreatefrompng(public_path('pwa/icons/monochrome-512.png'));
+
+        expect(imagecolorsforindex($mono, imagecolorat($mono, 0, 0))['alpha'])->toBe(127)
+            ->and(imagecolorsforindex($mono, imagecolorat($mono, 256, 256)))->toMatchArray(['red' => 0, 'green' => 0, 'blue' => 0, 'alpha' => 0])
+            ->and(app(Pwa::class)->manifest()->icons())->toContain([
+                'src' => '/pwa/icons/monochrome-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'monochrome',
+            ]);
+    });
+
+    it('generates iOS splash screens with light and dark variants', function (): void {
+        config(['pwa.icons.splash' => [
+            'background' => '#112233',
+            'dark_background' => '#000',
+            'devices' => ['iPhone SE (1st gen.)'],
+        ]]);
+
+        File::ensureDirectoryExists(public_path('pwa/icons/splash'));
+        File::put(public_path('pwa/icons/splash/apple-splash-1x1.png'), 'stale');
+
+        $this->artisan('pwa:icons', ['source' => sourceIcon(), '--splash' => true])
+            ->expectsOutputToContain('4 images')
+            ->assertSuccessful();
+
+        $files = collect(File::files(public_path('pwa/icons/splash')))->map->getFilename()->sort()->values()->all();
+
+        expect($files)->toBe([
+            'apple-splash-1136x640-dark.png', 'apple-splash-1136x640.png',
+            'apple-splash-640x1136-dark.png', 'apple-splash-640x1136.png',
+        ]);
+
+        $image = imagecreatefrompng(public_path('pwa/icons/splash/apple-splash-640x1136.png'));
+        expect([imagesx($image), imagesy($image)])->toBe([640, 1136])
+            ->and(imagecolorsforindex($image, imagecolorat($image, 0, 0)))->toMatchArray(['red' => 0x11, 'green' => 0x22, 'blue' => 0x33]);
+
+        $html = Blade::render('<x-pwa::head/>');
+        expect(substr_count($html, 'rel="apple-touch-startup-image"'))->toBe(4)
+            ->and($html)->toContain('href="/pwa/icons/splash/apple-splash-640x1136-dark.png"');
+
+        File::deleteDirectory(public_path('pwa/icons/splash'));
+    });
+
+    it('rejects an invalid splash colour', function (): void {
+        config(['pwa.icons.splash.dark_background' => 'black']);
+
+        $this->artisan('pwa:icons', ['source' => sourceIcon(), '--splash' => true])
+            ->expectsOutputToContain('Invalid colour [black]')
+            ->assertFailed();
     });
 
     it('uses the configured source and accepts short hex colours', function (): void {
