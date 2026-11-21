@@ -61,7 +61,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - API and image caches are rule caches now (`pwa-rule-api-*`, `pwa-rule-images-*`); the worker
   removes the 0.1 caches on activation. See UPGRADE.md.
 - Invalid cache configuration fails `pwa:build` with a message naming the entry.
-- PHPStan level raised from 6 to 8.
+- PHPStan (Larastan) level raised from 6 to max; stricter Pint rules (imports, strict comparison,
+  void returns).
+- Config values are read with typed accessors: a wrongly typed value fails with a message naming the
+  key instead of being cast silently. `pwa.enabled` still accepts env strings such as `"1"`. See UPGRADE.md.
 - Documentation moved from `docs/` to `docs/en` and `docs/cs`; the MCP server serves the English pages.
 - Artisan output, command descriptions, exception messages and code comments are in English.
 - English `composer.json` description and keywords, plus `support` links.

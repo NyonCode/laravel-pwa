@@ -9,6 +9,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Imagick;
 use ImagickPixel;
+use InvalidArgumentException;
+use NyonCode\LaravelPwa\Support\Value;
+use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
@@ -23,7 +26,7 @@ class IconsCommand extends Command
 
     public function handle(): int
     {
-        $source = (string) ($this->argument('source') ?? config('pwa.icons.source') ?? '');
+        $source = Value::string($this->argument('source') ?? config('pwa.icons.source'));
 
         if ($source === '' || ! File::exists($source)) {
             $this->components->error('Source image not found. Usage: php artisan pwa:icons resources/pwa/icon.png');
@@ -31,18 +34,19 @@ class IconsCommand extends Command
             return self::FAILURE;
         }
 
-        $background = (string) ($this->option('background') ?: config('pwa.theme.background', '#ffffff'));
+        $background = Value::string($this->option('background') ?: config('pwa.theme.background', '#ffffff'), '#ffffff');
 
         // Validate once for both drivers (Imagick would accept colour names, GD would not).
         try {
             $background = vsprintf('#%02x%02x%02x', $this->rgb($background));
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             $this->components->error($e->getMessage());
 
             return self::FAILURE;
         }
-        $padding = (float) config('pwa.icons.maskable_padding', 0.1);
-        $target = public_path(trim((string) config('pwa.icons.path', 'pwa/icons'), '/'));
+        $configured = config('pwa.icons.maskable_padding', 0.1);
+        $padding = is_numeric($configured) ? (float) $configured : 0.1;
+        $target = public_path(trim(config()->string('pwa.icons.path', 'pwa/icons'), '/'));
         File::ensureDirectoryExists($target);
 
         $isSvg = strtolower(pathinfo($source, PATHINFO_EXTENSION)) === 'svg';
@@ -62,7 +66,8 @@ class IconsCommand extends Command
         $jobs = [];
 
         foreach ((array) config('pwa.icons.sizes', [192, 512]) as $size) {
-            $jobs["icon-{$size}.png"] = [(int) $size, 0.0, null];
+            $size = Value::int($size);
+            $jobs["icon-{$size}.png"] = [$size, 0.0, null];
         }
 
         $jobs['maskable-512.png'] = [512, $padding, $background];
@@ -116,11 +121,11 @@ class IconsCommand extends Command
         $src = imagecreatefromstring((string) File::get($source));
 
         if (! $src instanceof GdImage) {
-            throw new \RuntimeException('Unable to read the image.');
+            throw new RuntimeException('Unable to read the image.');
         }
 
         if ($size < 1) {
-            throw new \InvalidArgumentException("Icon size must be positive, {$size} given.");
+            throw new InvalidArgumentException("Icon size must be positive, {$size} given.");
         }
 
         $canvas = imagecreatetruecolor($size, $size);
@@ -162,7 +167,7 @@ class IconsCommand extends Command
         }
 
         if (preg_match('/^[0-9a-f]{6}$/i', $hex) !== 1) {
-            throw new \InvalidArgumentException("Invalid background colour [#{$hex}], expected #rgb or #rrggbb.");
+            throw new InvalidArgumentException("Invalid background colour [#{$hex}], expected #rgb or #rrggbb.");
         }
 
         $channel = static fn (int $offset): int => max(0, min(255, (int) hexdec(substr($hex, $offset, 2))));

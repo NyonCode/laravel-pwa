@@ -89,6 +89,12 @@ it('serves the kill switch when the package is disabled (local development)', fu
     expect($this->get('/sw.js')->getContent())->toContain('registration.unregister()');
 });
 
+it('reads pwa.enabled from env strings like "1" and "0"', function (string $value, bool $enabled): void {
+    config(['pwa.enabled' => $value]);
+
+    expect(app(Pwa::class)->enabled())->toBe($enabled);
+})->with([['1', true], ['0', false], ['true', true], ['off', false]]);
+
 it('serves the client script with a long cache', function (): void {
     $response = $this->get('/pwa/client.js')->assertOk();
 

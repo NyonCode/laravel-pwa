@@ -40,7 +40,7 @@ class DownCommand extends Command
 
         $retry ??= $until instanceof Carbon
             ? max(15, min(300, (int) now()->diffInSeconds($until, false)))
-            : (int) config('pwa.maintenance.retry', 60);
+            : config()->integer('pwa.maintenance.retry', 60);
 
         // The template is prerendered in this process, so changing the config is enough.
         config([

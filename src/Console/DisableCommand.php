@@ -6,6 +6,7 @@ namespace NyonCode\LaravelPwa\Console;
 
 use Illuminate\Console\Command;
 use NyonCode\LaravelPwa\Pwa;
+use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'pwa:disable', description: 'Disable the service worker on every device (kill switch)')]
@@ -30,7 +31,7 @@ class DisableCommand extends Command
         $this->components->info('Kill switch active. /sw.js now returns a self-destroying SW; undo with php artisan pwa:enable');
 
         if (! in_array(config('cache.default'), ['redis', 'database', 'memcached', 'dynamodb'], true) && config('pwa.sw.kill_switch_store') === null) {
-            $this->components->warn('Cache store ['.config('cache.default').'] may not be shared between servers. With multiple servers, set PWA_KILL_SWITCH_STORE.');
+            $this->components->warn('Cache store ['.Value::string(config('cache.default')).'] may not be shared between servers. With multiple servers, set PWA_KILL_SWITCH_STORE.');
         }
 
         return self::SUCCESS;

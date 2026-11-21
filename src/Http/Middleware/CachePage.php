@@ -20,6 +20,9 @@ class CachePage
 {
     public const HEADER = 'X-PWA-Cache';
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);

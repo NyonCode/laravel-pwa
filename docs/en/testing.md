@@ -78,7 +78,7 @@ and expect the cached content; navigate elsewhere and expect the offline screen.
 
 ```bash
 composer install && npm install
-composer check           # Pint, Rector, PHPStan (level 8), Pest, MCP self-test
+composer check           # Pint, Rector, PHPStan (level max), Pest, MCP self-test
 composer test:coverage   # Pest with coverage (pcov), fails below 90%
 npm run test:js          # service worker and client unit tests (node:test)
 npm run lint:js          # ESLint

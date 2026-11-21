@@ -26,9 +26,12 @@ class RememberStandalone
         protected Pwa $pwa,
     ) {}
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        $field = (string) config('pwa.session.remember_field', 'remember');
+        $field = config()->string('pwa.session.remember_field', 'remember');
 
         if (config('pwa.session.standalone_remember', true)
             && $this->pwa->isStandaloneClient($request)

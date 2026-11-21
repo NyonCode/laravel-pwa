@@ -3,7 +3,7 @@
 [![Latest version](https://img.shields.io/packagist/v/nyoncode/laravel-pwa.svg?label=packagist)](https://packagist.org/packages/nyoncode/laravel-pwa)
 [![Tests](https://github.com/NyonCode/laravel-pwa/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/NyonCode/laravel-pwa/actions/workflows/tests.yml)
 [![Static analysis](https://github.com/NyonCode/laravel-pwa/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/NyonCode/laravel-pwa/actions/workflows/static.yml)
-[![PHPStan level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](phpstan.neon.dist)
+[![PHPStan level max](https://img.shields.io/badge/PHPStan-level%20max-brightgreen.svg)](phpstan.neon.dist)
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777bb4.svg)](composer.json)
 [![Laravel 12 | 13](https://img.shields.io/badge/Laravel-12%20%7C%2013-ff2d20.svg)](composer.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)

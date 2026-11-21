@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace NyonCode\LaravelPwa;
 
+use Closure;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use NyonCode\LaravelPackageToolkit\Commands\InstallCommand;
@@ -93,7 +94,7 @@ class PwaServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * @return array<string, string|\Closure>
+     * @return array<string, string|Closure>
      */
     public function aboutData(): array
     {
@@ -101,7 +102,7 @@ class PwaServiceProvider extends PackageServiceProvider
             'Enabled' => fn (): string => app(Pwa::class)->enabled() ? '<fg=green;options=bold>ENABLED</>' : '<fg=yellow;options=bold>DISABLED</>',
             'Kill switch' => fn (): string => app(Pwa::class)->killed() ? '<fg=red;options=bold>ACTIVE</>' : 'off',
             'Service worker' => fn (): string => app(ServiceWorkerBuilder::class)->isCompiled() ? 'compiled' : '<fg=yellow>not built (pwa:build)</>',
-            'Display' => fn (): string => (string) config('pwa.display.strategy', 'override'),
+            'Display' => fn (): string => config()->string('pwa.display.strategy', 'override'),
         ];
     }
 }

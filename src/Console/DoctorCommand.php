@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use NyonCode\LaravelPwa\Pwa;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
+use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
@@ -53,7 +54,7 @@ class DoctorCommand extends Command
 
     protected function checkGeneral(Pwa $pwa): void
     {
-        $url = (string) config('app.url');
+        $url = Value::string(config('app.url'));
         $this->add(str_starts_with($url, 'https://') || app()->isLocal() ? 'ok' : 'error', "HTTPS (APP_URL = {$url})");
         $this->add(config('pwa.enabled') ? 'ok' : 'warn', 'Service worker enabled in config (pwa.enabled)');
         $this->add($pwa->killed() ? 'error' : 'ok', 'Kill switch inactive (pwa:enable)');
@@ -72,29 +73,30 @@ class DoctorCommand extends Command
 
         $this->add(($manifest['name'] ?? '') !== '' ? 'ok' : 'error', 'Manifest: name');
 
-        $sizes = array_column($manifest['icons'] ?? [], 'sizes');
+        $icons = is_array($manifest['icons'] ?? null) ? $manifest['icons'] : [];
+        $sizes = array_column($icons, 'sizes');
         $this->add(in_array('192x192', $sizes, true) ? 'ok' : 'error', 'Icon 192×192 (php artisan pwa:icons)');
         $this->add(in_array('512x512', $sizes, true) ? 'ok' : 'error', 'Icon 512×512 (php artisan pwa:icons)');
-        $this->add(in_array('maskable', array_column($manifest['icons'] ?? [], 'purpose'), true) ? 'ok' : 'warn', 'Maskable icon for Android');
+        $this->add(in_array('maskable', array_column($icons, 'purpose'), true) ? 'ok' : 'warn', 'Maskable icon for Android');
 
-        $iconPath = trim((string) config('pwa.icons.path', 'pwa/icons'), '/');
+        $iconPath = trim(config()->string('pwa.icons.path', 'pwa/icons'), '/');
         $this->add(File::exists(public_path($iconPath.'/apple-touch-icon.png')) ? 'ok' : 'warn', 'apple-touch-icon for iPhone and iPad');
 
-        $scope = (string) ($manifest['scope'] ?? '/');
-        $start = (string) parse_url((string) ($manifest['start_url'] ?? '/'), PHP_URL_PATH);
+        $scope = Value::string($manifest['scope'] ?? '/', '/');
+        $start = Value::string(parse_url(Value::string($manifest['start_url'] ?? '/', '/'), PHP_URL_PATH));
         $this->add(str_starts_with($start ?: '/', $scope) ? 'ok' : 'error', 'start_url inside scope');
     }
 
     protected function checkServiceWorker(ServiceWorkerBuilder $builder): void
     {
-        $swPath = ltrim((string) config('pwa.sw.url', '/sw.js'), '/');
+        $swPath = ltrim(config()->string('pwa.sw.url', '/sw.js'), '/');
         $this->add(
             File::exists(public_path($swPath)) ? 'error' : 'ok',
             "public/{$swPath} does not exist (otherwise the web server serves it even after pwa:disable)",
         );
 
         $this->add(
-            File::exists(public_path((string) config('pwa.sw.vite_manifest', 'build/manifest.json'))) ? 'ok' : 'warn',
+            File::exists(public_path(config()->string('pwa.sw.vite_manifest', 'build/manifest.json'))) ? 'ok' : 'warn',
             'Vite manifest for precache (npm run build)',
         );
 
@@ -105,8 +107,8 @@ class DoctorCommand extends Command
         if (! $builder->isCompiled()) {
             $this->add('warn', 'Service worker built (php artisan pwa:build)');
         } else {
-            $fresh = (string) ($builder->runtimeConfig()['version'] ?? '');
-            $built = $builder->versionOf((string) File::get($builder->compiledPath()));
+            $fresh = Value::string($builder->runtimeConfig()['version'] ?? null);
+            $built = $builder->versionOf(Value::string(File::get($builder->compiledPath())));
             $this->add($fresh === $built ? 'ok' : 'error', "Built service worker is up to date ({$built})");
         }
 
@@ -139,7 +141,7 @@ class DoctorCommand extends Command
         $this->add('ok', 'Cache rules valid ('.count($rules).')');
 
         $neverCache = array_map(
-            static fn (mixed $path): string => str_replace('*', 'x', (string) $path),
+            static fn (mixed $path): string => str_replace('*', 'x', Value::string($path)),
             (array) config('pwa.cache.never_cache', []),
         );
 
@@ -169,8 +171,8 @@ class DoctorCommand extends Command
             $except = [];
         }
 
-        $needed = ['manifest.webmanifest', ltrim((string) config('pwa.sw.url', '/sw.js'), '/'), trim((string) config('pwa.route_prefix', 'pwa'), '/').'/*'];
-        $missing = array_values(array_diff($needed, array_map(fn ($p): string => trim((string) $p, '/'), $except)));
+        $needed = ['manifest.webmanifest', ltrim(config()->string('pwa.sw.url', '/sw.js'), '/'), trim(config()->string('pwa.route_prefix', 'pwa'), '/').'/*'];
+        $missing = array_values(array_diff($needed, array_map(fn ($p): string => trim(Value::string($p), '/'), $except)));
 
         $this->add(
             $missing === [] ? 'ok' : 'warn',
@@ -180,7 +182,7 @@ class DoctorCommand extends Command
 
     protected function checkSession(): void
     {
-        $this->add(config('session.driver') === 'array' ? 'error' : 'ok', 'Session driver persists data ('.config('session.driver').')');
+        $this->add(config('session.driver') === 'array' ? 'error' : 'ok', 'Session driver persists data ('.Value::string(config('session.driver')).')');
 
         $hasRemember = collect(RouteFacade::getRoutes()->getRoutes())
             ->contains(fn (Route $route): bool => in_array('pwa.remember', $route->gatherMiddleware(), true));
@@ -190,7 +192,7 @@ class DoctorCommand extends Command
             ->contains(fn (Route $route): bool => in_array('pwa.cache', $route->gatherMiddleware(), true));
         $this->add($hasCache ? 'ok' : 'warn', 'Some pages available offline (pwa.cache middleware)');
 
-        $store = config('pwa.sw.kill_switch_store') ?? config('cache.default');
+        $store = Value::string(config('pwa.sw.kill_switch_store') ?? config('cache.default'));
         $this->add(in_array($store, ['file', 'array'], true) ? 'warn' : 'ok', "Kill switch store shared between servers ({$store})");
     }
 

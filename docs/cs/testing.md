@@ -78,7 +78,7 @@ očekávaný obsah z cache; navigace jinam, očekávaná offline obrazovka.
 
 ```bash
 composer install && npm install
-composer check           # Pint, Rector, PHPStan (level 8), Pest, MCP self-test
+composer check           # Pint, Rector, PHPStan (level max), Pest, MCP self-test
 composer test:coverage   # Pest s pokrytím (pcov), selže pod 90 %
 npm run test:js          # unit testy service workeru a klienta (node:test)
 npm run lint:js          # ESLint

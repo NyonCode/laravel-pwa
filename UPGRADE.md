@@ -21,5 +21,10 @@ The service worker migrates caches itself in its `activate` event (it deletes ol
 - **Invalid cache config now fails loudly.** `pwa:build` fails and `pwa:doctor` reports an error
   for unknown rule keys or strategies, or for non-string entries in `sw.import` / `sw.extend` /
   `cache.api` / `cache.never_cache`.
+- **Config values are type-checked.** Numeric and boolean keys (for example
+  `session.keepalive_minutes`, `install.min_visits`, `desktop_nav.enabled`) and string keys (`scope`,
+  `start_url`, `sw.url`, `route_prefix` …) must have their natural type. A quoted number such as
+  `'10'` now throws an `InvalidArgumentException` naming the key instead of being cast silently.
+  `pwa.enabled` still accepts env strings like `"1"` and `"0"`.
 - If DevTools code or tests of yours look for the cache names `pwa-api-*` or `pwa-images-*`,
   switch them to `pwa-rule-*`.

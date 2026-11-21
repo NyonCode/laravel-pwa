@@ -53,7 +53,7 @@ composer test              # Pest + Testbench (CI: vendor/bin/pest --ci; serial,
 vendor/bin/pest tests/Feature/ManifestTest.php      # one file
 vendor/bin/pest --filter="serves a valid manifest"  # one test
 composer test:coverage     # pcov, fails below 90 %
-composer analyse           # PHPStan/Larastan level 8, src only
+composer analyse           # PHPStan/Larastan level max, src only
 composer format            # Pint (required: the MCP server parses Pint-formatted source)
 vendor/bin/rector          # apply Rector refactorings (CI only checks)
 npm run test:js            # node:test: tests/js/sw (runtime.js) and tests/js/client (pwa.js)

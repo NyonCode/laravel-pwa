@@ -23,6 +23,9 @@ class PwaWebMiddleware
         protected Pwa $pwa,
     ) {}
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->query('source') === 'pwa' && $request->hasSession()) {
