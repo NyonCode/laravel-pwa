@@ -1,6 +1,6 @@
 {{--
-  <x-pwa::install/> — tlačítko instalace a nápověda pro iPhone / iPad.
-  Obojí je skryté, dokud instalace nedává smysl (viz config pwa.install).
+  <x-pwa::install/> — install button and a hint for iPhone / iPad.
+  Both stay hidden until installing makes sense (see config pwa.install).
 
   <x-pwa::install class="btn">Nainstalovat aplikaci</x-pwa::install>
 --}}

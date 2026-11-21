@@ -123,12 +123,13 @@ export const offline = () => {
  * @param {(request: Request) => Response|Promise<Response>} [options.fetch] network
  * @param {object} [options.registration] extra registration members (sync, navigationPreload)
  * @param {string[]} [options.extensions] sw.extend sources, evaluated after the runtime
+ * @param {MemoryCacheStorage} [options.caches] Cache Storage shared with another worker (same origin)
  */
-export const createWorker = ({ config = {}, fetch: network = offline, registration = {}, extensions = [] } = {}) => {
+export const createWorker = ({ config = {}, fetch: network = offline, registration = {}, extensions = [], caches: sharedCaches } = {}) => {
   const listeners = new Map();
   const messages = [];
   const requests = [];
-  const caches = new MemoryCacheStorage();
+  const caches = sharedCaches ?? new MemoryCacheStorage();
   let handler = network;
 
   const client = { postMessage: (message) => messages.push(message) };

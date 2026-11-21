@@ -1,7 +1,7 @@
 {{--
-  <x-pwa::nav/> — tlačítka Zpět a Obnovit pro desktop tam, kde je prohlížeč nenabízí:
+  <x-pwa::nav/> — Back and Reload buttons on desktop where the browser does not offer them:
   standalone (Safari v Docku, Firefox web app) a Window Controls Overlay (Edge / Chrome).
-  V minimal-ui (Edge / Chrome na Windows) a na telefonu/tabletu zůstává skrytá.
+  Hidden in minimal-ui (Edge / Chrome on Windows) and on phones and tablets.
 --}}
 @props(['startUrl' => config('pwa.start_url', '/')])
 
@@ -26,7 +26,7 @@
   .pwa-nav__btn:hover{background:color-mix(in srgb, currentColor 10%, transparent); opacity:1}
   .pwa-nav__btn:focus-visible{outline:2px solid currentColor; outline-offset:1px}
   .pwa-nav__btn[disabled]{opacity:.35; cursor:default; background:transparent}
-  /* Window Controls Overlay: posadit do titulkového pruhu vedle systémových tlačítek */
+  /* Window Controls Overlay: sit in the title bar next to the system buttons */
   @media (display-mode: window-controls-overlay){
     .pwa-nav{position:fixed; top:env(titlebar-area-y, 0); left:env(titlebar-area-x, 0); height:env(titlebar-area-height, 33px); padding:0 6px; z-index:1000}
   }
@@ -36,17 +36,17 @@
 (() => {
   const nav = document.currentScript.previousElementSibling.previousElementSibling;
   const mq = q => window.matchMedia(q).matches;
-  // Desktop = jemný ukazatel + šířka; telefon a tablet mají systémové gesto zpět.
+  // Desktop = fine pointer + width; phones and tablets have a system back gesture.
   const minWidth = Number(nav.dataset.minWidth || 900);
   const desktop = () => mq('(pointer: fine)') && mq(`(min-width: ${minWidth}px)`);
-  // V minimal-ui a v prohlížeči kreslí tlačítka sám prohlížeč.
+  // In minimal-ui and in the browser, the browser draws the buttons itself.
   const needed = () => desktop() && (mq('(display-mode: standalone)') || mq('(display-mode: window-controls-overlay)'));
 
   const back = nav.querySelector('[data-pwa-nav="back"]');
   const startPath = new URL(nav.dataset.startUrl, location.href).pathname;
   const update = () => {
     nav.hidden = !needed();
-    // Na úvodní stránce aplikace není kam se vrátit.
+    // Nowhere to go back to from the app's start page.
     back.disabled = location.pathname === startPath && history.length <= 1;
   };
 

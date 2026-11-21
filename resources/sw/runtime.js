@@ -16,13 +16,23 @@
 
   const C = self.__PWA || {};
   const V = C.version || 'dev';
-  const STATIC = `pwa-static-${V}`;
-  const META = 'pwa-meta';
-  const PAGES_PREFIX = 'pwa-pages-';
-  const RULE_PREFIX = 'pwa-rule-';
-  const SHARED_PREFIX = 'pwa-shared-';
-  // Cache names of 0.1.x workers, removed on activation.
-  const LEGACY = (name) => name === 'pwa-images' || name.startsWith('pwa-images-') || name.startsWith('pwa-api-');
+
+  // Path tenants (TenantResolver) register this same script for their own scope, e.g. /t/acme/.
+  // Cache Storage is shared by the whole origin, so every cache name carries the tenant's
+  // namespace (pwa-@t-acme-…, '@' never occurs in the plain names) and a worker never touches another tenant's caches. The worker for
+  // the configured scope keeps the plain names.
+  const scopePath = new URL(self.registration?.scope || '/', self.location.origin).pathname;
+  const NS = !C.scope || scopePath === C.scope
+    ? ''
+    : `@${scopePath.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 48)}-`;
+  const STATIC_PREFIX = `pwa-${NS}static-`;
+  const STATIC = `${STATIC_PREFIX}${V}`;
+  const META = `pwa-${NS}meta`;
+  const PAGES_PREFIX = `pwa-${NS}pages-`;
+  const RULE_PREFIX = `pwa-${NS}rule-`;
+  const SHARED_PREFIX = `pwa-${NS}shared-`;
+  // Cache names of 0.1.x workers, removed on activation (only the root worker ever made them).
+  const LEGACY = (name) => NS === '' && (name === 'pwa-images' || name.startsWith('pwa-images-') || name.startsWith('pwa-api-'));
   const DB_NAME = 'pwa';
   const QUEUE = 'queue';
   const SYNC_TAG = 'pwa-queue';
@@ -643,7 +653,7 @@
 
       const keys = await caches.keys();
       await Promise.all(keys
-        .filter((k) => (k.startsWith('pwa-static-') && k !== STATIC) || LEGACY(k) || orphan(k))
+        .filter((k) => (k.startsWith(STATIC_PREFIX) && k !== STATIC) || LEGACY(k) || orphan(k))
         .map((k) => caches.delete(k)));
 
       // Pages reference assets of the old version: drop them after an update.
@@ -761,6 +771,8 @@
   self.PwaWorker = Object.freeze({
     version: V,
     config: C,
+    /** Cache name namespace of this registration: '' or '@{scope-slug}-' for path tenants. */
+    namespace: NS,
     strategies,
     /**
      * Handles matching GET requests that are not navigations, before the cache rules.

@@ -60,10 +60,12 @@ real Laravel app is everything around it, and that is what this package is built
 | Area | What you get | Docs |
 | --- | --- | --- |
 | Manifest | `/manifest.webmanifest` from config and a fluent API, display modes, icons, shortcuts | [Manifest](docs/en/manifest.md), [Display modes](docs/en/display-modes.md) |
+| Icons and splash | `pwa:icons`: any, maskable, monochrome and iOS icons, iOS splash screens for every iPhone and iPad | [Commands](docs/en/commands.md#pwaicons) |
 | Dynamic manifest | Per-request resolvers for tenants, branding and locales; Octane-safe | [Manifest](docs/en/manifest.md#resolvers-tenants-and-branding) |
 | Service worker | Built from your Vite manifest, versioned, auto-updating | [Service worker](docs/en/service-worker.md) |
 | Cache rules | network-first, cache-first, stale-while-revalidate, network-only, cache-only; per user or shared; limits and expiry | [Cache rules](docs/en/service-worker.md#cache-rules) |
-| Offline | Offline screen, offline pages with server consent, offline queue for forms and API calls | [Offline](docs/en/offline.md) |
+| Offline | Offline screen, offline pages with server consent, warm-up of unvisited pages, offline queue for forms and API calls | [Offline](docs/en/offline.md) |
+| Multi-tenant | One installable app per path tenant (`/t/acme/`): own worker scope, manifest identity and caches | [Multi-tenant apps](docs/en/tenancy.md) |
 | Session | Persistent login in the installed app, keep-alive, CSRF refresh | [Persistent login](docs/en/session.md) |
 | Maintenance | Maintenance screen, `pwa:down`, 503 vs. network failure | [Maintenance](docs/en/maintenance.md) |
 | Kill switch | `pwa:disable` / `pwa:enable` | [Kill switch](docs/en/kill-switch.md) |
@@ -73,7 +75,7 @@ real Laravel app is everything around it, and that is what this package is built
 | Extensibility | `sw.import` / `sw.extend` and `self.PwaWorker` for your own worker code | [Service worker](docs/en/service-worker.md#swextend) |
 | AI agents | MCP server, agent guide and Claude Code skill, read from your installed version | [AI agents](docs/en/ai.md) |
 
-Web push is not part of 0.2: the worker gives your push system a place to run (`sw.import`).
+Web push is not part of 0.3: the worker gives your push system a place to run (`sw.import`).
 See [Push](docs/en/push.md).
 
 ## A taste of the API
@@ -117,10 +119,10 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | --- | --- | --- | --- |
 | [Overview](docs/en/index.md) | [Display modes](docs/en/display-modes.md) | [JavaScript client](docs/en/client.md) | [Commands](docs/en/commands.md) |
 | [Installation](docs/en/installation.md) | [Manifest](docs/en/manifest.md) | [Events](docs/en/events.md) | [Deployment](docs/en/deployment.md) |
-| [Configuration](docs/en/configuration.md) | [Blade components](docs/en/components.md) | [Push](docs/en/push.md) | [Security](docs/en/security.md) |
+| [Configuration](docs/en/configuration.md) | [Blade components](docs/en/components.md) | [Multi-tenant apps](docs/en/tenancy.md) | [Security](docs/en/security.md) |
 | | [Service worker](docs/en/service-worker.md) | [Livewire and Inertia](docs/en/adapters.md) | [Platform support](docs/en/platforms.md) |
-| | [Offline](docs/en/offline.md) | [AI agents](docs/en/ai.md) | [Troubleshooting](docs/en/troubleshooting.md) |
-| | [Persistent login](docs/en/session.md) | | [Testing](docs/en/testing.md) |
+| | [Offline](docs/en/offline.md) | [Push](docs/en/push.md) | [Troubleshooting](docs/en/troubleshooting.md) |
+| | [Persistent login](docs/en/session.md) | [AI agents](docs/en/ai.md) | [Testing](docs/en/testing.md) |
 | | [Maintenance](docs/en/maintenance.md) | | |
 | | [Kill switch](docs/en/kill-switch.md) | | |
 
@@ -130,7 +132,8 @@ The documentation is also available in [Czech](docs/cs/index.md).
 
 | Version | PHP | Laravel | Status |
 | --- | --- | --- | --- |
-| 0.2 | 8.2 – 8.5 | 12, 13 | Active |
+| 0.3 | 8.2 – 8.5 | 12, 13 | Active |
+| 0.2 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.3.0 + 3 months |
 | 0.1 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.2.0 + 3 months |
 
 Laravel 11 and older are end of life and not supported. Every release is tested against the

@@ -11,6 +11,8 @@ use InvalidArgumentException;
 use NyonCode\LaravelPwa\Contracts\ManifestParameters;
 use NyonCode\LaravelPwa\Contracts\ManifestResolver;
 use NyonCode\LaravelPwa\Events\ManifestResolving;
+use NyonCode\LaravelPwa\Pwa;
+use NyonCode\LaravelPwa\Tenancy\TenantManifestResolver;
 
 /**
  * Builds the web app manifest from the config, fluent calls and per-request resolvers.
@@ -428,6 +430,10 @@ class ManifestBuilder
     protected function resolverPairs(): array
     {
         $pairs = [];
+
+        if (app(Pwa::class)->tenancy() !== null) {
+            $pairs[] = [app(TenantManifestResolver::class), null];
+        }
 
         if (config()->array('pwa.locales', []) !== []) {
             $pairs[] = [app(LocaleResolver::class), null];

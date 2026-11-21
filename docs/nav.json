@@ -15,7 +15,7 @@
     },
     {
       "title": { "en": "Integrations", "cs": "Integrace" },
-      "pages": ["client.md", "events.md", "push.md", "adapters.md"]
+      "pages": ["client.md", "events.md", "adapters.md", "tenancy.md", "push.md"]
     },
     {
       "title": { "en": "Operations", "cs": "Provoz" },

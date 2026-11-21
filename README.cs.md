@@ -55,10 +55,12 @@ Tím máte instalovatelnou PWA s offline obrazovkou. Všechno ostatní se zapín
 | Oblast | Co dostanete | Dokumentace |
 | --- | --- | --- |
 | Manifest | `/manifest.webmanifest` z configu a fluent API, režimy zobrazení, ikony, zkratky | [Manifest](docs/cs/manifest.md), [Režim zobrazení](docs/cs/display-modes.md) |
+| Ikony a úvodní obrazovky | `pwa:icons`: ikony any, maskable, monochrome a pro iOS, úvodní obrazovky pro každý iPhone a iPad | [Příkazy](docs/cs/commands.md#pwaicons) |
 | Dynamický manifest | Resolvery per request pro tenanty, branding a jazyky, bezpečné pro Octane | [Manifest](docs/cs/manifest.md) |
 | Service worker | Sestavený z Vite manifestu, verzovaný, sám se aktualizuje | [Service worker](docs/cs/service-worker.md) |
 | Pravidla cache | network-first, cache-first, stale-while-revalidate, network-only, cache-only; per uživatel nebo sdílené; limity a expirace | [Service worker](docs/cs/service-worker.md) |
-| Offline | Offline obrazovka, stránky offline se souhlasem serveru, fronta formulářů a API volání | [Offline](docs/cs/offline.md) |
+| Offline | Offline obrazovka, stránky offline se souhlasem serveru, předehřátí nenavštívených stránek, fronta formulářů a API volání | [Offline](docs/cs/offline.md) |
+| Více tenantů | Samostatně instalovatelná aplikace pro každého tenanta na cestě (`/t/acme/`): vlastní scope workeru, identita v manifestu a cache | [Více tenantů](docs/cs/tenancy.md) |
 | Session | Trvalé přihlášení v aplikaci, keep-alive, obnova CSRF | [Trvalé přihlášení](docs/cs/session.md) |
 | Údržba | Obrazovka údržby, `pwa:down`, 503 vs. výpadek sítě | [Údržba](docs/cs/maintenance.md) |
 | Nouzové vypnutí | `pwa:disable` / `pwa:enable` | [Nouzové vypnutí](docs/cs/kill-switch.md) |
@@ -68,7 +70,7 @@ Tím máte instalovatelnou PWA s offline obrazovkou. Všechno ostatní se zapín
 | Rozšiřitelnost | `sw.import` / `sw.extend` a `self.PwaWorker` pro vlastní kód workeru | [Service worker](docs/cs/service-worker.md) |
 | AI agenti | MCP server, průvodce pro agenty a Claude Code skill z nainstalované verze | [AI agenti](docs/cs/ai.md) |
 
-Push notifikace nejsou součástí 0.2: worker dá vašemu push systému místo (`sw.import`).
+Push notifikace nejsou součástí 0.3: worker dá vašemu push systému místo (`sw.import`).
 Viz [Push](docs/cs/push.md).
 
 ## Ukázka API
@@ -112,10 +114,10 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | --- | --- | --- | --- |
 | [Přehled](docs/cs/index.md) | [Režim zobrazení](docs/cs/display-modes.md) | [JavaScript klient](docs/cs/client.md) | [Příkazy](docs/cs/commands.md) |
 | [Instalace](docs/cs/installation.md) | [Manifest](docs/cs/manifest.md) | [Události](docs/cs/events.md) | [Nasazení](docs/cs/deployment.md) |
-| [Konfigurace](docs/cs/configuration.md) | [Blade komponenty](docs/cs/components.md) | [Push](docs/cs/push.md) | [Bezpečnost](docs/cs/security.md) |
+| [Konfigurace](docs/cs/configuration.md) | [Blade komponenty](docs/cs/components.md) | [Více tenantů](docs/cs/tenancy.md) | [Bezpečnost](docs/cs/security.md) |
 | | [Service worker](docs/cs/service-worker.md) | [Livewire a Inertia](docs/cs/adapters.md) | [Podpora platforem](docs/cs/platforms.md) |
-| | [Offline](docs/cs/offline.md) | [AI agenti](docs/cs/ai.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
-| | [Trvalé přihlášení](docs/cs/session.md) | | [Testování](docs/cs/testing.md) |
+| | [Offline](docs/cs/offline.md) | [Push](docs/cs/push.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
+| | [Trvalé přihlášení](docs/cs/session.md) | [AI agenti](docs/cs/ai.md) | [Testování](docs/cs/testing.md) |
 | | [Údržba](docs/cs/maintenance.md) | | |
 | | [Nouzové vypnutí](docs/cs/kill-switch.md) | | |
 
@@ -123,7 +125,8 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 
 | Verze | PHP | Laravel | Stav |
 | --- | --- | --- | --- |
-| 0.2 | 8.2 – 8.5 | 12, 13 | Aktivní |
+| 0.3 | 8.2 – 8.5 | 12, 13 | Aktivní |
+| 0.2 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.3.0 |
 | 0.1 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.2.0 |
 
 Laravel 11 a starší jsou po konci podpory a balíček je nepodporuje. Každé vydání se testuje

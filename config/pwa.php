@@ -141,6 +141,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Path tenants on one domain
+    |--------------------------------------------------------------------------
+    |
+    | A class implementing NyonCode\LaravelPwa\Contracts\TenantResolver. Each
+    | tenant (/t/acme/, /t/globex/) then installs as its own app: own worker
+    | scope, manifest id and start_url, own caches. Tenants on subdomains need
+    | nothing here, the browser already keeps origins apart.
+    |
+    */
+
+    'tenancy' => [
+        'resolver' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Service worker
     |--------------------------------------------------------------------------
     */

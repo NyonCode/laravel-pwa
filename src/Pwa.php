@@ -11,11 +11,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use NyonCode\LaravelPwa\Contracts\TenantResolver;
 use NyonCode\LaravelPwa\Events\KillSwitchActivated;
 use NyonCode\LaravelPwa\Events\KillSwitchDeactivated;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use NyonCode\LaravelPwa\Support\Value;
+use NyonCode\LaravelPwa\Tenancy\Tenant;
+use NyonCode\LaravelPwa\Tenancy\TenantManifestResolver;
 
 /**
  * Package entry point: state, client config, kill switch and CSP.
@@ -33,9 +37,74 @@ class Pwa
     /** @var list<Closure(Request): iterable<mixed>> */
     protected array $warmers = [];
 
+    /** @var TenantResolver|class-string<TenantResolver>|null */
+    protected TenantResolver|string|null $tenantResolver = null;
+
     public function __construct(
         protected Application $app,
     ) {}
+
+    /**
+     * Path tenants on one domain (/t/acme/, /t/globex/): each gets its own worker scope, manifest
+     * identity and caches. Overrides config('pwa.tenancy.resolver'); null falls back to it.
+     *
+     * @param  TenantResolver|class-string<TenantResolver>|null  $resolver
+     */
+    public function resolveTenantsUsing(TenantResolver|string|null $resolver): static
+    {
+        $this->tenantResolver = $resolver;
+
+        return $this;
+    }
+
+    /**
+     * The configured tenant resolver, or null without tenancy.
+     */
+    public function tenancy(): ?TenantResolver
+    {
+        $resolver = $this->tenantResolver ?? config('pwa.tenancy.resolver');
+
+        if ($resolver === null || $resolver === '') {
+            return null;
+        }
+
+        $resolver = is_string($resolver) ? $this->app->make($resolver) : $resolver;
+
+        if (! $resolver instanceof TenantResolver) {
+            throw new InvalidArgumentException('The tenant resolver must implement '.TenantResolver::class.', '.get_debug_type($resolver).' given.');
+        }
+
+        return $resolver;
+    }
+
+    /**
+     * The tenant of this request: TenantResolver::current() on pages; on the manifest route the
+     * ?tenant= key from the page's manifest link. Resolved once per request.
+     */
+    public function tenant(?Request $request = null): ?Tenant
+    {
+        $request ??= request();
+        $resolver = $this->tenancy();
+
+        if (! $resolver instanceof TenantResolver) {
+            return null;
+        }
+
+        $cached = $request->attributes->get('pwa.tenant');
+
+        if ($cached instanceof Tenant || $cached === false) {
+            return $cached ?: null;
+        }
+
+        $key = $request->query(TenantManifestResolver::PARAMETER);
+        $tenant = $request->routeIs('pwa.manifest')
+            ? (is_string($key) && $key !== '' ? $resolver->find($key) : null)
+            : $resolver->current($request);
+
+        $request->attributes->set('pwa.tenant', $tenant ?? false);
+
+        return $tenant;
+    }
 
     /**
      * Adds pages to warm for the current user, e.g. their latest orders.
@@ -207,13 +276,16 @@ class Pwa
     public function clientConfig(): array
     {
         $prefix = '/'.trim(config()->string('pwa.route_prefix', 'pwa'), '/');
+        $tenant = $this->tenant();
 
         return [
             'enabled' => $this->enabled(),
             'killed' => $this->killed(),
             'sw' => config()->string('pwa.sw.url', '/sw.js'),
-            'scope' => config()->string('pwa.scope', '/'),
-            'startUrl' => config()->string('pwa.start_url', '/'),
+            // A path tenant registers its own worker for its scope (separate app and caches).
+            'scope' => $tenant->scope ?? config()->string('pwa.scope', '/'),
+            'startUrl' => $tenant->startUrl ?? config()->string('pwa.start_url', '/'),
+            'tenant' => $tenant?->key,
             'session' => [
                 'url' => $prefix.'/session',
                 'keepalive' => config()->integer('pwa.session.keepalive_minutes', 10),

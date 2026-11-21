@@ -59,6 +59,14 @@ class DoctorCommand extends Command
         $this->add(str_starts_with($url, 'https://') || app()->isLocal() ? 'ok' : 'error', "HTTPS (APP_URL = {$url})");
         $this->add(config('pwa.enabled') ? 'ok' : 'warn', 'Service worker enabled in config (pwa.enabled)');
         $this->add($pwa->killed() ? 'error' : 'ok', 'Kill switch inactive (pwa:enable)');
+
+        if (config('pwa.tenancy.resolver') !== null) {
+            try {
+                $this->add('ok', 'Tenant resolver '.((object) $pwa->tenancy())::class);
+            } catch (Throwable $e) {
+                $this->add('error', 'Tenant resolver: '.$e->getMessage());
+            }
+        }
     }
 
     protected function checkManifest(Pwa $pwa): void

@@ -92,6 +92,9 @@ to wire.
 | `warmUsing(Closure(Request): iterable)` | static | adds pages to warm for the current user; runs on every `/pwa/session` request, keep it cheap |
 | `warmUrls(?Request)` | `list<string>` | `offline.warm.urls` + `warmUsing()`: same-origin paths only, `never_cache` removed, at most `offline.warm.max` |
 | `warmsPages()` | bool | a warm-up is configured |
+| `resolveTenantsUsing(TenantResolver\|class-string\|null)` | static | path tenants; overrides `pwa.tenancy.resolver` |
+| `tenancy()` | ?`TenantResolver` | the configured resolver (throws if it does not implement the contract) |
+| `tenant(?Request)` | ?`Tenancy\Tenant` | `current()` on pages, `find(?tenant=)` on the manifest route; once per request |
 | `clientConfig()` | array | JSON passed to the client in `#pwa-config` |
 | `cspNonce()` | ?string | `Vite::cspNonce()` |
 | `cspHashes(string $view = 'pwa::maintenance')` | `['script-src' => [...], 'style-src' => [...]]` | SHA-256 hashes of the prerendered maintenance screen |
@@ -256,6 +259,20 @@ const { route, strategies, cacheName } = self.PwaWorker;
 route('/reports/*', async (event) => strategies.cacheFirst(event, { cacheName: await cacheName('reports'), maxAge: 3600 }));
 ```
 
+### Path tenants (`tenancy.resolver`)
+
+Only for tenants sharing one domain under paths (`/t/acme/`); subdomain tenants need nothing.
+Implement `Contracts\TenantResolver` (`current(Request): ?Tenant` for pages, `find(string $key): ?Tenant`
+for the manifest route) returning `new Tenancy\Tenant(key, scope, ?startUrl, ?name, ?shortName)`
+(key `[A-Za-z0-9_-]{1,64}`, scope `/…/`, start URL inside the scope). Then on a tenant page:
+`#pwa-config` gets `scope`/`startUrl` of the tenant and `tenant` (the client registers the same
+`/sw.js` for that scope), the manifest link gets `?tenant={key}` and `Tenancy\TenantManifestResolver`
+(runs before all other resolvers) sets `id` = `scope` = tenant scope, `start_url`, `name`. The worker
+derives a cache namespace from its registration scope: `pwa-@{scope-slug}-static-…`, `-pages-`,
+`-rule-`, `-shared-`, `-meta`; the worker for `pwa.scope` keeps the plain names, and no worker
+touches another namespace. The offline queue (IndexedDB `pwa`) and the kill switch stay shared by
+the origin. Logout clears every tenant through `Clear-Site-Data: "cache"`.
+
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
@@ -331,7 +348,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `icons.{source,path,maskable_padding,sizes}`, `icons.splash.{background,dark_background,icon_size,orientations,devices}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
 `locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
-`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`,
+`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
 `telemetry.{enabled,channel,max_events}`, `adapters.{livewire,inertia,reload_on_resume}`,

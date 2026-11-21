@@ -18,12 +18,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   a sign-in, at most once per `offline.warm.interval` on keep-alive, on Periodic Background Sync in
   installed Chromium apps and on `Pwa.warm()`. New client events `pwa:identity` and `pwa:warmed`,
   `self.PwaWorker.warm()` for `sw.extend` files.
+- Path tenants on one domain: `pwa.tenancy.resolver` / `Pwa::resolveTenantsUsing()` with
+  `Contracts\TenantResolver` and `Tenancy\Tenant`. Each tenant (`/t/acme/`) gets its own worker
+  registration for its scope, its own manifest `id`, `scope`, `start_url` and name (through
+  `?tenant=` on the manifest link) and namespaced caches (`pwa-@t-acme-…`); no worker touches another
+  tenant's caches. Recipes for stancl/tenancy and spatie/laravel-multitenancy in the docs.
 - `pwa:doctor` checks screenshots (a `wide` and a `narrow` one, file exists, `sizes` and `type`
   match the file) and reports iOS splash screens.
 
 ### Fixed
 - Client status bar texts that were still in Czech ("Jste offline.") are now English.
 - Docs named the 0.1 cache `pwa-api-{user}`; rule caches are `pwa-rule-{name}-{user}`.
+- The offline screen lists only pages of the worker that controls it.
+- Comments left in Czech in the views are now English.
 
 ### Changed
 - Icon rendering moved from `pwa:icons` into `Icons\IconGenerator` with GD and Imagick drivers
