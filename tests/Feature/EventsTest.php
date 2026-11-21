@@ -20,7 +20,8 @@ it('dispatches ServiceWorkerBuilt with the version, path and precache', function
 
     Event::assertDispatched(ServiceWorkerBuilt::class, fn (ServiceWorkerBuilt $event): bool => strlen($event->version) === 12
         && str_ends_with($event->path, 'bootstrap/cache/pwa/sw.js')
-        && $event->precache === ['/offline']);
+        && $event->precache[0] === '/offline'
+        && str_starts_with($event->precache[1], '/pwa/client.js?v='));
 });
 
 it('dispatches kill switch events', function (): void {

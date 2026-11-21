@@ -18,10 +18,13 @@ export default defineConfig({
     serviceWorkers: 'allow',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@ios/ },
     // Playwright's offline emulation in Firefox does not cover requests made by the
     // service worker, so offline scenarios are verified in Chromium only.
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] }, grepInvert: /@offline/ },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] }, grepInvert: /@offline|@ios/ },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] }, grepInvert: /@ios/ },
+    // iPhone Safari outside the Home Screen app: install instructions, push needs installation.
+    { name: 'iphone', use: { ...devices['iPhone 15'] }, grep: /@ios/ },
   ],
   webServer: {
     command: `${process.env.PHP || 'php'} vendor/bin/testbench serve --port=${PORT}`,

@@ -59,7 +59,7 @@ vendor/bin/rector          # apply Rector refactorings (CI only checks)
 npm run test:js            # node:test: tests/js/sw (runtime.js) and tests/js/client (pwa.js)
 node --test tests/js/sw/runtime.test.mjs            # one JS file
 npm run lint:js            # ESLint
-npm run test:e2e           # Playwright (Chromium + Firefox) against the workbench, starts testbench serve
+npm run test:e2e           # Playwright (Chromium, Firefox, WebKit, iPhone) against the workbench, starts testbench serve
 npm run docs:check         # docs/en ↔ docs/cs parity, links, anchors (scripts/docs-check.mjs)
 vendor/bin/testbench serve --port=8123              # workbench demo app
 php anvil list             # package generators (make:command, make:controller, …)
@@ -68,7 +68,11 @@ php anvil list             # package generators (make:command, make:controller, 
 JS tests run the real source files: `tests/js/support/sw-env.mjs` evaluates `resources/sw/runtime.js`
 in a `vm` context with in-memory Cache Storage, a scripted `fetch` and fake IndexedDB;
 `tests/js/support/client-env.mjs` runs `resources/js/pwa.js` in happy-dom. Offline e2e specs are
-tagged `@offline` and run in Chromium only (Playwright's Firefox offline mode skips worker requests).
+tagged `@offline` and skipped in Firefox (Playwright's Firefox offline mode skips worker requests).
+Specs tagged `@ios` run only in the `iphone` project (WebKit + iPhone emulation, `PushManager` removed
+like Safari outside the Home Screen app); the other projects skip them. In Playwright's WebKit,
+`pushManager.getSubscription()` blocks the next navigation: never call the push API on page load for
+devices that did not subscribe.
 `tests/e2e/push.spec.mjs` delivers pushes over CDP to the real worker in the full Chromium build
 (`channel: 'chromium'`; the headless shell has no notifications).
 

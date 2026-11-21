@@ -746,6 +746,12 @@
 
     if (local && url.pathname === workerPath) return;
 
+    // The client script (?v=hash) is precached: pages served from the cache offline need it.
+    if (local && C.client && url.pathname === C.client && request.method === 'GET') {
+      event.respondWith(strategies.cacheFirst(event, { cacheName: STATIC }));
+      return;
+    }
+
     // never_cache: never stored or queued. Fetch/XHR requests still pass through the worker so it
     // sees identity changes (XHR login/logout of Inertia and Livewire hit /login, /logout).
     if (local && matches(neverCache, url.pathname)) {

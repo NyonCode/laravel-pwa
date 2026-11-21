@@ -20,7 +20,7 @@ it('serves the service worker without caching', function (): void {
         ->and($response->getContent())->toContain('self.__PWA = ')->toContain("addEventListener('fetch'");
 });
 
-it('precaches the offline page and Vite entries', function (): void {
+it('precaches the offline page, the client and Vite entries', function (): void {
     viteManifest([
         'resources/js/app.js' => ['file' => 'assets/app-abc123.js', 'isEntry' => true, 'css' => ['assets/app-def456.css']],
         'resources/js/lazy.js' => ['file' => 'assets/lazy-999.js'],
@@ -28,6 +28,7 @@ it('precaches the offline page and Vite entries', function (): void {
 
     expect(app(ServiceWorkerBuilder::class)->precache())->toBe([
         '/offline',
+        app(Pwa::class)->clientUrl(),
         '/build/assets/app-abc123.js',
         '/build/assets/app-def456.css',
     ]);
@@ -104,4 +105,11 @@ it('serves the client script with a long cache', function (): void {
 
 it('answers ping without caching', function (): void {
     $this->get('/pwa/ping')->assertNoContent()->assertHeader('Cache-Control', 'no-store, private');
+});
+
+it('tells the worker where the client script lives, so offline pages keep it', function (): void {
+    $config = app(ServiceWorkerBuilder::class)->runtimeConfig();
+
+    expect($config['client'])->toBe('/pwa/client.js')
+        ->and(app(Pwa::class)->clientUrl())->toMatch('#^/pwa/client\.js\?v=[a-f0-9]{12}$#');
 });

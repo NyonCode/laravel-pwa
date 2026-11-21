@@ -168,6 +168,7 @@ class ServiceWorkerBuilder
             'buildPrefix' => '/'.trim(config()->string('pwa.sw.build_directory', 'build'), '/').'/',
             'telemetry' => config()->boolean('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'sessionUrl' => $prefix.'/session',
+            'client' => strtok(app(Pwa::class)->clientUrl(), '?'),
             'warm' => app(Pwa::class)->warmsPages(),
             'scope' => config()->string('pwa.scope', '/'),
             'push' => $this->pushConfig($prefix),
@@ -210,7 +211,7 @@ class ServiceWorkerBuilder
     }
 
     /**
-     * Precache: the offline page, URLs from the config and the Vite manifest entries.
+     * Precache: the offline page, the browser client, URLs from the config and the Vite manifest entries.
      *
      * @return list<string>
      */
@@ -221,6 +222,9 @@ class ServiceWorkerBuilder
         if (config()->boolean('pwa.offline.enabled', true)) {
             $urls[] = config()->string('pwa.offline.route', '/offline');
         }
+
+        // Pages served from the cache offline still need the client (status bar, queue, install).
+        $urls[] = app(Pwa::class)->clientUrl();
 
         foreach ($this->stringList('pwa.offline.precache') as $url) {
             $urls[] = $url;

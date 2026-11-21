@@ -343,6 +343,17 @@ class Pwa
         return filter_var(config('pwa.push.enabled', false), FILTER_VALIDATE_BOOL) && is_string($key) && $key !== '';
     }
 
+    /**
+     * URL of the browser client with its content hash (?v=), so it can be cached forever and
+     * precached by the worker for offline pages.
+     */
+    public function clientUrl(): string
+    {
+        $hash = substr((string) hash_file('sha256', __DIR__.'/../resources/js/pwa.js'), 0, 12);
+
+        return route('pwa.client', absolute: false).'?v='.$hash;
+    }
+
     public function cspNonce(): ?string
     {
         $nonce = Vite::cspNonce();
