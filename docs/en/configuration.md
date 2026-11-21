@@ -159,7 +159,7 @@ You can translate `name`, `short_name` and `description` in
 | `telemetry.enabled` | bool | `true` | Send service worker errors to `/pwa/telemetry`. |
 | `telemetry.channel` | ?string | `null` | Log channel; a channel that does not exist falls back to the default log. |
 | `telemetry.max_events` | int | `20` | Maximum number of events per request. |
-| `adapters.livewire` | bool | `true` | Livewire 3 adapter. |
+| `adapters.livewire` | bool | `true` | Livewire 3 and 4 adapter. |
 | `adapters.inertia` | bool | `true` | Inertia adapter. |
 | `adapters.reload_on_resume` | bool | `false` | Inertia `reload()` when the user returns to the app. |
 

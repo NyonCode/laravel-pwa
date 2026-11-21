@@ -376,8 +376,9 @@ non-GET same-origin 419 once with a fresh token, registers or unregisters the wo
 `visibilitychange`/`pageshow` and every `session.keepalive_minutes`. Fresh CSRF tokens are written
 to `meta[name=csrf-token]`, `input[name=_token]`, axios defaults and `livewireScriptConfig`.
 
-Adapters: Livewire 3 (`Livewire.hook('request')` fail: 503 → reload, 419 → refresh token, offline →
-bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia:exception` offline).
+Adapters: Livewire 3 and 4 (v4 `Livewire.interceptRequest()` onError/onFailure, v3
+`Livewire.hook('request')` fail: 503 → reload, 419 → refresh token incl. `[data-csrf]`, offline → bar;
+the worker never queues requests with `X-Livewire`, so `/livewire-{hash}/update` is safe too) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia:exception` offline).
 
 ## Events (`NyonCode\LaravelPwa\Events`, Laravel `Dispatchable`)
 

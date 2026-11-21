@@ -761,8 +761,10 @@
 
     if (request.method !== 'GET') {
       // Always through the worker (identity of XHR logins), queued only with offline.queue.
+      // Livewire updates are never queued: a replayed snapshot would be stale (Livewire 4 posts to
+      // /livewire-{hash}/update, which an older never_cache list does not cover).
       if (local && request.mode !== 'navigate') {
-        const queueable = C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+        const queueable = C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && !request.headers.has('x-livewire');
         event.respondWith(queueable ? handleMutation(request) : passThrough(request));
       }
       return;

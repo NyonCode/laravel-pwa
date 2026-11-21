@@ -209,7 +209,7 @@ return [
         ],
         'api' => [],                    // shorthand: network-first rules, e.g. ['/api/catalog*']
         'images' => ['enabled' => true, 'max_entries' => 120, 'max_age' => 60 * 60 * 24 * 30],
-        'never_cache' => ['/login', '/logout', '/register', '/broadcasting/*', '/livewire/*', '/sanctum/*', '/pwa/*'],
+        'never_cache' => ['/login', '/logout', '/register', '/broadcasting/*', '/livewire/*', '/livewire-*', '/sanctum/*', '/pwa/*'],
     ],
 
     /*

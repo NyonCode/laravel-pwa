@@ -1,6 +1,6 @@
 ---
 title: Livewire a Inertia
-description: Jak klient řeší výpadek sítě, frontu, údržbu, 419 a návrat do aplikace v Livewire 3 a Inertia.
+description: Jak klient řeší výpadek sítě, frontu, údržbu, 419 a návrat do aplikace v Livewire 3 a 4 a Inertia.
 ---
 
 # Livewire a Inertia
@@ -9,20 +9,24 @@ Livewire i Inertia načítají data přes `fetch`/XHR, ne navigací. Service wor
 obrazovku ani obrazovku údržby nezobrazí a jejich vlastní chybová okna by ukázala surové HTML.
 Klient balíčku obsahuje dva malé adaptéry.
 
-| Situace | Livewire 3 | Inertia |
+| Situace | Livewire 3 a 4 | Inertia |
 | --- | --- | --- |
 | výpadek sítě | lišta „Jste offline“, výchozí okno potlačeno | lišta, `inertia:exception` potlačena |
-| akce ve frontě (202) | – (Livewire cesty jsou v `never_cache`) | lišta, `pwa:queue` |
+| akce ve frontě (202) | – (Livewire požadavky nejdou do fronty) | lišta, `pwa:queue` |
 | 503 údržba | `location.reload()` → obrazovka údržby | totéž |
 | 419 CSRF | nový token, `pwa:csrf-refreshed`, okno „Page expired“ potlačeno | nový token; automatické zopakování jen přes `fetch` a `window.axios` |
 | návrat do aplikace | `pwa:resume` | `pwa:resume`, s `adapters.reload_on_resume` `router.reload()` |
 
-## Livewire 3
+## Livewire
 
-Adaptér se zapne na `livewire:init` a používá `Livewire.hook('request', ({ fail }) => …)`.
-`/livewire/*` je v `cache.never_cache`: SW Livewire požadavky jen propustí na síť (přečte z nich
-identitu uživatele), neukládá je do cache ani do fronty (stav komponent by po odeslání se zpožděním
-nemusel sedět).
+Adaptér se zapne na `livewire:init`. V Livewire 4 používá `Livewire.interceptRequest()` (`onError`
+pro 419 a 503, `onFailure` pro síť), v Livewire 3 `Livewire.hook('request')`. Po 419 klient aktualizuje
+i atribut `data-csrf` skriptu Livewire.
+
+SW Livewire požadavky jen propustí na síť (přečte z nich identitu uživatele), neukládá je do cache ani
+do fronty: stav komponent by po odeslání se zpožděním nemusel sedět. Pozná je podle hlavičky
+`X-Livewire`, takže to platí i pro adresu Livewire 4 `/livewire-{hash}/update`; `cache.never_cache`
+obsahuje `/livewire/*` i `/livewire-*`.
 
 Offline stav v šabloně: vestavěné `wire:offline` funguje dál.
 

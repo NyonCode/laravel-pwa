@@ -48,7 +48,7 @@ v komponentách Reactu nebo Vue použijte hook `usePwa` z [Blade komponent](comp
 ### Livewire
 
 Vložte `<x-pwa::head/>` do sdíleného `<head>` (v sadě Livewire `resources/views/partials/head.blade.php`).
-Přihlášení je komponenta Livewire, formulář tedy jde na `/livewire/update`, ne na routu přihlášení:
+Přihlášení je komponenta Livewire, formulář tedy jde na endpoint Livewire, ne na routu přihlášení:
 místo middleware `pwa.remember` nastavte výchozí hodnotu `remember`.
 
 ```php
@@ -104,7 +104,7 @@ return $panel
 ```
 
 `pwa.cache` dovolí workeru uchovat kopie stránek panelu pro každého uživatele; akce a aktualizace
-tabulek jdou na `/livewire/update`, který se nikdy necachuje, takže potřebují připojení. Aby
+tabulek jdou na endpoint Livewire, který se nikdy necachuje ani nezařazuje do fronty, takže potřebují připojení. Aby
 nainstalovaný panel zůstal přihlášený, zaškrtněte „zapamatovat si mě“ ve vlastní přihlašovací stránce
 (`->login(Login::class)`) stejně jako v receptu pro Livewire: po `mount()` rodiče vyplňte pole
 `remember` formuláře hodnotou `Pwa::isStandaloneClient()`.

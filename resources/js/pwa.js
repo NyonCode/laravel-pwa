@@ -196,6 +196,7 @@ const applyCsrf = (token) => {
   if (!token) return;
   document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', token);
   document.querySelectorAll('input[name="_token"]').forEach((input) => { input.value = token; });
+  document.querySelectorAll('[data-csrf]').forEach((el) => el.setAttribute('data-csrf', token)); // Livewire script tag
   if (window.axios?.defaults?.headers?.common) window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
   if (window.livewireScriptConfig) window.livewireScriptConfig.csrf = token;
   emit('csrf', { token });
@@ -576,13 +577,25 @@ document.addEventListener('inertia:navigate', () => setTimeout(refreshUi, 0));
 
 const livewireAdapter = () => {
   if (!C.adapters?.livewire) return;
+  const offline = () => showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn');
+  const failed = async (status, preventDefault) => {
+    if (status === 503) { preventDefault(); location.reload(); }
+    else if (status === 419) { preventDefault(); await keepAlive(true); emit('csrf-refreshed', {}); }
+    else if (status === 0 || !navigator.onLine) { preventDefault(); offline(); }
+  };
   document.addEventListener('livewire:init', () => {
-    window.Livewire.hook('request', ({ fail }) => {
-      fail(async ({ status, preventDefault }) => {
-        if (status === 503) { preventDefault(); location.reload(); }
-        else if (status === 419) { preventDefault(); await keepAlive(true); emit('csrf-refreshed', {}); }
-        else if (status === 0 || !navigator.onLine) { preventDefault(); showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn'); }
+    const { Livewire } = window;
+    if (typeof Livewire.interceptRequest === 'function') {
+      // Livewire 4: server errors in onError, network errors in onFailure.
+      Livewire.interceptRequest(({ onError, onFailure }) => {
+        onError(({ response, preventDefault }) => failed(response?.status ?? 0, preventDefault));
+        onFailure(() => offline());
       });
+      return;
+    }
+    // Livewire 3
+    Livewire.hook('request', ({ fail }) => {
+      fail(({ status, preventDefault }) => failed(status, preventDefault));
     });
   });
 };

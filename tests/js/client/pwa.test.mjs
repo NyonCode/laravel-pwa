@@ -215,6 +215,37 @@ describe('adapters', () => {
     assert.ok(client.events.some((e) => e.name === 'pwa:csrf-refreshed'));
   });
 
+  it('Livewire 4: uses interceptRequest for 419, 503 and network failures', async () => {
+    let interceptor;
+    client = await createClient({
+      fetch: () => sessionJson(client.window),
+      body: '<script data-csrf="old"></script>',
+      before: (window) => {
+        window.Livewire = {
+          interceptRequest: (fn) => { interceptor = fn; },
+          hook: () => { throw new Error('Livewire 4 must not use the deprecated request hook'); },
+        };
+      },
+    });
+    client.document.dispatchEvent(new client.window.Event('livewire:init'));
+
+    let onError;
+    let onFailure;
+    interceptor({ onError: (fn) => { onError = fn; }, onFailure: (fn) => { onFailure = fn; } });
+
+    let prevented = 0;
+    await onError({ response: { status: 419 }, preventDefault: () => { prevented += 1; } });
+    assert.equal(prevented, 1);
+    assert.ok(client.events.some((e) => e.name === 'pwa:csrf-refreshed'));
+    assert.equal(client.document.querySelector('[data-csrf]').getAttribute('data-csrf'), 'fresh');
+
+    await onError({ response: { status: 503 }, preventDefault: () => { prevented += 1; } });
+    assert.equal(client.reloads.count, 1);
+
+    onFailure({ error: new Error('offline') });
+    assert.ok(client.document.querySelector('.pwa-bar') && !client.document.querySelector('.pwa-bar').hidden);
+  });
+
   it('Inertia: recognises a queued response from the worker', async () => {
     client = await createClient();
     const event = new client.window.CustomEvent('inertia:invalid', {
