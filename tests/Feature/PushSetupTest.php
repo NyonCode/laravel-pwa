@@ -118,7 +118,7 @@ describe('minishlink transport', function (): void {
     it('encrypts the payload and signs the request with VAPID', function (): void {
         [$transport, $requests] = transportAnswering([201]);
 
-        $reports = $transport->send([['subscription' => browserKeys(), 'payload' => '{"title":"Hi"}', 'options' => ['TTL' => 60, 'urgency' => 'high', 'topic' => 'news']]]);
+        $reports = $transport->send([['subscription' => browserKeys(), 'payload' => '{"title":"plaintext-marker-5f2c9a7e41d84b06"}', 'options' => ['TTL' => 60, 'urgency' => 'high', 'topic' => 'news']]]);
 
         $request = $requests[0];
         expect($reports[0]->success)->toBeTrue()
@@ -128,7 +128,7 @@ describe('minishlink transport', function (): void {
             ->and($request->getHeaderLine('Urgency'))->toBe('high')
             ->and($request->getHeaderLine('Topic'))->toBe('news')
             ->and($request->getHeaderLine('Authorization'))->toStartWith('vapid t=')
-            ->and((string) $request->getBody())->not->toContain('Hi');
+            ->and((string) $request->getBody())->not->toContain('plaintext-marker-5f2c9a7e41d84b06');
     });
 
     it('reports expired subscriptions', function (): void {
