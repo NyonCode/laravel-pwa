@@ -9,17 +9,20 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Povolí service workeru uložit stránku do cache pro offline režim.
+ * Lets the service worker cache the page for offline use.
  *
  *     Route::get('/dashboard', ...)->middleware('pwa.cache');
  *
- * Bez této hlavičky SW žádné HTML neukládá. Cache je oddělená pro každého
- * uživatele a maže se při odhlášení.
+ * Without this header the SW caches no HTML. The cache is separate for each
+ * user and is cleared on logout.
  */
 class CachePage
 {
     public const HEADER = 'X-PWA-Cache';
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);

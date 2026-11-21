@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /*
     |--------------------------------------------------------------------------
-    | Zapnutí
+    | Enabled
     |--------------------------------------------------------------------------
     |
-    | Lokálně je service worker ve výchozím stavu vypnutý, aby se nepletl
-    | s Vite HMR. Když je vypnutý, klient případný starý SW odregistruje.
-    | Manifest a komponenty fungují i tak.
+    | The service worker is off by default in the local environment so it does
+    | not fight Vite HMR. While disabled, the client unregisters an old worker.
+    | The manifest and the components work either way.
     |
     */
 
@@ -17,7 +19,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Identita aplikace
+    | App identity
     |--------------------------------------------------------------------------
     */
 
@@ -35,14 +37,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Režim zobrazení
+    | Display mode
     |--------------------------------------------------------------------------
     |
-    | override: display = value, display_override = override (bez detekce
-    |           zařízení: Edge/Chrome na desktopu dostanou minimal-ui,
-    |           telefony, tablety a Safari standalone)
-    | adaptive: server rozhodne podle Sec-CH-UA-Platform / User-Agent
-    | fixed:    jen display = value
+    | override: display = value, display_override = override (no device
+    |           detection: Edge/Chrome on desktop get minimal-ui, phones,
+    |           tablets and Safari get standalone)
+    | adaptive: the server decides from Sec-CH-UA-Platform / User-Agent
+    | fixed:    only display = value
     |
     */
 
@@ -50,14 +52,14 @@ return [
         'strategy' => env('PWA_DISPLAY_STRATEGY', 'override'),
         'value' => 'standalone',
         'override' => ['minimal-ui'],
-        'desktop' => 'minimal-ui',   // jen pro strategii adaptive
+        'desktop' => 'minimal-ui',   // adaptive strategy only
     ],
 
     'orientation' => null,
 
     /*
     |--------------------------------------------------------------------------
-    | Tlačítka Zpět / Obnovit na desktopu (<x-pwa::nav/>)
+    | Back / Reload buttons on desktop (<x-pwa::nav/>)
     |--------------------------------------------------------------------------
     */
 
@@ -68,7 +70,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Barvy a ikony
+    | Colours and icons
     |--------------------------------------------------------------------------
     */
 
@@ -80,8 +82,8 @@ return [
     ],
 
     'icons' => [
-        'source' => null,               // cesta k SVG/PNG pro pwa:icons, např. resource_path('pwa/icon.png')
-        'path' => 'pwa/icons',          // složka v public/
+        'source' => null,               // SVG/PNG for pwa:icons, e.g. resource_path('pwa/icon.png')
+        'path' => 'pwa/icons',          // directory inside public/
         'maskable_padding' => 0.1,
         'sizes' => [192, 512],
     ],
@@ -90,14 +92,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Integrace do systému
+    | Operating system integration
     |--------------------------------------------------------------------------
     */
 
     'categories' => [],
 
     'shortcuts' => [
-        // ['name' => 'Nová objednávka', 'url' => '/orders/create', 'icon' => '/pwa/icons/shortcut-new.png'],
+        // ['name' => 'New order', 'url' => '/orders/create', 'icon' => '/pwa/icons/shortcut-new.png'],
     ],
 
     'share_target' => null,
@@ -110,7 +112,22 @@ return [
 
     'scope_extensions' => [],
 
-    'locales' => [],                    // další jazyky pro lokalizovaný manifest, např. ['en', 'de']
+    'locales' => [],                    // extra languages for the localised manifest, e.g. ['en', 'de']
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manifest resolvers
+    |--------------------------------------------------------------------------
+    |
+    | Classes implementing NyonCode\LaravelPwa\Contracts\ManifestResolver,
+    | applied to every manifest request (tenant branding, per-locale names …).
+    | Closures: Pwa::manifest()->resolveUsing(fn ($request, $manifest) => …).
+    |
+    */
+
+    'manifest' => [
+        'resolvers' => [],
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -120,31 +137,43 @@ return [
 
     'sw' => [
         'url' => '/sw.js',
-        // Soubory, které SW načte přes importScripts (např. push systém).
+        // Scripts loaded BEFORE the runtime with importScripts (e.g. a push system's listeners).
         'import' => [],
-        // Kde je Vite manifest pro precache.
+        // Scripts loaded AFTER the runtime; they can use self.PwaWorker (routes, strategies, cache names).
+        'extend' => [],
+        // Vite manifest used for the precache.
         'vite_manifest' => 'build/manifest.json',
         'build_directory' => 'build',
-        // Kam pwa:build uloží sestavený SW.
+        // Where pwa:build writes the assembled worker.
         'compiled_path' => 'bootstrap/cache/pwa',
-        // Úložiště cache pro příznak nouzového vypnutí (null = výchozí).
+        // Cache store for the kill switch flag (null = default store).
         'kill_switch_store' => env('PWA_KILL_SWITCH_STORE'),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Strategie cache
+    | Cache strategies
     |--------------------------------------------------------------------------
     |
-    | HTML se do cache ukládá jen s hlavičkou X-PWA-Cache: allow (middleware
-    | pwa.cache). Cesty v never_cache jdou vždy na síť.
+    | HTML pages are cached only with the X-PWA-Cache: allow header (middleware
+    | pwa.cache). Paths in never_cache always go to the network. Rules apply to
+    | other same-origin GET requests; the first matching rule wins. Caches are
+    | per user (purged on logout) unless a rule sets 'shared' => true.
+    |
+    | Strategies: network-first, cache-first, stale-while-revalidate,
+    | network-only, cache-only.
     |
     */
 
     'cache' => [
         'navigation_timeout' => 3,
-        'api' => [],                    // GET cesty s network-first a záložní cache, např. ['/api/catalog*']
-        'images' => ['max_entries' => 120, 'max_age' => 60 * 60 * 24 * 30],
+        'rules' => [
+            // ['match' => '/api/catalog*', 'strategy' => 'stale-while-revalidate', 'cache' => 'catalog', 'max_entries' => 200, 'max_age' => 86400],
+            // ['match' => '/avatars/*', 'destination' => 'image', 'strategy' => 'cache-first', 'max_age' => 604800],
+            // ['match' => '/api/stock', 'strategy' => 'network-first', 'timeout' => 2],
+        ],
+        'api' => [],                    // shorthand: network-first rules, e.g. ['/api/catalog*']
+        'images' => ['enabled' => true, 'max_entries' => 120, 'max_age' => 60 * 60 * 24 * 30],
         'never_cache' => ['/login', '/logout', '/register', '/broadcasting/*', '/livewire/*', '/sanctum/*', '/pwa/*'],
     ],
 
@@ -158,12 +187,12 @@ return [
         'enabled' => true,
         'route' => '/offline',
         'precache' => [],
-        'queue' => true,                // fronta POST/PUT/PATCH/DELETE při výpadku sítě
+        'queue' => true,                // queue POST/PUT/PATCH/DELETE while the network is down
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Session (trvalé přihlášení v nainstalované aplikaci)
+    | Session (persistent login in the installed app)
     |--------------------------------------------------------------------------
     */
 
@@ -176,7 +205,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Režim údržby (pwa:down)
+    | Maintenance mode (pwa:down)
     |--------------------------------------------------------------------------
     */
 
@@ -189,7 +218,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Instalace
+    | Install prompt
     |--------------------------------------------------------------------------
     */
 
@@ -201,19 +230,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Telemetrie (chyby ze service workeru)
+    | Telemetry (service worker errors)
     |--------------------------------------------------------------------------
     */
 
     'telemetry' => [
         'enabled' => true,
+        'log' => true,                  // log TelemetryReceived events (off when you handle them yourself)
         'channel' => env('PWA_LOG_CHANNEL'),
         'max_events' => 20,
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Livewire a Inertia
+    | Livewire and Inertia
     |--------------------------------------------------------------------------
     */
 

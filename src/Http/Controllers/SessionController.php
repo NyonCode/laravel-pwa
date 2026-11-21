@@ -7,15 +7,16 @@ namespace NyonCode\LaravelPwa\Http\Controllers;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Pwa;
+use NyonCode\LaravelPwa\Support\Value;
 
 class SessionController
 {
     /**
-     * Keep-alive: projde web middleware, takže prodlouží session. Vrací čerstvý
-     * CSRF token pro formuláře a fetch po návratu z pozadí.
+     * Keep-alive: runs through the web middleware, so it extends the session. Returns a fresh
+     * CSRF token for forms and fetch after returning from the background.
      */
     public function session(Request $request, Pwa $pwa): JsonResponse
     {
@@ -27,7 +28,7 @@ class SessionController
             'authenticated' => $request->user() !== null,
             'user' => $pwa->userHash($request),
             'csrf' => csrf_token(),
-            'lifetime' => (int) config('session.lifetime', 120),
+            'lifetime' => config()->integer('session.lifetime', 120),
         ], 200, ['Cache-Control' => 'no-store']);
     }
 
@@ -37,13 +38,13 @@ class SessionController
     }
 
     /**
-     * Chyby ze service workeru a klienta. Bez osobních údajů, jen technická data.
+     * Errors from the service worker and the client. No personal data, only technical details.
      */
     public function telemetry(Request $request): JsonResponse
     {
-        $max = (int) config('pwa.telemetry.max_events', 20);
+        $max = config()->integer('pwa.telemetry.max_events', 20);
 
-        $data = $request->validate([
+        $request->validate([
             'source' => ['required', 'in:sw,client'],
             'events' => ['required', 'array', 'max:'.$max],
             'events.*.type' => ['required', 'string', 'max:50'],
@@ -53,22 +54,23 @@ class SessionController
             'events.*.display' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $channel = config('pwa.telemetry.channel');
-        $logger = is_string($channel) && config("logging.channels.{$channel}") !== null
-            ? Log::channel($channel)
-            : Log::getFacadeRoot();
+        /** @var array<array-key, array<string, mixed>> $input */
+        $input = $request->input('events');
 
-        foreach ($data['events'] as $event) {
-            $logger->warning('[pwa] '.$event['type'].': '.$event['message'], [
-                'pwa' => true,
-                'source' => $data['source'],
-                'version' => $event['version'] ?? null,
-                'display' => $event['display'] ?? null,
-                'stack' => $event['stack'] ?? null,
-                'user_agent' => substr((string) $request->userAgent(), 0, 300),
-            ]);
-        }
+        $events = array_map(static fn (array $event): array => [
+            'type' => Value::string($event['type'] ?? null),
+            'message' => Value::string($event['message'] ?? null),
+            'stack' => Value::nullableString($event['stack'] ?? null),
+            'version' => Value::nullableString($event['version'] ?? null),
+            'display' => Value::nullableString($event['display'] ?? null),
+        ], array_values($input));
 
-        return response()->json(['logged' => count($data['events'])], 202);
+        TelemetryReceived::dispatch(
+            $request->input('source') === 'client' ? 'client' : 'sw',
+            $events,
+            $request->userAgent() !== null ? substr($request->userAgent(), 0, 300) : null,
+        );
+
+        return response()->json(['logged' => count($events)], 202);
     }
 }

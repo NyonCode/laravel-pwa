@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/NyonCode/laravel-pwa/discussions
+    about: Ask how to use the package or discuss an idea before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/NyonCode/laravel-pwa/security/advisories/new
+    about: Report privately, never in a public issue.

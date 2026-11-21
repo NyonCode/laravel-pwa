@@ -2,7 +2,12 @@ includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
-    level: 6
+    level: max
     paths:
         - src
     tmpDir: build/phpstan
+    ignoreErrors:
+        # Public test helper for applications; the package itself never uses it.
+        -
+            identifier: trait.unused
+            path: src/Testing/InteractsWithPwa.php

@@ -1,0 +1,44 @@
+name: static
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHPStan · Pint · Rector · audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --error-format=github
+
+      - name: Pint
+        run: vendor/bin/pint --test
+
+      - name: Rector
+        run: vendor/bin/rector --dry-run --no-progress-bar
+
+      - name: Composer audit
+        # Abandoned dev-only transitive packages are reported, vulnerabilities fail the job.
+        run: composer audit --abandoned=report
+
+      - name: MCP server self-test
+        run: node ai/mcp/server.mjs --self-test

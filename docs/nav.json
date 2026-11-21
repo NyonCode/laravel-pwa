@@ -1,7 +1,29 @@
-[
-  { "section": "Začínáme", "pages": ["index.md", "installation.md", "configuration.md"] },
-  { "section": "Funkce", "pages": ["display-modes.md", "manifest.md", "components.md", "service-worker.md", "offline.md", "session.md", "maintenance.md", "kill-switch.md"] },
-  { "section": "Integrace", "pages": ["client.md", "push.md", "adapters.md"] },
-  { "section": "Provoz", "pages": ["commands.md", "deployment.md", "security.md", "platforms.md", "troubleshooting.md"] },
-  { "section": "Vývoj", "pages": ["testing.md", "ai.md"] }
-]
+{
+  "languages": {
+    "en": "English",
+    "cs": "Čeština"
+  },
+  "default": "en",
+  "sections": [
+    {
+      "title": { "en": "Getting started", "cs": "Začínáme" },
+      "pages": ["index.md", "installation.md", "configuration.md"]
+    },
+    {
+      "title": { "en": "Features", "cs": "Funkce" },
+      "pages": ["display-modes.md", "manifest.md", "components.md", "service-worker.md", "offline.md", "session.md", "maintenance.md", "kill-switch.md"]
+    },
+    {
+      "title": { "en": "Integrations", "cs": "Integrace" },
+      "pages": ["client.md", "events.md", "push.md", "adapters.md"]
+    },
+    {
+      "title": { "en": "Operations", "cs": "Provoz" },
+      "pages": ["commands.md", "deployment.md", "security.md", "platforms.md", "troubleshooting.md"]
+    },
+    {
+      "title": { "en": "Development", "cs": "Vývoj" },
+      "pages": ["testing.md", "ai.md"]
+    }
+  ]
+}

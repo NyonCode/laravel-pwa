@@ -8,3 +8,9 @@ composer.lock
 .idea
 .vscode
 /.tmp
+/test-results
+/playwright-report
+/blob-report
+/coverage
+docs/.vitepress/cache
+docs/.vitepress/dist

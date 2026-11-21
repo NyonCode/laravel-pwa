@@ -93,6 +93,26 @@ export const makeRequest = (path, { mode, destination, ...init } = {}) => {
   return request;
 };
 
+/** A rule as CacheRule::toArray() serialises it. */
+export const rule = (overrides = {}) => ({
+  match: null,
+  strategy: 'network-first',
+  cache: 'r1',
+  shared: false,
+  maxEntries: null,
+  maxAge: null,
+  timeout: null,
+  destinations: [],
+  ...overrides,
+});
+
+/** The default image/font rule ServiceWorkerBuilder appends. */
+export const imagesRule = (overrides = {}) =>
+  rule({ strategy: 'stale-while-revalidate', cache: 'images', maxEntries: 120, destinations: ['image', 'font'], ...overrides });
+
+/** What `pwa.cache.api` patterns become. */
+export const apiRule = (match) => rule({ match, cache: 'api' });
+
 export const offline = () => {
   throw new TypeError('Failed to fetch');
 };
@@ -120,9 +140,8 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
       offlineUrl: '/offline',
       queue: true,
       navigationTimeout: 50,
-      api: [],
-      neverCache: ['/login', '/logout', '/pwa/*'],
-      images: { max_entries: 120 },
+      neverCache: ['/login', '/pwa/*'],
+      rules: [imagesRule()],
       buildPrefix: '/build/',
       telemetry: '/pwa/telemetry',
       sessionUrl: '/pwa/session',

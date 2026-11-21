@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace NyonCode\LaravelPwa\Facades;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
+use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
+use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 
 /**
  * @method static bool enabled()
  * @method static bool killed()
  * @method static void disable()
  * @method static void enable()
- * @method static \NyonCode\LaravelPwa\Manifest\ManifestBuilder manifest()
- * @method static \NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder serviceWorker()
- * @method static bool isStandaloneRequest(?\Illuminate\Http\Request $request = null)
- * @method static bool isStandaloneClient(?\Illuminate\Http\Request $request = null)
- * @method static string userHash(?\Illuminate\Http\Request $request = null)
+ * @method static ManifestBuilder manifest()
+ * @method static ServiceWorkerBuilder serviceWorker()
+ * @method static bool isStandaloneRequest(?Request $request = null)
+ * @method static bool isStandaloneClient(?Request $request = null)
+ * @method static string userHash(?Request $request = null)
  * @method static array<string, mixed> clientConfig()
  * @method static array{script-src: list<string>, style-src: list<string>} cspHashes(string $view = 'pwa::maintenance')
  *

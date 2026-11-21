@@ -3,12 +3,12 @@
 use Illuminate\Support\Facades\File;
 use NyonCode\LaravelPwa\Pwa;
 
-afterEach(function () {
+afterEach(function (): void {
     File::delete(storage_path('framework/down'));
     File::delete(storage_path('framework/maintenance.php'));
 });
 
-it('puts the app down with the pwa maintenance screen', function () {
+it('puts the app down with the pwa maintenance screen', function (): void {
     $this->artisan('pwa:down', ['--message' => 'Nasazujeme novou verzi', '--retry' => 120])->assertSuccessful();
 
     $payload = json_decode(File::get(storage_path('framework/down')), true);
@@ -19,7 +19,7 @@ it('puts the app down with the pwa maintenance screen', function () {
         ->toContain('id="pwa-maintenance"');
 });
 
-it('computes the expected end from --until', function () {
+it('computes the expected end from --until', function (): void {
     $this->travelTo(now()->setTime(14, 0));
 
     $this->artisan('pwa:down', ['--until' => '14:30'])->assertSuccessful();
@@ -30,7 +30,7 @@ it('computes the expected end from --until', function () {
         ->and($payload['template'])->toContain('data-until="'.now()->setTime(14, 30)->toIso8601String().'"');
 });
 
-it('provides stable csp hashes for the prerendered screen', function () {
+it('provides stable csp hashes for the prerendered screen', function (): void {
     $first = app(Pwa::class)->cspHashes();
     $this->travel(5)->minutes();
     $second = app(Pwa::class)->cspHashes();
@@ -41,6 +41,6 @@ it('provides stable csp hashes for the prerendered screen', function () {
         ->and($first['script-src'][0])->toStartWith("'sha256-");
 });
 
-it('rejects an invalid --until', function () {
+it('rejects an invalid --until', function (): void {
     $this->artisan('pwa:down', ['--until' => 'kdysi'])->assertFailed();
 });

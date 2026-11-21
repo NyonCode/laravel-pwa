@@ -10,10 +10,10 @@ use NyonCode\LaravelPwa\Pwa;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Přidaný do skupiny `web`:
- *  - zapamatuje si, že session běží v nainstalované aplikaci (?source=pwa),
- *  - posílá X-PWA-User (hash) pro oddělení cache ve service workeru,
- *  - po odhlášení pošle X-PWA-Logout a Clear-Site-Data: "cache".
+ * Added to the `web` group:
+ *  - remembers that the session runs in the installed app (?source=pwa),
+ *  - sends X-PWA-User (a hash) to separate caches in the service worker,
+ *  - after logout, sends X-PWA-Logout and Clear-Site-Data: "cache".
  */
 class PwaWebMiddleware
 {
@@ -23,6 +23,9 @@ class PwaWebMiddleware
         protected Pwa $pwa,
     ) {}
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->query('source') === 'pwa' && $request->hasSession()) {
@@ -33,7 +36,7 @@ class PwaWebMiddleware
 
         if ($request->attributes->get(self::LOGOUT_ATTRIBUTE) === true) {
             $response->headers->set('X-PWA-Logout', '1');
-            // Jen "cache": "storage" by odregistroval SW a zrušil push odběr.
+            // Only "cache": "storage" would unregister the SW and cancel the push subscription.
             $response->headers->set('Clear-Site-Data', '"cache"');
             $response->headers->set('X-PWA-User', 'guest');
 

@@ -20,25 +20,25 @@ function nodeBinary(): ?string
  */
 function mcp(array $requests): array
 {
-    $input = implode("\n", array_map(fn (array $r) => json_encode(['jsonrpc' => '2.0', ...$r]), $requests))."\n";
+    $input = implode("\n", array_map(fn (array $r): string|false => json_encode(['jsonrpc' => '2.0', ...$r]), $requests))."\n";
     $process = new Process([nodeBinary(), packagePath('ai/mcp/server.mjs')], input: $input, timeout: 20);
     $process->mustRun();
 
     return array_map(
-        fn (string $line) => json_decode($line, true),
+        fn (string $line): mixed => json_decode($line, true),
         array_values(array_filter(explode("\n", $process->getOutput()))),
     );
 }
 
-it('passes the MCP self-test', function () {
+it('passes the MCP self-test', function (): void {
     $process = new Process([nodeBinary(), packagePath('ai/mcp/server.mjs'), '--self-test'], timeout: 20);
     $process->run();
 
     expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput())
         ->and($process->getOutput())->toContain('Self-test passed');
-})->skip(fn () => nodeBinary() === null, 'node is not installed');
+})->skip(fn (): bool => nodeBinary() === null, 'node is not installed');
 
-it('speaks MCP over stdio', function () {
+it('speaks MCP over stdio', function (): void {
     [$init, $list, $config, $commands, $api] = mcp([
         ['id' => 1, 'method' => 'initialize', 'params' => ['protocolVersion' => '2025-06-18']],
         ['id' => 2, 'method' => 'tools/list'],
@@ -55,30 +55,40 @@ it('speaks MCP over stdio', function () {
         ->and($config['result']['content'][0]['text'])->toContain("pwa.display.strategy` = `env('PWA_DISPLAY_STRATEGY', 'override')`")
         ->and($commands['result']['content'][0]['text'])->toContain('php artisan pwa:build')->toContain('pwa:doctor')
         ->and($api['result']['content'][0]['text'])->toContain('Pwa::cspHashes(string $view');
-})->skip(fn () => nodeBinary() === null, 'node is not installed');
+})->skip(fn (): bool => nodeBinary() === null, 'node is not installed');
 
-it('lists every documentation page that exists, with front matter', function () {
+it('lists every documentation page in every language, with front matter', function (): void {
     $nav = json_decode(File::get(packagePath('docs/nav.json')), true);
-    $pages = collect($nav)->flatMap(fn (array $section) => $section['pages']);
+    $pages = collect($nav['sections'])->flatMap(fn (array $section) => $section['pages']);
 
-    expect($pages)->not->toBeEmpty();
+    expect($pages)->not->toBeEmpty()
+        ->and(array_keys($nav['languages']))->toBe(['en', 'cs'])
+        ->and($nav['default'])->toBe('en');
 
-    foreach ($pages as $page) {
-        $file = packagePath('docs/'.$page);
-        expect(File::exists($file))->toBeTrue("docs/{$page} is listed in nav.json but missing");
+    foreach (array_keys($nav['languages']) as $language) {
+        foreach ($pages as $page) {
+            $file = packagePath("docs/{$language}/{$page}");
+            expect(File::exists($file))->toBeTrue("docs/{$language}/{$page} is listed in nav.json but missing");
 
-        $source = File::get($file);
-        expect($source)->toMatch('/^---\n.*title: .+\n.*description: .+\n.*---/sU', "docs/{$page} needs title and description");
+            expect(File::get($file))->toMatch('/^---\n.*title: .+\n.*description: .+\n.*---/sU', "docs/{$language}/{$page} needs title and description");
+        }
+
+        $onDisk = collect(File::files(packagePath("docs/{$language}")))
+            ->map(fn ($file) => $file->getFilename())
+            ->filter(fn (string $name): bool => str_ends_with($name, '.md'));
+
+        expect($onDisk->diff($pages)->values()->all())->toBe([], "every docs/{$language}/*.md must be listed in nav.json");
     }
-
-    $onDisk = collect(File::files(packagePath('docs')))
-        ->map(fn ($file) => $file->getFilename())
-        ->filter(fn (string $name) => str_ends_with($name, '.md'));
-
-    expect($onDisk->diff($pages)->values()->all())->toBe([], 'every docs/*.md must be listed in nav.json');
 });
 
-it('keeps the agent guide in step with the code', function () {
+it('passes the documentation check (parity, links, anchors)', function (): void {
+    $process = new Process([nodeBinary(), packagePath('scripts/docs-check.mjs')], timeout: 20);
+    $process->run();
+
+    expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput());
+})->skip(fn (): bool => nodeBinary() === null, 'node is not installed');
+
+it('keeps the agent guide in step with the code', function (): void {
     $guide = File::get(packagePath('ai/AGENTS.md'));
 
     foreach (File::files(packagePath('src/Console')) as $file) {
@@ -104,7 +114,7 @@ it('keeps the agent guide in step with the code', function () {
     }
 });
 
-it('installs and removes the agent support in an application', function () {
+it('installs and removes the agent support in an application', function (): void {
     $app = sys_get_temp_dir().'/pwa-ai-'.uniqid();
     File::ensureDirectoryExists($app.'/vendor/nyoncode');
     File::put($app.'/composer.json', '{"name":"acme/app"}');

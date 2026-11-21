@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace NyonCode\LaravelPwa;
 
+use Closure;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use NyonCode\LaravelPackageToolkit\Commands\InstallCommand;
@@ -16,12 +17,15 @@ use NyonCode\LaravelPwa\Console\DoctorCommand;
 use NyonCode\LaravelPwa\Console\DownCommand;
 use NyonCode\LaravelPwa\Console\EnableCommand;
 use NyonCode\LaravelPwa\Console\IconsCommand;
+use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Http\Middleware\CachePage;
 use NyonCode\LaravelPwa\Http\Middleware\PwaWebMiddleware;
 use NyonCode\LaravelPwa\Http\Middleware\RememberStandalone;
+use NyonCode\LaravelPwa\Listeners\LogTelemetry;
 use NyonCode\LaravelPwa\Listeners\MarkLogout;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
+use NyonCode\LaravelPwa\Testing\PwaAssertions;
 
 class PwaServiceProvider extends PackageServiceProvider
 {
@@ -43,6 +47,7 @@ class PwaServiceProvider extends PackageServiceProvider
                 'web' => [PwaWebMiddleware::class],
             ])
             ->hasEvent(Logout::class, MarkLogout::class)
+            ->hasEvent(TelemetryReceived::class, LogTelemetry::class)
             ->hasCommands([
                 BuildCommand::class,
                 ClearCommand::class,
@@ -53,16 +58,16 @@ class PwaServiceProvider extends PackageServiceProvider
                 IconsCommand::class,
             ])
             ->hasOptimizeCommands(optimize: 'pwa:build', clear: 'pwa:clear', key: 'pwa')
-            ->hasInstallCommand(fn (InstallCommand $command) => $command
+            ->hasInstallCommand(fn (InstallCommand $command): InstallCommand => $command
                 ->publishConfig()
                 ->afterInstallation(function (InstallCommand $command): void {
                     $command->newLine();
-                    $command->line('  Další kroky:');
-                    $command->line('  1. Do <head> layoutu vložte <x-pwa::head/> (a případně <x-pwa::nav/>, <x-pwa::install/>).');
-                    $command->line('  2. Ikony: php artisan pwa:icons resources/pwa/icon.png');
-                    $command->line('  3. Na login routu přidejte middleware pwa.remember, na offline stránky pwa.cache.');
-                    $command->line('  4. Do deploy skriptu za `npm run build` přidejte `php artisan pwa:build`.');
-                    $command->line('  5. Zkontrolujte vše: php artisan pwa:doctor');
+                    $command->line('  Next steps:');
+                    $command->line('  1. Add <x-pwa::head/> to the <head> of your layout (optionally also <x-pwa::nav/> and <x-pwa::install/>).');
+                    $command->line('  2. Icons: php artisan pwa:icons resources/pwa/icon.png');
+                    $command->line('  3. Add the pwa.remember middleware to your login route and pwa.cache to the pages that should work offline.');
+                    $command->line('  4. Add `php artisan pwa:build` to your deploy script after `npm run build`.');
+                    $command->line('  5. Check everything: php artisan pwa:doctor');
                 }));
     }
 
@@ -72,9 +77,9 @@ class PwaServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(Pwa::class);
         $this->app->singleton(ManifestBuilder::class);
-        $this->app->singleton(ServiceWorkerBuilder::class, fn () => new ServiceWorkerBuilder(
-            runtimePath: dirname(__DIR__).'/resources/sw/runtime.js',
-            killSwitchPath: dirname(__DIR__).'/resources/sw/kill-switch.js',
+        $this->app->singleton(ServiceWorkerBuilder::class, fn (): ServiceWorkerBuilder => new ServiceWorkerBuilder(
+            runtimePath: __DIR__.'/../resources/sw/runtime.js',
+            killSwitchPath: __DIR__.'/../resources/sw/kill-switch.js',
         ));
     }
 
@@ -82,20 +87,22 @@ class PwaServiceProvider extends PackageServiceProvider
     {
         parent::bootedPackage();
 
-        // Nápověda o režimu zobrazení z klienta: nešifrovaná, nic citlivého.
+        // Display-mode hint from the client: unencrypted, nothing sensitive.
         EncryptCookies::except([Pwa::DISPLAY_COOKIE]);
+
+        PwaAssertions::register();
     }
 
     /**
-     * @return array<string, string|\Closure>
+     * @return array<string, string|Closure>
      */
     public function aboutData(): array
     {
         return [
-            'Enabled' => fn () => app(Pwa::class)->enabled() ? '<fg=green;options=bold>ENABLED</>' : '<fg=yellow;options=bold>DISABLED</>',
-            'Kill switch' => fn () => app(Pwa::class)->killed() ? '<fg=red;options=bold>ACTIVE</>' : 'off',
-            'Service worker' => fn () => app(ServiceWorkerBuilder::class)->isCompiled() ? 'compiled' : '<fg=yellow>not built (pwa:build)</>',
-            'Display' => fn () => (string) config('pwa.display.strategy', 'override'),
+            'Enabled' => fn (): string => app(Pwa::class)->enabled() ? '<fg=green;options=bold>ENABLED</>' : '<fg=yellow;options=bold>DISABLED</>',
+            'Kill switch' => fn (): string => app(Pwa::class)->killed() ? '<fg=red;options=bold>ACTIVE</>' : 'off',
+            'Service worker' => fn (): string => app(ServiceWorkerBuilder::class)->isCompiled() ? 'compiled' : '<fg=yellow>not built (pwa:build)</>',
+            'Display' => fn (): string => config()->string('pwa.display.strategy', 'override'),
         ];
     }
 }

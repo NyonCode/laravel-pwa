@@ -1,8 +1,8 @@
 /*
- * nyoncode/laravel-pwa — nouzové vypnutí (php artisan pwa:disable).
+ * nyoncode/laravel-pwa — kill switch (php artisan pwa:disable).
  *
- * Nahradí běžný service worker, smaže cache balíčku, odregistruje se
- * a otevřená okna znovu načte ze sítě. Nic dalšího nedělá.
+ * Replaces the regular service worker, deletes the package's caches, unregisters
+ * itself and reloads open windows from the network. It does nothing else.
  */
 self.addEventListener('install', () => self.skipWaiting());
 

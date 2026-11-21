@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use NyonCode\LaravelPwa\Pwa;
 
-beforeEach(function () {
-    Route::middleware('web')->group(function () {
-        Route::post('/login-test', fn (Request $request) => ['remember' => $request->boolean('remember')])
+beforeEach(function (): void {
+    Route::middleware('web')->group(function (): void {
+        Route::post('/login-test', fn (Request $request): array => ['remember' => $request->boolean('remember')])
             ->middleware('pwa.remember');
-        Route::get('/page', fn () => 'page');
-        Route::get('/cached-page', fn () => 'cached')->middleware('pwa.cache');
-        Route::post('/logout-test', function () {
+        Route::get('/page', fn (): string => 'page');
+        Route::get('/cached-page', fn (): string => 'cached')->middleware('pwa.cache');
+        Route::post('/logout-test', function (): string {
             Auth::guard('web')->logout();
 
             return 'bye';
@@ -30,7 +30,7 @@ function testUser(): User
     return $user;
 }
 
-it('returns a fresh csrf token and anonymous user hash', function () {
+it('returns a fresh csrf token and anonymous user hash', function (): void {
     $this->getJson('/pwa/session')
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
@@ -43,7 +43,7 @@ it('returns a fresh csrf token and anonymous user hash', function () {
         ->assertJsonMissing(['user' => '42']);
 });
 
-it('forces remember-me in the installed app', function (array $headers, array $cookies, string $uri, bool $expected) {
+it('forces remember-me in the installed app', function (array $headers, array $cookies, string $uri, bool $expected): void {
     $response = $this->withHeaders($headers)
         ->withUnencryptedCookies($cookies)
         ->withoutMiddleware(ValidateCsrfToken::class)
@@ -59,7 +59,7 @@ it('forces remember-me in the installed app', function (array $headers, array $c
     'nic' => [[], [], '/login-test', false],
 ]);
 
-it('does not force remember-me from a session marked by a link', function () {
+it('does not force remember-me from a session marked by a link', function (): void {
     $this->get('/page?source=pwa')->assertSessionHas('pwa.standalone', true);
 
     $this->withoutMiddleware(ValidateCsrfToken::class)
@@ -67,14 +67,14 @@ it('does not force remember-me from a session marked by a link', function () {
         ->assertJson(['remember' => false]);
 });
 
-it('keeps remember-me the user explicitly turned off', function (mixed $value) {
+it('keeps remember-me the user explicitly turned off', function (mixed $value): void {
     $this->withHeaders(['X-PWA-Display' => 'standalone'])
         ->withoutMiddleware(ValidateCsrfToken::class)
         ->post('/login-test', ['remember' => $value])
         ->assertJson(['remember' => false]);
 })->with(['0', 'false', 'off', false]);
 
-it('does not force remember-me when disabled', function () {
+it('does not force remember-me when disabled', function (): void {
     config(['pwa.session.standalone_remember' => false]);
 
     $this->withHeaders(['X-PWA-Display' => 'standalone'])
@@ -83,7 +83,7 @@ it('does not force remember-me when disabled', function () {
         ->assertJson(['remember' => false]);
 });
 
-it('sends the user hash for cache separation', function () {
+it('sends the user hash for cache separation', function (): void {
     $this->get('/page')->assertHeader('X-PWA-User', 'guest');
 
     $hash = $this->actingAs(testUser())->get('/page')->headers->get('X-PWA-User');
@@ -91,7 +91,7 @@ it('sends the user hash for cache separation', function () {
     expect($hash)->toHaveLength(16)->not->toBe('guest')->not->toContain('42');
 });
 
-it('tells the service worker about logout without clearing storage', function () {
+it('tells the service worker about logout without clearing storage', function (): void {
     $this->actingAs(testUser())
         ->withoutMiddleware(ValidateCsrfToken::class)
         ->post('/logout-test')
@@ -100,13 +100,13 @@ it('tells the service worker about logout without clearing storage', function ()
         ->assertHeader('X-PWA-User', 'guest');
 });
 
-it('marks pages that may be cached offline', function () {
+it('marks pages that may be cached offline', function (): void {
     $this->get('/cached-page')->assertHeader('X-PWA-Cache', 'allow');
     $this->get('/page')->assertHeaderMissing('X-PWA-Cache');
 });
 
-it('logs telemetry from the service worker without csrf', function () {
-    Log::shouldReceive('warning')->once()->withArgs(fn ($message, $context) => str_contains($message, 'precache') && $context['source'] === 'sw');
+it('logs telemetry from the service worker without csrf', function (): void {
+    Log::shouldReceive('warning')->once()->withArgs(fn ($message, $context): bool => str_contains($message, 'precache') && $context['source'] === 'sw');
 
     $this->postJson('/pwa/telemetry', [
         'source' => 'sw',
@@ -114,11 +114,11 @@ it('logs telemetry from the service worker without csrf', function () {
     ])->assertStatus(202);
 });
 
-it('rejects invalid telemetry', function () {
+it('rejects invalid telemetry', function (): void {
     $this->postJson('/pwa/telemetry', ['source' => 'evil', 'events' => []])->assertUnprocessable();
 });
 
-it('treats ?source=pwa as standalone only outside security decisions', function () {
+it('treats ?source=pwa as standalone only outside security decisions', function (): void {
     $pwa = app(Pwa::class);
     $link = Request::create('/?source=pwa');
     $client = Request::create('/', server: ['HTTP_X_PWA_DISPLAY' => 'standalone']);

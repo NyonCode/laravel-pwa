@@ -27,11 +27,11 @@ node ai/mcp/server.mjs                # speak MCP on stdin/stdout
 
 | Tool | Source of the answer |
 |---|---|
-| `search_docs`, `list_docs`, `get_doc` | `docs/*.md` listed in `docs/nav.json`, plus `ai/AGENTS.md` (`agent-guide`) |
+| `search_docs`, `list_docs`, `get_doc` | `docs/en/*.md` listed in `docs/nav.json`, plus `ai/AGENTS.md` (`agent-guide`) |
 | `list_api`, `describe_api` | public methods parsed from `src/Pwa.php`, `src/Manifest/*`, `src/ServiceWorker/*`, `src/Http/Middleware/*` |
 | `describe_config` | keys of `config/pwa.php` (one key per line, Pint-formatted) |
 | `list_commands` | `$signature` / `$description` of `src/Console/*` |
-| `describe_client` | `window.Pwa` members and `emit('…')` events in `resources/js/pwa.js`, plus `docs/client.md` |
+| `describe_client` | `window.Pwa` members and `emit('…')` events in `resources/js/pwa.js`, plus `docs/en/client.md` |
 
 It depends on two conventions that degrade it quietly if broken:
 
@@ -43,7 +43,7 @@ It depends on two conventions that degrade it quietly if broken:
 ## Maintaining this — the rule
 
 A change to a public method, config key, route, middleware, command, client member or event touches
-**`docs/` and `ai/AGENTS.md` in the same commit**. Signatures, config defaults, command signatures
+**`docs/en`, `docs/cs` and `ai/AGENTS.md` in the same commit**. Signatures, config defaults, command signatures
 and client members are read from source by the server, but prose is not, and nothing in Pest or
 PHPStan notices when it goes stale. `tests/Feature/AiTest.php` runs the self-test and checks that
 every command, config section and client member is mentioned in `ai/AGENTS.md`.

@@ -9,11 +9,14 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Vite;
+use NyonCode\LaravelPwa\Events\KillSwitchActivated;
+use NyonCode\LaravelPwa\Events\KillSwitchDeactivated;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
+use NyonCode\LaravelPwa\Support\Value;
 
 /**
- * Vstupní bod balíčku: stav, konfigurace pro klienta, nouzové vypnutí a CSP.
+ * Package entry point: state, client config, kill switch and CSP.
  */
 class Pwa
 {
@@ -30,15 +33,16 @@ class Pwa
     ) {}
 
     /**
-     * Je service worker v této instalaci zapnutý (config) a není nouzově vypnutý?
+     * Is the service worker enabled in this installation (config) and the kill switch inactive?
      */
     public function enabled(): bool
     {
-        return (bool) config('pwa.enabled', true) && ! $this->killed();
+        // PWA_ENABLED=1 arrives as the string "1", so this is not config()->boolean().
+        return filter_var(config('pwa.enabled', true), FILTER_VALIDATE_BOOL) && ! $this->killed();
     }
 
     /**
-     * Je aktivní nouzové vypnutí (pwa:disable)?
+     * Is the kill switch active (pwa:disable)?
      */
     public function killed(): bool
     {
@@ -48,11 +52,15 @@ class Pwa
     public function disable(): void
     {
         $this->killSwitchStore()->forever(self::KILL_SWITCH_KEY, true);
+
+        KillSwitchActivated::dispatch();
     }
 
     public function enable(): void
     {
         $this->killSwitchStore()->forget(self::KILL_SWITCH_KEY);
+
+        KillSwitchDeactivated::dispatch();
     }
 
     public function manifest(): ManifestBuilder
@@ -66,7 +74,7 @@ class Pwa
     }
 
     /**
-     * Běží požadavek z nainstalované aplikace (standalone, minimal-ui, WCO …)?
+     * Does the request come from the installed app (standalone, minimal-ui, WCO …)?
      */
     public function isStandaloneRequest(?Request $request = null): bool
     {
@@ -84,10 +92,10 @@ class Pwa
     }
 
     /**
-     * Hlásí nainstalovanou aplikaci sám klient (hlavička X-PWA-Display nebo cookie pwa_display)?
+     * Does the client itself report the installed app (X-PWA-Display header or pwa_display cookie)?
      *
-     * Na rozdíl od isStandaloneRequest() nebere v úvahu ?source=pwa ani označení session:
-     * ty se dají podstrčit odkazem, proto se podle nich nesmí rozhodovat o bezpečnosti.
+     * Unlike isStandaloneRequest(), it ignores ?source=pwa and the session flag:
+     * a link can plant those, so security decisions must not rely on them.
      */
     public function isStandaloneClient(?Request $request = null): bool
     {
@@ -99,7 +107,7 @@ class Pwa
     }
 
     /**
-     * Anonymní identita uživatele pro oddělení cache ve SW. Nikdy ne ID samotné.
+     * Anonymous user identity that separates caches in the SW. Never the ID itself.
      */
     public function userHash(?Request $request = null): string
     {
@@ -110,46 +118,46 @@ class Pwa
             return 'guest';
         }
 
-        return substr(hash_hmac('sha256', (string) $user->getAuthIdentifier(), (string) config('app.key')), 0, 16);
+        return substr(hash_hmac('sha256', Value::string($user->getAuthIdentifier()), config()->string('app.key')), 0, 16);
     }
 
     /**
-     * Konfigurace předaná klientskému skriptu (<x-pwa::head/>).
+     * Config passed to the client script (<x-pwa::head/>).
      *
      * @return array<string, mixed>
      */
     public function clientConfig(): array
     {
-        $prefix = '/'.trim((string) config('pwa.route_prefix', 'pwa'), '/');
+        $prefix = '/'.trim(config()->string('pwa.route_prefix', 'pwa'), '/');
 
         return [
             'enabled' => $this->enabled(),
             'killed' => $this->killed(),
-            'sw' => (string) config('pwa.sw.url', '/sw.js'),
-            'scope' => (string) config('pwa.scope', '/'),
-            'startUrl' => (string) config('pwa.start_url', '/'),
+            'sw' => config()->string('pwa.sw.url', '/sw.js'),
+            'scope' => config()->string('pwa.scope', '/'),
+            'startUrl' => config()->string('pwa.start_url', '/'),
             'session' => [
                 'url' => $prefix.'/session',
-                'keepalive' => (int) config('pwa.session.keepalive_minutes', 10),
-                'refreshCsrf' => (bool) config('pwa.session.refresh_csrf', true),
+                'keepalive' => config()->integer('pwa.session.keepalive_minutes', 10),
+                'refreshCsrf' => config()->boolean('pwa.session.refresh_csrf', true),
             ],
             'ping' => $prefix.'/ping',
             'telemetry' => config('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'install' => [
-                'minVisits' => (int) config('pwa.install.min_visits', 2),
-                'dismissDays' => (int) config('pwa.install.dismiss_days', 30),
-                'iosHint' => (bool) config('pwa.install.ios_hint', true),
+                'minVisits' => config()->integer('pwa.install.min_visits', 2),
+                'dismissDays' => config()->integer('pwa.install.dismiss_days', 30),
+                'iosHint' => config()->boolean('pwa.install.ios_hint', true),
             ],
             'nav' => [
-                'enabled' => (bool) config('pwa.desktop_nav.enabled', true),
-                'minWidth' => (int) config('pwa.desktop_nav.min_width', 900),
+                'enabled' => config()->boolean('pwa.desktop_nav.enabled', true),
+                'minWidth' => config()->integer('pwa.desktop_nav.min_width', 900),
             ],
             'adapters' => [
-                'livewire' => (bool) config('pwa.adapters.livewire', true),
-                'inertia' => (bool) config('pwa.adapters.inertia', true),
-                'reloadOnResume' => (bool) config('pwa.adapters.reload_on_resume', false),
+                'livewire' => config()->boolean('pwa.adapters.livewire', true),
+                'inertia' => config()->boolean('pwa.adapters.inertia', true),
+                'reloadOnResume' => config()->boolean('pwa.adapters.reload_on_resume', false),
             ],
-            'offlineUrl' => config('pwa.offline.enabled', true) ? (string) config('pwa.offline.route', '/offline') : null,
+            'offlineUrl' => config('pwa.offline.enabled', true) ? config()->string('pwa.offline.route', '/offline') : null,
             'i18n' => [
                 'offline' => __('pwa::messages.offline_bar'),
                 'maintenance' => __('pwa::messages.maintenance_bar'),
@@ -167,9 +175,10 @@ class Pwa
     }
 
     /**
-     * SHA-256 hashe inline skriptů a stylů předrenderované obrazovky údržby,
-     * pro CSP bez nonce (script-src / style-src).
+     * SHA-256 hashes of the inline scripts and styles of the prerendered maintenance screen,
+     * for a CSP without a nonce (script-src / style-src).
      *
+     * @param  view-string  $view
      * @return array{script-src: list<string>, style-src: list<string>}
      */
     public function cspHashes(string $view = 'pwa::maintenance'): array

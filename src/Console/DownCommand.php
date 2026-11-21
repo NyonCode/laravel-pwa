@@ -9,18 +9,18 @@ use Illuminate\Support\Carbon;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
-#[AsCommand(name: 'pwa:down', description: 'Režim údržby s obrazovkou PWA (wrapper nad artisan down)')]
+#[AsCommand(name: 'pwa:down', description: 'Put the application into maintenance mode with the PWA screen (wraps artisan down)')]
 class DownCommand extends Command
 {
     protected $signature = 'pwa:down
-        {--message= : Zpráva na obrazovce údržby}
-        {--until= : Očekávaný konec, např. "15:30" nebo "2026-11-21 08:00"}
-        {--retry= : Sekundy pro hlavičku Retry-After a interval kontrol}
-        {--refresh= : Hlavička Refresh v sekundách}
-        {--secret= : Tajná fráze pro obejití údržby}
-        {--with-secret : Vygenerovat tajnou frázi}';
+        {--message= : The message on the maintenance screen}
+        {--until= : The expected end, e.g. "15:30" or "2026-11-21 08:00"}
+        {--retry= : Seconds for the Retry-After header and the check interval}
+        {--refresh= : The Refresh header in seconds}
+        {--secret= : The secret phrase that bypasses maintenance mode}
+        {--with-secret : Generate a secret phrase}';
 
-    protected $description = 'Režim údržby s obrazovkou PWA (wrapper nad artisan down)';
+    protected $description = 'Put the application into maintenance mode with the PWA screen (wraps artisan down)';
 
     public function handle(): int
     {
@@ -30,7 +30,7 @@ class DownCommand extends Command
             try {
                 $until = Carbon::parse($this->option('until'));
             } catch (Throwable) {
-                $this->components->error('Neplatný čas v --until.');
+                $this->components->error('Invalid time in --until.');
 
                 return self::FAILURE;
             }
@@ -38,13 +38,11 @@ class DownCommand extends Command
 
         $retry = $this->option('retry');
 
-        if ($retry === null) {
-            $retry = $until !== null
-                ? max(15, min(300, (int) now()->diffInSeconds($until, false)))
-                : (int) config('pwa.maintenance.retry', 60);
-        }
+        $retry ??= $until instanceof Carbon
+            ? max(15, min(300, (int) now()->diffInSeconds($until, false)))
+            : config()->integer('pwa.maintenance.retry', 60);
 
-        // Šablona se předrenderuje v tomto procesu, proto stačí upravit config.
+        // The template is prerendered in this process, so changing the config is enough.
         config([
             'pwa.maintenance.message' => $this->option('message') ?: config('pwa.maintenance.message'),
             'pwa.maintenance.until' => $until?->toIso8601String(),
@@ -57,7 +55,7 @@ class DownCommand extends Command
             '--refresh' => $this->option('refresh') ?? config('pwa.maintenance.refresh'),
             '--secret' => $this->option('secret'),
             '--with-secret' => $this->option('with-secret') ?: null,
-        ], static fn (mixed $value): bool => $value !== null && $value !== false && $value !== '');
+        ], static fn (mixed $value): bool => ! in_array($value, [null, false, ''], true));
 
         return $this->call('down', $arguments);
     }

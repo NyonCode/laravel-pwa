@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Http\Request;
 use NyonCode\LaravelPwa\Manifest\DisplayStrategy;
 
-it('falls back to override for an unknown strategy', function () {
+it('falls back to override for an unknown strategy', function (): void {
     config(['pwa.display.strategy' => 'nonsense']);
 
     expect(DisplayStrategy::fromConfig())->toBe(DisplayStrategy::Override);
 });
 
-it('detects desktops', function (array $server, bool $desktop) {
+it('detects desktops', function (array $server, bool $desktop): void {
     $request = Request::create('/', 'GET', server: $server);
 
     expect(DisplayStrategy::isDesktop($request))->toBe($desktop);

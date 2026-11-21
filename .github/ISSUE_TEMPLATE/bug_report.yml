@@ -1,0 +1,40 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security issues: please follow SECURITY.md instead of opening a public issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal route, config and browser steps. A failing test is the best reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `php artisan pwa:doctor`
+      render: text
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: laravel-pwa 0.2.0, Laravel 13.1, PHP 8.4
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and platform
+      placeholder: Safari 26 on iOS (installed app), Chrome 141 on Windows
+    validations:
+      required: true

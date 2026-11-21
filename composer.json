@@ -1,6 +1,6 @@
 {
     "name": "nyoncode/laravel-pwa",
-    "description": "Progressive Web App pro Laravel: manifest, service worker, offline, údržba a trvalé přihlášení",
+    "description": "Production-grade PWA for Laravel: offline-first service worker with per-user caches and cache rules, persistent login, maintenance screen, kill switch and per-tenant manifests.",
     "type": "library",
     "keywords": [
         "laravel",
@@ -8,12 +8,26 @@
         "progressive-web-app",
         "service-worker",
         "offline",
+        "offline-first",
         "manifest",
-        "nyoncode",
-        "mcp",
-        "ai"
+        "web-app-manifest",
+        "installable",
+        "cache",
+        "livewire",
+        "inertia",
+        "ios",
+        "multi-tenant",
+        "maintenance-mode",
+        "mcp"
     ],
     "license": "MIT",
+    "homepage": "https://github.com/NyonCode/laravel-pwa",
+    "support": {
+        "issues": "https://github.com/NyonCode/laravel-pwa/issues",
+        "source": "https://github.com/NyonCode/laravel-pwa",
+        "docs": "https://nyoncode.github.io/laravel-pwa/",
+        "security": "https://github.com/NyonCode/laravel-pwa/security/policy"
+    },
     "authors": [
         {
             "name": "Ondřej Nyklíček",
@@ -27,12 +41,14 @@
         "nyoncode/laravel-package-toolkit": "^2.5"
     },
     "require-dev": {
+        "driftingly/rector-laravel": "^2.7",
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.24",
         "nyoncode/laravel-package-console": "^1.0",
         "orchestra/testbench": "^10.0|^11.0",
         "pestphp/pest": "^3.8|^4.0",
-        "pestphp/pest-plugin-laravel": "^3.2|^4.0"
+        "pestphp/pest-plugin-laravel": "^3.2|^4.0",
+        "rector/rector": "^2.8"
     },
     "autoload": {
         "psr-4": {
@@ -53,9 +69,21 @@
     },
     "scripts": {
         "test": "vendor/bin/pest",
-        "format": "vendor/bin/pint",
+        "test:coverage": "php -d pcov.enabled=1 vendor/bin/pest --coverage --min=90",
+        "test:js": "npm run test:js",
+        "test:e2e": "npm run test:e2e",
         "analyse": "vendor/bin/phpstan analyse",
-        "mcp:self-test": "node ai/mcp/server.mjs --self-test"
+        "format": "vendor/bin/pint",
+        "lint": "vendor/bin/pint --test",
+        "rector": "vendor/bin/rector --dry-run",
+        "mcp:self-test": "node ai/mcp/server.mjs --self-test",
+        "check": [
+            "@lint",
+            "@rector",
+            "@analyse",
+            "@test",
+            "@mcp:self-test"
+        ]
     },
     "config": {
         "sort-packages": true,
@@ -65,12 +93,23 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "homepage": "https://github.com/NyonCode/laravel-pwa",
     "suggest": {
-        "ext-gd": "Generování ikon příkazem pwa:icons",
-        "ext-imagick": "Generování ikon ze SVG příkazem pwa:icons"
+        "ext-gd": "Required to generate icons from PNG with pwa:icons",
+        "ext-imagick": "Required to generate icons from SVG with pwa:icons"
     },
     "bin": [
         "bin/pwa-ai"
-    ]
+    ],
+    "scripts-descriptions": {
+        "test": "Run the Pest suite.",
+        "test:coverage": "Run Pest with coverage (pcov) and fail below 90 %.",
+        "test:js": "Run the service worker and client unit tests (node:test).",
+        "test:e2e": "Run the Playwright browser tests against the workbench.",
+        "analyse": "Run PHPStan / Larastan.",
+        "format": "Format the code with Pint.",
+        "lint": "Check code style with Pint.",
+        "rector": "Check for Rector refactorings without applying them.",
+        "mcp:self-test": "Parse docs, source and config with the bundled MCP server.",
+        "check": "Run every PHP check (style, Rector, PHPStan, Pest, MCP)."
+    }
 }

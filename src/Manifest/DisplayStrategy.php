@@ -7,22 +7,24 @@ namespace NyonCode\LaravelPwa\Manifest;
 use Illuminate\Http\Request;
 
 /**
- * Rozhoduje, jaký režim zobrazení dostane manifest.
+ * Decides which display mode the manifest gets.
  */
 enum DisplayStrategy: string
 {
-    /** display + display_override, bez detekce zařízení (výchozí). */
+    /** display + display_override, no device detection (default). */
     case Override = 'override';
 
-    /** Server rozhodne podle platformy (Sec-CH-UA-Platform / User-Agent). */
+    /** The server decides by platform (Sec-CH-UA-Platform / User-Agent). */
     case Adaptive = 'adaptive';
 
-    /** Jen display. */
+    /** Only display. */
     case Fixed = 'fixed';
 
     public static function fromConfig(): self
     {
-        return self::tryFrom((string) config('pwa.display.strategy', 'override')) ?? self::Override;
+        $strategy = config('pwa.display.strategy', 'override');
+
+        return (is_string($strategy) ? self::tryFrom($strategy) : null) ?? self::Override;
     }
 
     /**
@@ -30,25 +32,22 @@ enum DisplayStrategy: string
      */
     public function resolve(?Request $request = null): array
     {
-        $value = (string) config('pwa.display.value', 'standalone');
+        $value = config()->string('pwa.display.value', 'standalone');
 
         return match ($this) {
             self::Fixed => ['display' => $value],
-            self::Override => array_filter([
-                'display' => $value,
-                'display_override' => array_values((array) config('pwa.display.override', [])) ?: null,
-            ]),
+            self::Override => ['display' => $value, ...$this->overrideModes()],
             self::Adaptive => [
                 'display' => self::isDesktop($request ?? request())
-                    ? (string) config('pwa.display.desktop', 'minimal-ui')
+                    ? config()->string('pwa.display.desktop', 'minimal-ui')
                     : $value,
             ],
         };
     }
 
     /**
-     * Desktop = Windows, macOS, Linux, ChromeOS. Safari se hlásí vždy jako Mac
-     * (iPad také), proto bez Client Hints rozhoduje jen Windows / Linux / CrOS.
+     * Desktop = Windows, macOS, Linux, ChromeOS. Safari always reports itself as a Mac
+     * (the iPad too), so without Client Hints only Windows / Linux / CrOS are detected.
      */
     public static function isDesktop(Request $request): bool
     {
@@ -59,6 +58,16 @@ enum DisplayStrategy: string
         }
 
         return (bool) preg_match('/Windows NT|X11; Linux|CrOS/', (string) $request->userAgent());
+    }
+
+    /**
+     * @return array{display_override?: list<string>}
+     */
+    protected function overrideModes(): array
+    {
+        $modes = array_values(array_filter(config()->array('pwa.display.override', []), is_string(...)));
+
+        return $modes === [] ? [] : ['display_override' => $modes];
     }
 
     public function varies(): bool

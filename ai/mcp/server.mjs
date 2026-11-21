@@ -2,8 +2,8 @@
 /**
  * MCP server for nyoncode/laravel-pwa.
  *
- * Answers questions about the package from the *installed* copy — the docs in
- * `docs/`, the agent guide in `ai/AGENTS.md`, signatures and docblocks parsed
+ * Answers questions about the package from the *installed* copy — the English
+ * docs in `docs/en/`, the agent guide in `ai/AGENTS.md`, signatures and docblocks parsed
  * out of `src/`, the keys of `config/pwa.php`, the artisan command signatures
  * and the browser client in `resources/js/pwa.js`. An agent asking
  * `describe_config` gets the default as it exists in the release it is coding
@@ -26,7 +26,8 @@ import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.resolve(here, '..', '..')
-const docsDir = path.join(packageRoot, 'docs')
+const navFile = path.join(packageRoot, 'docs', 'nav.json')
+const docsDir = path.join(packageRoot, 'docs', 'en')
 const srcDir = path.join(packageRoot, 'src')
 const guideFile = path.join(packageRoot, 'ai', 'AGENTS.md')
 const configFile = path.join(packageRoot, 'config', 'pwa.php')
@@ -75,12 +76,12 @@ function parseFrontMatter(source) {
  * The published pages, in navigation order.
  *
  * `docs/nav.json` is the table of contents; a page missing from it is not
- * served. If it cannot be read, every `.md` in `docs/` is served instead.
+ * served. If it cannot be read, every `.md` in `docs/en/` is served instead.
  */
 function publishedPages() {
   try {
-    const nav = JSON.parse(fs.readFileSync(path.join(docsDir, 'nav.json'), 'utf8'))
-    const files = nav.flatMap((section) => section.pages ?? [])
+    const nav = JSON.parse(fs.readFileSync(navFile, 'utf8'))
+    const files = (nav.sections ?? []).flatMap((section) => section.pages ?? [])
 
     return files.length > 0 ? files : null
   } catch {
@@ -141,6 +142,10 @@ const API_GROUPS = [
   { owner: 'ManifestBuilder', file: path.join(srcDir, 'Manifest', 'ManifestBuilder.php'), calledFrom: 'Pwa::manifest() — usually in AppServiceProvider::boot()' },
   { owner: 'DisplayStrategy', file: path.join(srcDir, 'Manifest', 'DisplayStrategy.php'), calledFrom: 'config pwa.display.strategy (enum override|adaptive|fixed)' },
   { owner: 'ServiceWorkerBuilder', file: path.join(srcDir, 'ServiceWorker', 'ServiceWorkerBuilder.php'), calledFrom: 'Pwa::serviceWorker() — used by pwa:build and the /sw.js route' },
+  { owner: 'Contracts', dir: path.join(srcDir, 'Contracts'), calledFrom: 'implement in the app: ManifestResolver (resolve), ManifestParameters (parameters); register with Pwa::manifest()->resolveUsing() or config pwa.manifest.resolvers' },
+  { owner: 'InteractsWithPwa', file: path.join(srcDir, 'Testing', 'InteractsWithPwa.php'), calledFrom: 'trait for the app tests/TestCase.php; TestResponse macros assertPwaCacheable(), assertNotPwaCacheable(), assertPwaLogout(), assertPwaUser($user), assertValidManifest($strict) are registered by the package' },
+  { owner: 'ManifestValidator', file: path.join(srcDir, 'Manifest', 'ManifestValidator.php'), calledFrom: 'app(ManifestValidator::class)->validate($manifest) — also behind assertValidManifest()' },
+  { owner: 'CacheRule', file: path.join(srcDir, 'ServiceWorker', 'CacheRule.php'), calledFrom: 'Pwa::serviceWorker()->cache($pattern) — fluent rule; also built from config pwa.cache.rules' },
   { owner: 'Middleware', dir: path.join(srcDir, 'Http', 'Middleware'), calledFrom: 'route middleware pwa.remember, pwa.cache; PwaWebMiddleware is appended to the web group' },
 ]
 
