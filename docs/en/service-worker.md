@@ -38,10 +38,37 @@ file. The precache list contains the hashed file names from Vite, so:
 
 `pwa:doctor` reports an error when the built SW does not match the current config or build.
 
+## What is precached
+
+| `sw.precache_vite` | Files from the Vite manifest |
+| --- | --- |
+| `imports` (default) | entry points, every chunk they import statically, their CSS and assets (fonts, images) |
+| `entries` | entry points and their CSS only |
+| `all` | every chunk, including dynamic imports (`import()`) |
+| `false` | nothing from Vite |
+
+Always precached: the offline page, the browser client (`/pwa/client.js?v=…`, also served offline
+although `/pwa/*` is never cached) and `offline.precache`. With `imports`, a page that loads its
+JavaScript offline also gets the shared vendor chunk it needs; with `entries`, that chunk arrives only
+once the page was opened online.
+
+```php
+// config/pwa.php
+'sw' => [
+    'precache_vite' => 'imports',
+    'precache_exclude' => ['assets/*.mp4', 'assets/hero-*.jpg'], // relative to the build directory
+    'precache_warn_kb' => 5120,
+],
+```
+
+Every visitor downloads the whole precache when the worker installs. `pwa:build` prints its size and
+warns above `precache_warn_kb`; `pwa:doctor` reports it too. Files left out are still cached
+cache-first on their first use (`/build/*`).
+
 ## Lifecycle
 
-1. **install**: downloads the precache (offline page, `offline.precache`, entries from the Vite
-   manifest). Files are fetched one by one, so a missing file does not block installation (the
+1. **install**: downloads the [precache](#what-is-precached) (offline page, the client,
+   `offline.precache`, files from the Vite manifest). Files are fetched one by one, so a missing file does not block installation (the
    error goes to telemetry).
 2. **waiting**: the new version waits while the old one is running. The client shows an update bar
    ("A new version is available.").

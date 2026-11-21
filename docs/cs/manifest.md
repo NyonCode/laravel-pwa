@@ -34,18 +34,21 @@ Pwa::manifest()
     ->windowControlsOverlay()
     ->tabbed(['home_tab' => ['scope_patterns' => [['pathname' => '/']]]])
     ->launchHandler(['navigate-existing', 'auto'])
-    ->set('categories', ['business', 'productivity']);
+    ->screenshot('/pwa/screenshots/desktop.png', '1280x800', 'wide', 'Přehled')
+    ->category('business', 'productivity');
 ```
 
 | Metoda | Výsledek v manifestu | Kde funguje |
 | --- | --- | --- |
-| `shortcut(name, url, icon?, description?)` | přidá do `shortcuts` | Android, Chromium desktop |
+| `shortcut(name, url, icon?, description?, iconSizes = '96x96')` | přidá do `shortcuts` | Android, Chromium desktop |
 | `shareTarget(action, method, accept, filesField)` | `share_target` (GET, POST, s soubory `multipart/form-data`) | Android, ChromeOS, Windows |
 | `fileHandler(action, accept, name?)` | přidá do `file_handlers` | Chromium desktop |
 | `protocolHandler(protocol, url)` | přidá do `protocol_handlers` | Chromium desktop |
 | `windowControlsOverlay()` | `window-controls-overlay` na začátek `display_override` | Chromium desktop |
 | `tabbed(tabStrip)` | `tabbed` do `display_override`, volitelně `tab_strip` | Chromium desktop |
 | `launchHandler(clientMode)` | `launch_handler.client_mode` | Chromium desktop |
+| `screenshot(src, sizes, formFactor?, label?, type = 'image/png')` | přidá do `screenshots` | instalační dialog Chromia |
+| `category(...categories)` | přidá do `categories` | výpisy v obchodech |
 | `set(key, value)` | libovolný člen | – |
 | `toArray(request?)`, `toJson(request?)` | výsledek | – |
 | `icons()` | seznam existujících ikon | – |
@@ -60,7 +63,28 @@ Route::post('/share', ShareController::class)
     ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
 ```
 
-Pole: `title`, `text`, `url` a soubory v `files`.
+Pole: `title`, `text`, `url` a soubory v `files`. Sdílení přijde jako POST navigace, kterou worker nechá
+síti (do [fronty offline akcí](offline.md) jdou jen mutace přes fetch/XHR), takže sdílení potřebuje
+připojení. Po POST přesměrujte, aby opětovné načtení nesdílelo podruhé:
+
+```php
+class ShareController
+{
+    public function __invoke(Request $request): RedirectResponse
+    {
+        $note = $request->user()->notes()->create($request->only('title', 'text', 'url'));
+
+        foreach ($request->file('files', []) as $file) {
+            $note->addAttachment($file);
+        }
+
+        return to_route('notes.show', $note); // 303 po POST
+    }
+}
+```
+
+`pwa:doctor` a `assertValidManifest()` varují, když je `action` mimo scope nebo když se sdílejí soubory
+bez `POST` a `multipart/form-data`.
 
 ### File handlers
 
@@ -165,7 +189,20 @@ Chrome na Androidu a desktopu ukáže se screenshoty bohatší instalační dial
 ```
 
 Screenshot, jehož `sizes` nebo `type` neodpovídá souboru, Chrome ignoruje. `pwa:doctor` otevře
-každý lokální screenshot a porovná je.
+každý lokální screenshot a porovná je. Další přidá v kódu `Pwa::manifest()->screenshot()`.
+
+## Kontroly
+
+`pwa:doctor`, `ManifestValidator` a testovací helper `assertValidManifest()` kontrolují členy pro
+integraci do systému, které by prohlížeč jinak bez varování zahodil:
+
+| Člen | Kontrola |
+| --- | --- |
+| `shortcuts` | `name`, `url` uvnitř scope, nejvýš 10 položek |
+| `share_target` | `action` uvnitř scope, `GET` nebo `POST`, soubory jen s `POST` + `multipart/form-data`, každé pole souborů má `name` a `accept` |
+| `file_handlers` | `action` uvnitř scope, `accept` mapuje MIME typy na přípony s tečkou |
+| `protocol_handlers` | `web+název` nebo povolené schéma (`mailto`, `tel` …), `url` uvnitř scope s `%s` |
+| `launch_handler` | `client_mode` je `navigate-existing`, `navigate-new`, `focus-existing` nebo `auto` |
 
 ## Lokalizace
 

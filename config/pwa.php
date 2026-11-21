@@ -172,6 +172,13 @@ return [
         // Vite manifest used for the precache.
         'vite_manifest' => 'build/manifest.json',
         'build_directory' => 'build',
+        // What to precache from it: 'imports' (entries with their static imports, CSS and assets),
+        // 'entries' (entries and their CSS), 'all' (every chunk, also dynamic imports) or false.
+        'precache_vite' => 'imports',
+        // Files to leave out, relative to the build directory (Str::is patterns, e.g. 'assets/*.mp4').
+        'precache_exclude' => [],
+        // pwa:build and pwa:doctor warn above this size (KB); 0 turns the warning off.
+        'precache_warn_kb' => 5120,
         // Where pwa:build writes the assembled worker.
         'compiled_path' => 'bootstrap/cache/pwa',
         // Cache store for the kill switch flag (null = default store).

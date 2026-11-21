@@ -98,6 +98,9 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `sw.extend` | list | `[]` | Skripty načtené **po** runtime; mají `self.PwaWorker` (vlastní trasy a strategie), viz [Service worker](service-worker.md#swextend). |
 | `sw.vite_manifest` | string | `build/manifest.json` | Vite manifest v `public/` pro precache. |
 | `sw.build_directory` | string | `build` | Prefix assetů Vite (cache-first). |
+| `sw.precache_vite` | string\|false | `imports` | Co předcachovat z Vite: `imports`, `entries`, `all`, `false` ([Service worker](service-worker.md#co-se-předcachuje)). |
+| `sw.precache_exclude` | list | `[]` | Soubory buildu vynechané z precache (vzory `Str::is` relativně k adresáři buildu). |
+| `sw.precache_warn_kb` | int | `5120` | `pwa:build` a `pwa:doctor` varují nad touto velikostí precache; `0` vypne. |
 | `sw.compiled_path` | string | `bootstrap/cache/pwa` | Kam `pwa:build` uloží sestavený SW. |
 | `sw.kill_switch_store` | ?string | `null` | Cache store pro `pwa:disable`; při více serverech sdílený (Redis, databáze). |
 

@@ -109,13 +109,15 @@ that session (session key `pwa.push.endpoints`).
 
 ```php
 Pwa::manifest()
-    ->shortcut(string $name, string $url, ?string $icon = null, ?string $description = null)
+    ->shortcut(string $name, string $url, ?string $icon = null, ?string $description = null, string $iconSizes = '96x96')
     ->shareTarget(string $action, string $method = 'POST', array $accept = [], string $filesField = 'files')
     ->fileHandler(string $action, array $accept, ?string $name = null)   // ['text/csv' => ['.csv']]
     ->protocolHandler(string $protocol, string $url)                      // 'web+orders', '/orders/%s'
     ->windowControlsOverlay()                                             // prepends to display_override
     ->tabbed(array $tabStrip = [])                                        // prepends 'tabbed'
     ->launchHandler(string|array $clientMode)
+    ->screenshot(string $src, string $sizes, ?string $formFactor = null, ?string $label = null, string $type = 'image/png')
+    ->category(string ...$categories)
     ->name(string) ->shortName(string) ->description(string) ->id(string) ->startUrl(string)
     ->scope(string) ->themeColor(string) ->backgroundColor(string)
     ->icon(string $src, string $sizes, ?string $type = null, string $purpose = 'any') // replaces pwa:icons files
@@ -205,6 +207,7 @@ Requests are handled in this order; the first row that applies wins.
 | Request | Handling | Cache name |
 |---|---|---|
 | `/sw.js`; navigations to `cache.never_cache` paths | untouched | — |
+| the client script `/pwa/client.js?v=…` (precached, despite `/pwa/*` in never_cache) | cache-first | `pwa-static-{version}` |
 | fetch/XHR to `cache.never_cache` paths | passed to the network, never stored or queued; identity headers are read | — |
 | POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
 | navigation | network (+ Navigation Preload); after `cache.navigation_timeout` s use cache if present; on error cache, then `/offline` | `pwa-pages-{userHash}` |
@@ -422,7 +425,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `orientation`, `desktop_nav.{enabled,min_width}`, `theme.{light,dark,accent_dark,background}`,
 `icons.{source,path,maskable_padding,sizes}`, `icons.splash.{background,dark_background,icon_size,orientations,devices}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
-`locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
+`locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,precache_vite,precache_exclude,precache_warn_kb,compiled_path,kill_switch_store}`,
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`, `updates.bar`,
@@ -445,6 +448,12 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
    logout, but still stored). Prefer `Cache-Control: no-store` there.
 5. **`pwa.remember` on the GET login page instead of the POST** → no effect.
 6. **`pwa:build` before `npm run build`** → stale precache; `pwa:doctor` reports "not current".
+   Precache (`sw.precache_vite`): `imports` (default: entries + static imports + CSS + assets),
+   `entries`, `all`, `false`; `sw.precache_exclude` (`Str::is`, relative to the build dir); `pwa:build`
+   and `pwa:doctor` warn above `sw.precache_warn_kb` (5120). `ManifestValidator::capabilities()`
+   (used by doctor and `assertValidManifest()`) warns about shortcuts/share_target/file_handlers/
+   protocol_handlers/launch_handler outside the scope or malformed. A share target POST is a
+   navigation: the worker never queues it.
 7. **Changing `id`** → browsers treat it as a new app.
 8. **Classic (non-fetch) form POST offline** → not queued; only fetch/XHR mutations are.
 9. **PHP data inside `<script>` of a customised maintenance view** → CSP hash changes on every render.

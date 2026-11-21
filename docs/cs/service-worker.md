@@ -37,9 +37,36 @@ navigaci.
 
 `pwa:doctor` hlásí chybu, když sestavený SW nesedí s aktuálním configem nebo buildem.
 
+## Co se předcachuje
+
+| `sw.precache_vite` | Soubory z Vite manifestu |
+| --- | --- |
+| `imports` (výchozí) | vstupní body, všechny chunky, které staticky importují, jejich CSS a assety (fonty, obrázky) |
+| `entries` | jen vstupní body a jejich CSS |
+| `all` | všechny chunky včetně dynamických importů (`import()`) |
+| `false` | nic z Vite |
+
+Vždy se předcachuje: offline stránka, klient v prohlížeči (`/pwa/client.js?v=…`, offline se servíruje,
+i když `/pwa/*` se jinak nikdy necachuje) a `offline.precache`. S `imports` dostane stránka, která
+načítá JavaScript offline, i sdílený vendor chunk, který potřebuje; s `entries` se ten chunk uloží až
+po otevření stránky online.
+
+```php
+// config/pwa.php
+'sw' => [
+    'precache_vite' => 'imports',
+    'precache_exclude' => ['assets/*.mp4', 'assets/hero-*.jpg'], // relativně k adresáři buildu
+    'precache_warn_kb' => 5120,
+],
+```
+
+Celý precache stáhne každý návštěvník při instalaci workeru. `pwa:build` vypíše jeho velikost a nad
+`precache_warn_kb` varuje; hlásí ji i `pwa:doctor`. Vynechané soubory se i tak uloží cache-first při
+prvním použití (`/build/*`).
+
 ## Životní cyklus
 
-1. **install**: stáhne precache (offline stránka, `offline.precache`, vstupy z Vite manifestu).
+1. **install**: stáhne [precache](#co-se-předcachuje) (offline stránka, klient, `offline.precache`, soubory z Vite manifestu).
    Jednotlivě, takže chybějící soubor instalaci nezablokuje (chyba jde do telemetrie).
 2. **waiting**: nová verze čeká, dokud běží stará. Klient ukáže lištu „Je k dispozici nová verze“.
 3. **activate** (po potvrzení `SKIP_WAITING`): smaže staré `pwa-static-*`, cache pravidel, která už
