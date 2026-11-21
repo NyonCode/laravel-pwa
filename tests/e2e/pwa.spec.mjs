@@ -72,6 +72,20 @@ test('offline: a mutation is queued and replayed after reconnecting', { tag: '@o
   await expect.poll(() => queueCount(page)).toBe(0);
 });
 
+test('cache rules: the catalogue is served from its rule cache offline', { tag: '@offline' }, async () => {
+  await page.goto('/orders');
+  const online = await page.evaluate(() => fetch('/api/catalog').then((r) => r.json()));
+  expect(online.items).toEqual(['A', 'B']);
+
+  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('pwa-rule-catalog-guest');
+
+  await context.setOffline(true);
+  const offline = await page.evaluate(() => fetch('/api/catalog').then((r) => r.json()));
+  await context.setOffline(false);
+
+  expect(offline.at).toBe(online.at);
+});
+
 test('keep-alive returns a CSRF token', async () => {
   const session = await page.evaluate(() => fetch('/pwa/session', { headers: { Accept: 'application/json' } }).then((r) => r.json()));
 

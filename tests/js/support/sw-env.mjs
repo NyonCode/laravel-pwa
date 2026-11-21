@@ -93,6 +93,26 @@ export const makeRequest = (path, { mode, destination, ...init } = {}) => {
   return request;
 };
 
+/** A rule as CacheRule::toArray() serialises it. */
+export const rule = (overrides = {}) => ({
+  match: null,
+  strategy: 'network-first',
+  cache: 'r1',
+  shared: false,
+  maxEntries: null,
+  maxAge: null,
+  timeout: null,
+  destinations: [],
+  ...overrides,
+});
+
+/** The default image/font rule ServiceWorkerBuilder appends. */
+export const imagesRule = (overrides = {}) =>
+  rule({ strategy: 'stale-while-revalidate', cache: 'images', maxEntries: 120, destinations: ['image', 'font'], ...overrides });
+
+/** What `pwa.cache.api` patterns become. */
+export const apiRule = (match) => rule({ match, cache: 'api' });
+
 export const offline = () => {
   throw new TypeError('Failed to fetch');
 };
@@ -102,8 +122,9 @@ export const offline = () => {
  * @param {object} [options.config] value of self.__PWA (merged over defaults)
  * @param {(request: Request) => Response|Promise<Response>} [options.fetch] network
  * @param {object} [options.registration] extra registration members (sync, navigationPreload)
+ * @param {string[]} [options.extensions] sw.extend sources, evaluated after the runtime
  */
-export const createWorker = ({ config = {}, fetch: network = offline, registration = {} } = {}) => {
+export const createWorker = ({ config = {}, fetch: network = offline, registration = {}, extensions = [] } = {}) => {
   const listeners = new Map();
   const messages = [];
   const requests = [];
@@ -119,9 +140,8 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
       offlineUrl: '/offline',
       queue: true,
       navigationTimeout: 50,
-      api: [],
       neverCache: ['/login', '/pwa/*'],
-      images: { max_entries: 120 },
+      rules: [imagesRule()],
       buildPrefix: '/build/',
       telemetry: '/pwa/telemetry',
       sessionUrl: '/pwa/session',
@@ -165,6 +185,7 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
   });
 
   vm.runInContext(RUNTIME, context, { filename: 'runtime.js' });
+  extensions.forEach((source, index) => vm.runInContext(source, context, { filename: `extend-${index}.js` }));
 
   /** Dispatches an ExtendableEvent / FetchEvent and resolves once every waitUntil settles. */
   const dispatch = async (type, init = {}) => {
@@ -179,16 +200,19 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
       },
     };
 
+    const started = Date.now();
     for (const fn of listeners.get(type) ?? []) fn(event);
 
     const result = response ? await response : null;
+    const respondedIn = Date.now() - started;
     // waitUntil may be registered while the response is produced; drain until stable.
     for (let settled = 0; settled < lifetime.length; settled = lifetime.length) {
       await Promise.allSettled(lifetime.slice(settled));
     }
     await new Promise((resolve) => setImmediate(resolve));
 
-    return { event, response: result, handled: response !== null };
+    // respondedIn: ms until respondWith settled (background waitUntil work excluded).
+    return { event, response: result, handled: response !== null, respondedIn };
   };
 
   return {

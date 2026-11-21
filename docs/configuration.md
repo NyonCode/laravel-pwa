@@ -86,7 +86,8 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | Klíč | Typ | Výchozí | Popis |
 | --- | --- | --- | --- |
 | `sw.url` | string | `/sw.js` | URL service workeru. Nikdy nedávejte soubor se stejným názvem do `public/`. |
-| `sw.import` | list | `[]` | Skripty načtené přes `importScripts` (push systém, Sentry). Jejich obsah mění verzi SW. |
+| `sw.import` | list | `[]` | Skripty načtené přes `importScripts` **před** runtime (push systém, Sentry). Jejich obsah mění verzi SW. |
+| `sw.extend` | list | `[]` | Skripty načtené **po** runtime; mají `self.PwaWorker` (vlastní trasy a strategie), viz [Service worker](service-worker.md#swextend). |
 | `sw.vite_manifest` | string | `build/manifest.json` | Vite manifest v `public/` pro precache. |
 | `sw.build_directory` | string | `build` | Prefix assetů Vite (cache-first). |
 | `sw.compiled_path` | string | `bootstrap/cache/pwa` | Kam `pwa:build` uloží sestavený SW. |
@@ -97,9 +98,11 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | Klíč | Typ | Výchozí | Popis |
 | --- | --- | --- | --- |
 | `cache.navigation_timeout` | int (s) | `3` | Po kolika sekundách pomalé sítě použít stránku z cache. |
-| `cache.api` | list | `[]` | GET cesty (s `*`) s network-first a záložní cache, např. `['/api/catalog*']`. |
+| `cache.rules` | list | `[]` | Pravidla cache (`match`, `destination`, `strategy`, `cache`, `max_entries`, `max_age`, `timeout`, `shared`), viz [Pravidla cache](service-worker.md#pravidla-cache). |
+| `cache.api` | list | `[]` | Zkratka: GET cesty (s `*`) s network-first, např. `['/api/catalog*']`. |
+| `cache.images.enabled` | bool | `true` | Výchozí pravidlo pro obrázky a fonty (stale-while-revalidate). |
 | `cache.images.max_entries` | int | `120` | Limit obrázků a fontů v cache. |
-| `cache.images.max_age` | int (s) | 30 dní | Rezervováno pro expiraci. |
+| `cache.images.max_age` | int (s) | 30 dní | Starší obrázek se načte znovu (offline se použije i starší). |
 | `cache.never_cache` | list | login, logout, register, broadcasting, livewire, sanctum, `/pwa/*` | Cesty, do kterých SW nezasahuje (ani fronta). |
 
 ## Offline

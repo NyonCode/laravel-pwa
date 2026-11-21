@@ -97,6 +97,10 @@ class DoctorCommand extends Command
             'Vite manifest pro precache (npm run build)',
         );
 
+        if (! $this->checkCacheRules($builder)) {
+            return;
+        }
+
         if (! $builder->isCompiled()) {
             $this->add('warn', 'Service worker sestavený (php artisan pwa:build)');
         } else {
@@ -105,15 +109,55 @@ class DoctorCommand extends Command
             $this->add($fresh === $built ? 'ok' : 'error', "Sestavený SW je aktuální ({$built})");
         }
 
-        foreach ($builder->imports() as $import) {
-            if (parse_url($import, PHP_URL_HOST) !== null) {
-                $this->add('warn', "sw.import {$import} je z jiné domény");
+        foreach (['sw.import' => $builder->imports(), 'sw.extend' => $builder->extensions()] as $key => $scripts) {
+            foreach ($scripts as $script) {
+                if (parse_url($script, PHP_URL_HOST) !== null) {
+                    $this->add('warn', "{$key} {$script} je z jiné domény");
 
+                    continue;
+                }
+
+                $this->add(File::exists(public_path(ltrim($script, '/'))) ? 'ok' : 'error', "{$key} {$script} existuje");
+            }
+        }
+    }
+
+    /**
+     * Valid rules, and no shared cache over paths the package never caches (login, Livewire …).
+     */
+    protected function checkCacheRules(ServiceWorkerBuilder $builder): bool
+    {
+        try {
+            $rules = $builder->rules();
+        } catch (Throwable $e) {
+            $this->add('error', 'Cache rules: '.$e->getMessage());
+
+            return false;
+        }
+
+        $this->add('ok', 'Cache rules valid ('.count($rules).')');
+
+        $neverCache = array_map(
+            static fn (mixed $path): string => str_replace('*', 'x', (string) $path),
+            (array) config('pwa.cache.never_cache', []),
+        );
+
+        foreach ($rules as $rule) {
+            $match = $rule->match();
+
+            if (! $rule->isShared() || $match === null) {
                 continue;
             }
 
-            $this->add(File::exists(public_path(ltrim($import, '/'))) ? 'ok' : 'error', "sw.import {$import} existuje");
+            $pattern = '#^'.str_replace('\\*', '.*', preg_quote($match, '#')).'$#';
+            $covered = array_values(array_filter($neverCache, static fn (string $path): bool => preg_match($pattern, $path) === 1));
+
+            if ($covered !== []) {
+                $this->add('warn', "Shared cache rule [{$rule->getName()}] also matches never-cached paths (".implode(', ', $covered).'); narrow its pattern');
+            }
         }
+
+        return true;
     }
 
     protected function checkMaintenance(): void

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createWorker, html, json, offline } from '../support/sw-env.mjs';
+import { apiRule, createWorker, html, imagesRule, json, offline } from '../support/sw-env.mjs';
 
 const ALICE = 'aaaaaaaaaaaaaaaa';
 const BOB = 'bbbbbbbbbbbbbbbb';
@@ -21,24 +21,26 @@ describe('install and activate', () => {
 
   it('drops static caches of older versions and page caches after an update', async () => {
     const worker = createWorker();
-    for (const name of ['pwa-static-old', 'pwa-static-v1', `pwa-pages-${ALICE}`, `pwa-api-${ALICE}`]) {
+    for (const name of ['pwa-static-old', 'pwa-static-v1', `pwa-pages-${ALICE}`, `pwa-rule-images-${ALICE}`]) {
       await worker.caches.open(name);
     }
     await (await worker.caches.open('pwa-meta')).put('/__pwa/version', new Response('old'));
 
     await worker.activate();
 
-    assert.deepEqual(await cacheNames(worker), [`pwa-api-${ALICE}`, 'pwa-meta', 'pwa-static-v1']);
+    assert.deepEqual(await cacheNames(worker), ['pwa-meta', `pwa-rule-images-${ALICE}`, 'pwa-static-v1']);
     assert.ok(worker.messages.some((m) => m.type === 'activated' && m.version === 'v1'));
   });
 
-  it('removes the shared image cache left by 0.1.0 workers', async () => {
+  it('removes caches of 0.1.x workers and of rules that no longer exist', async () => {
     const worker = createWorker();
-    await worker.caches.open('pwa-images');
+    for (const name of ['pwa-images', `pwa-images-${ALICE}`, `pwa-api-${ALICE}`, `pwa-rule-gone-${ALICE}`, 'pwa-shared-gone', `pwa-rule-images-${ALICE}`]) {
+      await worker.caches.open(name);
+    }
 
     await worker.activate();
 
-    assert.ok(!(await cacheNames(worker)).includes('pwa-images'));
+    assert.deepEqual((await cacheNames(worker)).filter((n) => n !== 'pwa-meta'), [`pwa-rule-images-${ALICE}`]);
   });
 });
 
@@ -121,7 +123,7 @@ describe('user separation', () => {
 
   it('purges pages, API data and images on logout', async () => {
     const worker = createWorker({
-      config: { api: ['/api/*'] },
+      config: { rules: [apiRule('/api/*'), imagesRule()] },
       fetch: (request) => {
         const path = new URL(request.url).pathname;
         if (path === '/api/me') return json({ me: 'alice' }, { 'X-PWA-User': ALICE });
@@ -132,7 +134,7 @@ describe('user separation', () => {
     await worker.navigate('/dashboard');
     await worker.fetchEvent('/api/me');
     await worker.fetchEvent('/avatar.png', { destination: 'image' });
-    assert.deepEqual(worker.caches.urls(`pwa-images-${ALICE}`), ['/avatar.png']);
+    assert.deepEqual(worker.caches.urls(`pwa-rule-images-${ALICE}`), ['/avatar.png']);
 
     worker.network(() => html('bye', { 'X-PWA-Logout': '1', 'X-PWA-User': 'guest' }));
     await worker.navigate('/logout-done');
@@ -149,8 +151,8 @@ describe('user separation', () => {
     worker.network(() => new Response('png', { headers: { 'Content-Type': 'image/png' } }));
     await worker.fetchEvent('/avatar.png', { destination: 'image' });
 
-    assert.deepEqual(worker.caches.urls(`pwa-images-${ALICE}`), ['/avatar.png']);
-    assert.ok(!(await cacheNames(worker)).includes('pwa-images'));
+    assert.deepEqual(worker.caches.urls(`pwa-rule-images-${ALICE}`), ['/avatar.png']);
+    assert.ok(!(await cacheNames(worker)).some((n) => n.startsWith('pwa-shared-')));
   });
 
   it('clears user data on CLEAR_USER from the page', async () => {
@@ -167,19 +169,19 @@ describe('images', () => {
   const png = () => new Response('png', { headers: { 'Content-Type': 'image/png' } });
 
   it('trims the image cache to max_entries', async () => {
-    const worker = createWorker({ config: { images: { max_entries: 2 } }, fetch: png });
+    const worker = createWorker({ config: { rules: [imagesRule({ maxEntries: 2 })] }, fetch: png });
 
     for (const name of ['a', 'b', 'c']) await worker.fetchEvent(`/${name}.png`, { destination: 'image' });
 
-    assert.deepEqual(worker.caches.urls('pwa-images-guest'), ['/b.png', '/c.png']);
+    assert.deepEqual(worker.caches.urls('pwa-rule-images-guest'), ['/b.png', '/c.png']);
   });
 
   it('does not serve images older than max_age', async () => {
-    const worker = createWorker({ config: { images: { max_entries: 10, max_age: 60 } }, fetch: png });
+    const worker = createWorker({ config: { rules: [imagesRule({ maxEntries: 10, maxAge: 60 })] }, fetch: png });
     await worker.fetchEvent('/a.png', { destination: 'image' });
 
     // Age the stored copy beyond max_age.
-    const cache = await worker.caches.open('pwa-images-guest');
+    const cache = await worker.caches.open('pwa-rule-images-guest');
     const stored = await cache.match('/a.png');
     const headers = new Headers(stored.headers);
     headers.set('X-PWA-Cached-At', String(Date.now() - 120_000));
@@ -194,7 +196,7 @@ describe('images', () => {
 
 describe('API network-first', () => {
   it('falls back to the cached copy offline and on 503', async () => {
-    const worker = createWorker({ config: { api: ['/api/catalog*'] }, fetch: () => json({ v: 1 }) });
+    const worker = createWorker({ config: { rules: [apiRule('/api/catalog*')] }, fetch: () => json({ v: 1 }) });
     await worker.fetchEvent('/api/catalog?page=1');
 
     worker.network(offline);
@@ -205,7 +207,7 @@ describe('API network-first', () => {
   });
 
   it('leaves paths outside the rules and never_cache untouched', async () => {
-    const worker = createWorker({ config: { api: ['/api/catalog*'] }, fetch: () => json({}) });
+    const worker = createWorker({ config: { rules: [apiRule('/api/catalog*')] }, fetch: () => json({}) });
 
     assert.equal((await worker.fetchEvent('/api/other')).handled, false);
     assert.equal((await worker.fetchEvent('/pwa/session')).handled, false);

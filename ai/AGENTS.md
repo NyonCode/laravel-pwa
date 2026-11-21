@@ -15,7 +15,8 @@ tags `pwa::config`, `pwa::views`, `pwa::translations`).
   Edge/Chrome on desktop get `minimal-ui` (Back/Reload), phones, tablets and Safari get `standalone`.
 - **The package owns the service worker at `/sw.js`.** It is a route, not a file in `public/`.
   Never create `public/sw.js` or a second service worker on scope `/`. Extra worker code (push,
-  Sentry) goes through `config('pwa.sw.import')` → `importScripts`.
+  Sentry) goes through `config('pwa.sw.import')` → `importScripts`; custom caching routes go
+  through `config('pwa.sw.extend')` and `self.PwaWorker`.
 - **Nothing HTML is cached unless the server allows it** with the `pwa.cache` middleware.
 - **Push notifications are NOT implemented by this package.** It only provides the slot
   (`sw.import`), install state and events. Do not add VAPID/subscription code to this package's
@@ -145,23 +146,76 @@ stable). Keep the `@if($nonce) nonce=…` attributes.
 
 ## Service worker behaviour (`resources/sw/runtime.js`)
 
-| Request | Strategy | Cache name |
+Requests are handled in this order; the first row that applies wins.
+
+| Request | Handling | Cache name |
 |---|---|---|
+| `/sw.js`, `cache.never_cache` | untouched | — |
+| POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
 | navigation | network (+ Navigation Preload); after `cache.navigation_timeout` s use cache if present; on error cache, then `/offline` | `pwa-pages-{userHash}` |
 | `/build/*`, precache list | cache-first | `pwa-static-{version}` |
-| images, fonts | stale-while-revalidate, max `cache.images.max_entries` | `pwa-images-{userHash}` |
-| GET matching `cache.api` (`*` wildcard) | network-first, cache fallback (also on 503) | `pwa-api-{userHash}` |
-| POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
-| `cache.never_cache`, other origins, `/sw.js` | untouched | — |
+| routes registered in `sw.extend` via `self.PwaWorker.route()` | the app's handler | handler's choice |
+| other same-origin GET | first matching cache rule (see below) | `pwa-rule-{name}-{userHash}` or `pwa-shared-{name}` |
+| other origins without an `sw.extend` route | untouched | — |
 
 Never cached: non-200, `Cache-Control: no-store`, 503, HTML without `X-PWA-Cache: allow`.
 503 navigations are shown as-is (maintenance screen), never replaced by the offline page.
-User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's pages/api caches and the
-queue. Version = hash of runtime config + precache list + `sw.import` contents + runtime file.
-New versions wait; the client asks the user, then sends `SKIP_WAITING`.
+User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's `pwa-pages-*` and
+`pwa-rule-*` caches and the queue; `pwa-shared-*` caches survive. Version = hash of runtime config
+(incl. rules) + precache list + `sw.import`/`sw.extend` contents + runtime file. New versions wait;
+the client asks the user, then sends `SKIP_WAITING`. Activation removes caches of rules that no
+longer exist and 0.1.x caches (`pwa-api-*`, `pwa-images*`).
 
 Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `GET_VERSION` (with a port).
 Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503.
+
+### Cache rules (`pwa.cache.rules`, `Pwa::serviceWorker()->cache()`)
+
+Order: `cache.rules` config → fluent rules → `cache.api` (network-first, cache `api`) → default
+image/font rule (`cache.images`: stale-while-revalidate, `max_entries`, `max_age`; disable with
+`'enabled' => false`). Rules match same-origin GET that are not navigations; `match` is a path
+with `*` (query string ignored for matching, each URL stored separately), `destination` limits to
+`Request.destination`.
+
+```php
+// config/pwa.php → 'cache' => ['rules' => [...]]
+['match' => '/api/catalog*', 'strategy' => 'stale-while-revalidate', 'cache' => 'catalog', 'max_entries' => 200, 'max_age' => 86400],
+['match' => '/avatars/*', 'destination' => 'image', 'strategy' => 'cache-first', 'max_age' => 604800],
+['match' => '/api/stock', 'strategy' => 'network-first', 'timeout' => 2],
+
+// or fluent, in AppServiceProvider::boot()
+Pwa::serviceWorker()->cache('/api/catalog*')->staleWhileRevalidate()->name('catalog')->maxEntries(200)->maxAge(days: 1);
+Pwa::serviceWorker()->cache(null)->destination('font')->cacheFirst()->maxAge(days: 365);
+```
+
+| `CacheRule` method | Config key | Notes |
+|---|---|---|
+| `networkFirst(?int $timeout)`, `cacheFirst()`, `staleWhileRevalidate()`, `networkOnly()`, `cacheOnly()`, `strategy(CacheStrategy\|string)` | `strategy` | default network-first |
+| `name(string)` | `cache` | `[a-z0-9-]`, ≤ 40 chars; derived from the rule when omitted |
+| `maxEntries(int)` | `max_entries` | oldest entries removed first |
+| `maxAge(seconds, minutes, hours, days)` | `max_age` (s) | older copies are not served (network-first: not even as fallback; cache-first/SWR: only offline) |
+| `timeout(int)` | `timeout` (s) | network-first only, else `InvalidArgumentException` |
+| `shared(bool)` | `shared` | one cache for all users; stores only responses without `Cache-Control: private` and with `X-PWA-User` missing/`guest` |
+| `destination(string ...)` | `destination` | `image`, `font`, `style`, `script`, `audio`, `video`, … |
+
+Invalid rules throw `InvalidArgumentException` naming the config index (`pwa.cache.rules.1: …`);
+`pwa:build` fails and `pwa:doctor` reports them. One name for a shared and a per-user rule is an error.
+
+### `sw.extend` and `self.PwaWorker`
+
+`config('pwa.sw.extend')` scripts load after the runtime (`sw.import` loads before it). They get the
+frozen `self.PwaWorker`: `route(match, handler)` (match = path pattern on the same origin, `RegExp`
+on the full URL, or `({url, request, event}) => bool`; handler returns a `Response`), `strategies`
+(`networkFirst`, `cacheFirst`, `staleWhileRevalidate`, `networkOnly`, `cacheOnly`, each
+`(event, {cacheName, maxEntries, maxAge, timeout, shared})`), `cacheName(name, {shared})` →
+`pwa-rule-{name}-{user}` or `pwa-shared-{name}`, `currentUser()`, `broadcast(message)`, `version`,
+`config`. Routes never see navigations, mutations or `never_cache` paths.
+
+```js
+// public/pwa-extend.js
+const { route, strategies, cacheName } = self.PwaWorker;
+route('/reports/*', async (event) => strategies.cacheFirst(event, { cacheName: await cacheName('reports'), maxAge: 3600 }));
+```
 
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
@@ -199,8 +253,8 @@ bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia
 `orientation`, `desktop_nav.{enabled,min_width}`, `theme.{light,dark,accent_dark,background}`,
 `icons.{source,path,maskable_padding,sizes}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
-`locales`, `sw.{url,import,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
-`cache.{navigation_timeout,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`,
+`locales`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
+`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
 `telemetry.{enabled,channel,max_events}`, `adapters.{livewire,inertia,reload_on_resume}`,
@@ -230,6 +284,10 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
 12. **Expecting push from this package** → there is none; see `docs/push.md`.
 13. **Inertia `useForm({ remember: false })` on login** → the explicit `false` wins over `pwa.remember`,
     so the installed app is not remembered. Default it to `window.Pwa?.isInstalled() ?? false`.
+14. **`shared: true` on personal data** → the worker refuses `Cache-Control: private` and signed-in
+    responses, so nothing is cached offline. Keep personal API rules per user (the default).
+15. **A broad rule before a narrow one** (`/api/*` before `/api/live`) → the first match wins; put the
+    narrow rule (often `network-only`) first.
 
 ## Before you call the work done
 

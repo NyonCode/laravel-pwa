@@ -7,6 +7,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [Unreleased]
 
 ### Added
+- Cache rules: `pwa.cache.rules` and the fluent `Pwa::serviceWorker()->cache()` with the strategies
+  `network-first` (optional timeout), `cache-first`, `stale-while-revalidate`, `network-only` and
+  `cache-only`, plus `max_entries`, `max_age`, `destination` and per-user or `shared` caches.
+- `pwa.sw.extend`: scripts loaded after the runtime with `self.PwaWorker` (`route()`, `strategies`,
+  `cacheName()`, `currentUser()`, `broadcast()`) for custom routes with the same user separation.
+- `pwa.cache.images.enabled` to turn off the default image and font rule.
+- `pwa:doctor` validates cache rules and warns about shared rules over never-cached paths.
 - Unit tests for the service worker (`tests/js/sw`) and the browser client (`tests/js/client`),
   run with `node:test` against the real source files.
 - Playwright browser tests (`tests/e2e`) in Chromium and Firefox, replacing the Python script.
@@ -15,6 +22,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `composer check`, `composer test:coverage`, `composer rector`; contributor guide and issue templates.
 
 ### Fixed
+- The `CLEAR_USER` message now also resets the worker's current user, so data fetched right after
+  it is no longer stored under the previous user.
 - `cache.images.max_age` is now enforced: older images are refetched (and still served while offline).
 - Localised manifest members (`name_localized` …) no longer label the fallback locale's text as
   another language when a translation is missing.
@@ -22,6 +31,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   short `#rgb` colours.
 
 ### Changed
+- API and image caches are rule caches now (`pwa-rule-api-*`, `pwa-rule-images-*`); the worker
+  removes the 0.1 caches on activation. See UPGRADE.md.
+- Invalid cache configuration fails `pwa:build` with a message naming the entry.
 - PHPStan level raised from 6 to 8.
 
 ## [0.1.0] - 2026-11-21

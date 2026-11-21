@@ -141,6 +141,7 @@ const API_GROUPS = [
   { owner: 'ManifestBuilder', file: path.join(srcDir, 'Manifest', 'ManifestBuilder.php'), calledFrom: 'Pwa::manifest() — usually in AppServiceProvider::boot()' },
   { owner: 'DisplayStrategy', file: path.join(srcDir, 'Manifest', 'DisplayStrategy.php'), calledFrom: 'config pwa.display.strategy (enum override|adaptive|fixed)' },
   { owner: 'ServiceWorkerBuilder', file: path.join(srcDir, 'ServiceWorker', 'ServiceWorkerBuilder.php'), calledFrom: 'Pwa::serviceWorker() — used by pwa:build and the /sw.js route' },
+  { owner: 'CacheRule', file: path.join(srcDir, 'ServiceWorker', 'CacheRule.php'), calledFrom: 'Pwa::serviceWorker()->cache($pattern) — fluent rule; also built from config pwa.cache.rules' },
   { owner: 'Middleware', dir: path.join(srcDir, 'Http', 'Middleware'), calledFrom: 'route middleware pwa.remember, pwa.cache; PwaWebMiddleware is appended to the web group' },
 ]
 
