@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-21
+
+Upgrading from 0.1? See [UPGRADE.md](UPGRADE.md).
+
 ### Added
 - Cache rules: `pwa.cache.rules` and the fluent `Pwa::serviceWorker()->cache()` with the strategies
   `network-first` (optional timeout), `cache-first`, `stale-while-revalidate`, `network-only` and
@@ -49,13 +53,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   short `#rgb` colours.
 
 ### Security
-- The worker now reads the user identity (`X-PWA-User`, `X-PWA-Logout`) from every same-origin
-  response, not only from navigations. Before, an XHR logout and login of another user (Inertia,
-  Livewire) on the same device left the previous user's API data readable through `pwa.cache.api`.
-  `never_cache` fetch/XHR requests and mutations (also with `offline.queue = false`) now pass
-  through the worker for this (never_cache still never stored or queued), per-user caches only store
-  responses of their owner, identity headers of other origins (also after a redirect) are ignored,
-  and the client forwards the identity from each keep-alive (`IDENTITY` message).
+- Includes the identity fix from 0.1.1
+  ([GHSA-mjp7-hj6c-2jr9](https://github.com/NyonCode/laravel-pwa/security/advisories/GHSA-mjp7-hj6c-2jr9)),
+  ported to the cache rules engine, with its regression tests in `tests/js/sw/identity.test.mjs`.
 
 ### Changed
 - API and image caches are rule caches now (`pwa-rule-api-*`, `pwa-rule-images-*`); the worker
@@ -68,6 +68,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Documentation moved from `docs/` to `docs/en` and `docs/cs`; the MCP server serves the English pages.
 - Artisan output, command descriptions, exception messages and code comments are in English.
 - English `composer.json` description and keywords, plus `support` links.
+
+## [0.1.1] - 2026-11-21
+
+### Security
+- The service worker reads the user identity (`X-PWA-User`, `X-PWA-Logout`) from every same-origin
+  response, not only from navigations. Before, after an XHR logout and a login of another user
+  (Inertia, Livewire) on the same device, the previous user's `cache.api` data stayed readable.
+  fetch/XHR requests to `cache.never_cache` paths pass through the worker only to read the identity
+  (never stored or queued), mutations are read also with `offline.queue = false`, per-user caches
+  only accept their owner's responses, identity headers from other origins (also after a redirect)
+  are ignored, and the client forwards the identity from each keep-alive (`IDENTITY` message).
+  [GHSA-mjp7-hj6c-2jr9](https://github.com/NyonCode/laravel-pwa/security/advisories/GHSA-mjp7-hj6c-2jr9)
+
+### Fixed
+- The `CLEAR_USER` message also resets the worker's current user, so data fetched right after it is
+  no longer stored under the previous user.
 
 ## [0.1.0] - 2026-11-21
 
@@ -86,5 +102,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   and the `vendor/bin/pwa-ai` installer.
 - Documentation in `docs/` (21 pages, ordered by `docs/nav.json`).
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/NyonCode/laravel-pwa/releases/tag/v0.1.0
