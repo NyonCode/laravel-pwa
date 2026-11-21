@@ -79,7 +79,7 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `protocol_handlers` | list | `[]` | Vlastní schémata `web+…`. |
 | `launch_handler` | array | `client_mode: [navigate-existing, auto]` | Jak se otevře aplikace, která už běží. |
 | `scope_extensions` | list | `[]` | Další domény jedné aplikace; vyžaduje `/.well-known/web-app-origin-association` na nich. |
-| `locales` | list | `[]` | Další jazyky pro `*_localized` členy manifestu (Chromium 147+). |
+| `locales` | list | `[]` | Jazyky manifestu včetně výchozího: `*_localized` členy (Chromium 147+) a odkaz `?lang=` podle jazyka stránky. |
 
 ## Service worker
 
@@ -97,6 +97,7 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 
 | Klíč | Typ | Výchozí | Popis |
 | --- | --- | --- | --- |
+| `manifest.resolvers` | list | `[]` | Třídy `ManifestResolver` (z kontejneru) pro manifest podle požadavku, viz [Manifest](manifest.md#resolvery-tenanti-a-branding). |
 | `cache.navigation_timeout` | int (s) | `3` | Po kolika sekundách pomalé sítě použít stránku z cache. |
 | `cache.rules` | list | `[]` | Pravidla cache (`match`, `destination`, `strategy`, `cache`, `max_entries`, `max_age`, `timeout`, `shared`), viz [Pravidla cache](service-worker.md#pravidla-cache). |
 | `cache.api` | list | `[]` | Zkratka: GET cesty (s `*`) s network-first, např. `['/api/catalog*']`. |

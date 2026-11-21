@@ -104,11 +104,40 @@ Pwa::manifest()
     ->windowControlsOverlay()                                             // prepends to display_override
     ->tabbed(array $tabStrip = [])                                        // prepends 'tabbed'
     ->launchHandler(string|array $clientMode)
+    ->name(string) ->shortName(string) ->description(string) ->id(string) ->startUrl(string)
+    ->scope(string) ->themeColor(string) ->backgroundColor(string)
+    ->icon(string $src, string $sizes, ?string $type = null, string $purpose = 'any') // replaces pwa:icons files
+    ->locale(string)                                                      // translations, lang, dir
+    ->private() ->vary(string ...$headers)                                // manifest Cache-Control / Vary
     ->set(string $key, mixed $value);                                     // any member, wins over config
 ```
 
-Also `toArray(?Request)`, `toJson(?Request)`, `icons()`, `flush()`. Merge order: config → display
-strategy → existing icons → `*_localized` (config `locales`) → fluent calls; null/''/[] dropped.
+Also `toArray(?Request)`, `toJson(?Request)`, `icons()`, `flush()`, `forRequest(Request)` (copy with
+resolvers applied), `parameters(Request $page)`, `url(Request $page)` (manifest link with
+parameters), `cachePolicy()`. Merge order: config → display strategy → existing icons →
+`*_localized` (config `locales`) → boot-time fluent calls → per-request resolvers; null/''/[] dropped.
+
+### Per-request resolvers (tenants, branding, locale)
+
+```php
+// closure; the optional second closure gives the manifest link parameters
+Pwa::manifest()->resolveUsing(
+    fn (Request $request, ManifestBuilder $m) => $m->name('Team '.$request->query('team')),
+    fn (Request $page) => ['team' => $page->user()->team->slug],
+);
+// or a class (container-resolved), also via config pwa.manifest.resolvers
+final class TenantManifest implements ManifestResolver, ManifestParameters { /* resolve(), parameters() */ }
+```
+
+`NyonCode\LaravelPwa\Contracts\ManifestResolver::resolve(Request $request, ManifestBuilder $manifest): void`
+runs on `/manifest.webmanifest` on a clone (Octane-safe). That route has **no session or auth**:
+anything page-specific must come through `ManifestParameters::parameters(Request $page): array<string,string>`,
+which `<x-pwa::head/>` appends to the manifest link (render time, with session). Query values are user
+input: validate them (whitelist, lookup). Give each tenant its own `id`. `<x-pwa::head/>` takes
+`theme-color` and the iOS title from the resolved manifest, so resolvers also run on every page
+render: keep them cheap. Built-in `Manifest\LocaleResolver` (active when `pwa.locales` is set) adds
+`?lang={page locale}` and builds the manifest in it; only locales listed in `pwa.locales` are
+accepted (list the default too). A throwing resolver shows up in `pwa:doctor`.
 Icons are listed only if the files exist in `public/{pwa.icons.path}` (`icon-192.png`,
 `icon-512.png`, `maskable-512.png`, `icon.svg`).
 
@@ -258,7 +287,7 @@ bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia
 `orientation`, `desktop_nav.{enabled,min_width}`, `theme.{light,dark,accent_dark,background}`,
 `icons.{source,path,maskable_padding,sizes}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
-`locales`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
+`locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,

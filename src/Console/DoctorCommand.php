@@ -62,7 +62,8 @@ class DoctorCommand extends Command
     protected function checkManifest(Pwa $pwa): void
     {
         try {
-            $manifest = $pwa->manifest()->toArray();
+            // With the resolvers, as the manifest route builds it.
+            $manifest = $pwa->manifest()->forRequest(request())->toArray();
         } catch (Throwable $e) {
             $this->add('error', 'Manifest: '.$e->getMessage());
 

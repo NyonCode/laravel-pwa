@@ -22,7 +22,9 @@ enum DisplayStrategy: string
 
     public static function fromConfig(): self
     {
-        return self::tryFrom((string) config('pwa.display.strategy', 'override')) ?? self::Override;
+        $strategy = config('pwa.display.strategy', 'override');
+
+        return (is_string($strategy) ? self::tryFrom($strategy) : null) ?? self::Override;
     }
 
     /**
@@ -30,14 +32,14 @@ enum DisplayStrategy: string
      */
     public function resolve(?Request $request = null): array
     {
-        $value = (string) config('pwa.display.value', 'standalone');
+        $value = config()->string('pwa.display.value', 'standalone');
 
         return match ($this) {
             self::Fixed => ['display' => $value],
             self::Override => ['display' => $value, ...$this->overrideModes()],
             self::Adaptive => [
                 'display' => self::isDesktop($request ?? request())
-                    ? (string) config('pwa.display.desktop', 'minimal-ui')
+                    ? config()->string('pwa.display.desktop', 'minimal-ui')
                     : $value,
             ],
         };
@@ -63,7 +65,7 @@ enum DisplayStrategy: string
      */
     protected function overrideModes(): array
     {
-        $modes = array_values(array_map(strval(...), (array) config('pwa.display.override', [])));
+        $modes = array_values(array_filter(config()->array('pwa.display.override', []), is_string(...)));
 
         return $modes === [] ? [] : ['display_override' => $modes];
     }

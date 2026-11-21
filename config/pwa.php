@@ -116,6 +116,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Manifest resolvers
+    |--------------------------------------------------------------------------
+    |
+    | Classes implementing NyonCode\LaravelPwa\Contracts\ManifestResolver,
+    | applied to every manifest request (tenant branding, per-locale names …).
+    | Closures: Pwa::manifest()->resolveUsing(fn ($request, $manifest) => …).
+    |
+    */
+
+    'manifest' => [
+        'resolvers' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Service worker
     |--------------------------------------------------------------------------
     */

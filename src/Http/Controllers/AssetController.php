@@ -19,17 +19,33 @@ class AssetController
 {
     public function manifest(Request $request, Pwa $pwa): Response
     {
-        $json = $pwa->manifest()->toJson($request);
+        $manifest = $pwa->manifest()->forRequest($request);
+        $data = $manifest->toArray($request);
+        $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
         $strategy = DisplayStrategy::fromConfig();
+        $policy = $manifest->cachePolicy();
+
+        $vary = $policy['vary'];
+
+        if ($strategy->varies()) {
+            $vary = [...$vary, 'Sec-CH-UA-Platform', 'User-Agent'];
+        }
 
         $headers = [
             'Content-Type' => 'application/manifest+json; charset=utf-8',
-            'Cache-Control' => $strategy->varies() ? 'private, max-age=3600' : 'public, max-age=3600',
+            'Cache-Control' => $policy['public'] && ! $strategy->varies() ? 'public, max-age=3600' : 'private, max-age=3600',
             'ETag' => '"'.substr(hash('sha256', $json), 0, 16).'"',
         ];
 
+        if (is_string($data['lang'] ?? null)) {
+            $headers['Content-Language'] = $data['lang'];
+        }
+
+        if ($vary !== []) {
+            $headers['Vary'] = implode(', ', array_values(array_unique($vary)));
+        }
+
         if ($strategy->varies()) {
-            $headers['Vary'] = 'Sec-CH-UA-Platform, User-Agent';
             $headers['Accept-CH'] = 'Sec-CH-UA-Platform';
         }
 
@@ -46,7 +62,7 @@ class AssetController
         return $this->conditional($request, $script, [
             'Content-Type' => 'application/javascript; charset=utf-8',
             'Cache-Control' => 'no-cache, max-age=0',
-            'Service-Worker-Allowed' => (string) config('pwa.scope', '/'),
+            'Service-Worker-Allowed' => config()->string('pwa.scope', '/'),
             'ETag' => '"'.substr(hash('sha256', $script), 0, 16).'"',
         ]);
     }

@@ -13,6 +13,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `pwa.sw.extend`: scripts loaded after the runtime with `self.PwaWorker` (`route()`, `strategies`,
   `cacheName()`, `currentUser()`, `broadcast()`) for custom routes with the same user separation.
 - `pwa.cache.images.enabled` to turn off the default image and font rule.
+- Per-request manifest resolvers: `Pwa::manifest()->resolveUsing()` and `pwa.manifest.resolvers`
+  (`Contracts\ManifestResolver`), with manifest link parameters (`Contracts\ManifestParameters`)
+  because the manifest route has no session. Resolvers run on a copy of the builder (Octane-safe).
+- Typed manifest members `name()`, `shortName()`, `description()`, `id()`, `startUrl()`, `scope()`,
+  `themeColor()`, `backgroundColor()`, `icon()`, `locale()`, plus `private()` and `vary()` for the
+  manifest's cache headers, and `forRequest()`, `parameters()`, `url()`.
+- `<x-pwa::head/>` takes `theme-color` and the iOS title from the resolved manifest.
 - `pwa:doctor` validates cache rules and warns about shared rules over never-cached paths.
 - Unit tests for the service worker (`tests/js/sw`) and the browser client (`tests/js/client`),
   run with `node:test` against the real source files.
@@ -22,6 +29,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `composer check`, `composer test:coverage`, `composer rector`; contributor guide and issue templates.
 
 ### Fixed
+- The manifest is built in the page's locale: with `pwa.locales` set, `<x-pwa::head/>` links
+  `?lang=` and the manifest route uses it (it has no session, so every user got the default locale).
 - The `CLEAR_USER` message now also resets the worker's current user, so data fetched right after
   it is no longer stored under the previous user.
 - `cache.images.max_age` is now enforced: older images are refetched (and still served while offline).
