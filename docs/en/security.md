@@ -76,6 +76,13 @@ ping, telemetry).
 
 To turn it off, set `telemetry.enabled = false`.
 
+## Push notifications
+
+The optional push module follows the same per-user rule: logout removes the session's
+subscriptions, a device where someone else is signed in shows only a neutral notification, and the
+server sends only to the push services in `push.endpoints`. Details in
+[Push notifications](push.md#server-side-safety).
+
 ## What the package deliberately does not do
 
 - It does not clear `storage` on logout (that would remove the service worker and the push subscription).

@@ -6,7 +6,9 @@ namespace NyonCode\LaravelPwa;
 
 use Closure;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Notifications\ChannelManager;
 use NyonCode\LaravelPackageToolkit\Commands\InstallCommand;
 use NyonCode\LaravelPackageToolkit\Packager;
 use NyonCode\LaravelPackageToolkit\PackageServiceProvider;
@@ -17,13 +19,18 @@ use NyonCode\LaravelPwa\Console\DoctorCommand;
 use NyonCode\LaravelPwa\Console\DownCommand;
 use NyonCode\LaravelPwa\Console\EnableCommand;
 use NyonCode\LaravelPwa\Console\IconsCommand;
+use NyonCode\LaravelPwa\Console\PushVapidCommand;
+use NyonCode\LaravelPwa\Contracts\PushTransport;
 use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Http\Middleware\CachePage;
 use NyonCode\LaravelPwa\Http\Middleware\PwaWebMiddleware;
 use NyonCode\LaravelPwa\Http\Middleware\RememberStandalone;
+use NyonCode\LaravelPwa\Listeners\ForgetPushSubscriptions;
 use NyonCode\LaravelPwa\Listeners\LogTelemetry;
 use NyonCode\LaravelPwa\Listeners\MarkLogout;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
+use NyonCode\LaravelPwa\Push\WebPush;
+use NyonCode\LaravelPwa\Push\WebPushChannel;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use NyonCode\LaravelPwa\Testing\PwaAssertions;
 
@@ -39,6 +46,9 @@ class PwaServiceProvider extends PackageServiceProvider
             ->hasRoutes(['pwa.php'])
             ->hasViews()
             ->hasTranslations()
+            // Push is opt-in: the migration is published (vendor:publish --tag="pwa::migrations"), never run by itself.
+            ->hasMigrations()
+            ->canLoadMigrations(false)
             ->hasMiddlewareAliases([
                 'pwa.remember' => RememberStandalone::class,
                 'pwa.cache' => CachePage::class,
@@ -47,6 +57,7 @@ class PwaServiceProvider extends PackageServiceProvider
                 'web' => [PwaWebMiddleware::class],
             ])
             ->hasEvent(Logout::class, MarkLogout::class)
+            ->hasEvent(Logout::class, ForgetPushSubscriptions::class)
             ->hasEvent(TelemetryReceived::class, LogTelemetry::class)
             ->hasCommands([
                 BuildCommand::class,
@@ -56,6 +67,7 @@ class PwaServiceProvider extends PackageServiceProvider
                 DownCommand::class,
                 DoctorCommand::class,
                 IconsCommand::class,
+                PushVapidCommand::class,
             ])
             ->hasOptimizeCommands(optimize: 'pwa:build', clear: 'pwa:clear', key: 'pwa')
             ->hasInstallCommand(fn (InstallCommand $command): InstallCommand => $command
@@ -81,6 +93,8 @@ class PwaServiceProvider extends PackageServiceProvider
             runtimePath: __DIR__.'/../resources/sw/runtime.js',
             killSwitchPath: __DIR__.'/../resources/sw/kill-switch.js',
         ));
+        $this->app->singleton(WebPush::class);
+        $this->app->bind(PushTransport::class, static fn (): PushTransport => WebPush::defaultTransport());
     }
 
     public function bootedPackage(): void
@@ -91,6 +105,11 @@ class PwaServiceProvider extends PackageServiceProvider
         EncryptCookies::except([Pwa::DISPLAY_COOKIE]);
 
         PwaAssertions::register();
+
+        // via(): ['webpush'] as well as [WebPushChannel::class].
+        $this->callAfterResolving(ChannelManager::class, static function (ChannelManager $channels): void {
+            $channels->extend('webpush', fn (Application $app): WebPushChannel => $app->make(WebPushChannel::class));
+        });
     }
 
     /**
@@ -103,6 +122,7 @@ class PwaServiceProvider extends PackageServiceProvider
             'Kill switch' => fn (): string => app(Pwa::class)->killed() ? '<fg=red;options=bold>ACTIVE</>' : 'off',
             'Service worker' => fn (): string => app(ServiceWorkerBuilder::class)->isCompiled() ? 'compiled' : '<fg=yellow>not built (pwa:build)</>',
             'Display' => fn (): string => config()->string('pwa.display.strategy', 'override'),
+            'Web push' => fn (): string => app(WebPush::class)->enabled() ? '<fg=green;options=bold>ENABLED</>' : 'off',
         ];
     }
 }

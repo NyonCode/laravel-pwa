@@ -59,7 +59,8 @@ it('serves an installable manifest', function () {
 
 The manifest check is also available on its own: `app(ManifestValidator::class)->validate($manifest)`
 returns `['errors' => [...], 'warnings' => [...]]`. Test the package events with `Event::fake()`
-([Events](events.md#testing)).
+([Events](events.md#testing)) and push notifications with `WebPush::fake()`
+([Push notifications](push.md#testing)).
 
 ### Doctor in CI
 

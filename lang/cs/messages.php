@@ -27,6 +27,7 @@ return [
     'offline_lead' => 'Nepodařilo se připojit k internetu. Jakmile bude připojení zpět, stránka se načte sama.',
     'offline_title' => 'Jste offline',
     'online' => 'Jste online',
+    'push_fallback' => 'Máte nové oznámení. Otevřete aplikaci a podívejte se.',
     'queued_count' => ':n akce čeká|:n akce čekají|:n akcí čeká',
     'queued_lead' => 'Uloženo v zařízení. Odešle se automaticky po připojení, nic se neztratí.',
     'queued_title' => 'Čeká na odeslání',

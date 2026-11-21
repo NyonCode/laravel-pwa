@@ -8,6 +8,11 @@ env:
   - PWA_ENABLED=true
   - SESSION_DRIVER=file
   - CACHE_STORE=file
+  # Push in the browser tests; throwaway keys for the workbench only.
+  - PWA_PUSH_ENABLED=true
+  - PWA_VAPID_SUBJECT=mailto:workbench@example.com
+  - PWA_VAPID_PUBLIC_KEY=BDAA50O70qAVxV6_OMYZdkb3WpnIR3PTNaoKExARD2WcQPI_8gCWTsaP_afdp1YDJTDaxRiZRJmn0lL5Sfwf47k
+  - PWA_VAPID_PRIVATE_KEY=06hvzllXreKGi0OOU3lT4_zYS09cvwwdjT73Rgi-jrQ
 
 workbench:
   start: '/'

@@ -59,7 +59,8 @@ it('serves an installable manifest', function () {
 
 Kontrolu manifestu najdete i samostatně: `app(ManifestValidator::class)->validate($manifest)`
 vrátí `['errors' => [...], 'warnings' => [...]]`. Události balíčku testujte přes `Event::fake()`
-([Události](events.md#testování)).
+([Události](events.md#testování)) a push notifikace přes `WebPush::fake()`
+([Push notifikace](push.md#testování)).
 
 ### Doctor v CI
 

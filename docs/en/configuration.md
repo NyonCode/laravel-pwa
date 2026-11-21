@@ -20,6 +20,9 @@ so devices update themselves after you deploy with `pwa:build`.
 | `PWA_DISPLAY_STRATEGY` | `display.strategy` | `override` |
 | `PWA_KILL_SWITCH_STORE` | `sw.kill_switch_store` | `null` (default cache store) |
 | `PWA_LOG_CHANNEL` | `telemetry.channel` | `null` (default log) |
+| `PWA_PUSH_ENABLED` | `push.enabled` | `false` |
+| `PWA_VAPID_SUBJECT` | `push.vapid.subject` | `APP_URL` |
+| `PWA_VAPID_PUBLIC_KEY`, `PWA_VAPID_PRIVATE_KEY` | `push.vapid.*` | `null` (`pwa:push:vapid`) |
 
 ## General
 
@@ -155,3 +158,22 @@ You can translate `name`, `short_name` and `description` in
 | `adapters.livewire` | bool | `true` | Livewire 3 adapter. |
 | `adapters.inertia` | bool | `true` | Inertia adapter. |
 | `adapters.reload_on_resume` | bool | `false` | Inertia `reload()` when the user returns to the app. |
+
+## Web push
+
+See [Push notifications](push.md).
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `push.enabled` | bool | `false` | The optional push module: subscription routes, `Pwa.push`, the worker's push listeners. |
+| `push.vapid.subject` | string | `APP_URL` | Contact for push services: `mailto:` or `https://`. |
+| `push.vapid.public_key`, `push.vapid.private_key` | ?string | `null` | Written by `pwa:push:vapid`; new keys invalidate every subscription. |
+| `push.model` | class-string | `Push\PushSubscription` | Your own model must extend it. |
+| `push.table` | string | `pwa_push_subscriptions` | Table of the published migration. |
+| `push.middleware` | list | `['auth']` | Middleware of the subscription routes (after `web`, throttled to 20/min). |
+| `push.max_subscriptions` | int | `10` | Devices per owner; the least recently used is removed first. |
+| `push.endpoints` | ?list | FCM, Mozilla, Windows, Apple | Push service hosts the server accepts and sends to (`*` wildcard); `null` = any https host. |
+| `push.ttl` | int (s) | `2419200` | How long the push service keeps an undelivered message (28 days). |
+| `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
+| `push.icon`, `push.badge` | ?string | `null` | Defaults for messages; `null` = `icon-192.png` and `monochrome-512.png` from `icons.path` when they exist. |
+| `push.handle_in_worker` | bool | `true` | The worker shows notifications and handles clicks; `false` when a `sw.import` script does it. |

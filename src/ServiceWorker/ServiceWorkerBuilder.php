@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 use NyonCode\LaravelPwa\Events\ServiceWorkerBuilt;
 use NyonCode\LaravelPwa\Pwa;
+use NyonCode\LaravelPwa\Support\Value;
 use RuntimeException;
 
 /**
@@ -169,6 +170,7 @@ class ServiceWorkerBuilder
             'sessionUrl' => $prefix.'/session',
             'warm' => app(Pwa::class)->warmsPages(),
             'scope' => config()->string('pwa.scope', '/'),
+            'push' => $this->pushConfig($prefix),
         ];
 
         $config['version'] = substr(hash('sha256', json_encode([
@@ -180,6 +182,31 @@ class ServiceWorkerBuilder
         ], JSON_THROW_ON_ERROR)), 0, 12);
 
         return $config;
+    }
+
+    /**
+     * Built-in push listeners (pwa.push.handle_in_worker), or null when the app brings its own.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function pushConfig(string $prefix): ?array
+    {
+        if (! app(Pwa::class)->pushEnabled() || ! config()->boolean('pwa.push.handle_in_worker', true)) {
+            return null;
+        }
+
+        $icons = '/'.trim(config()->string('pwa.icons.path', 'pwa/icons'), '/');
+        $existing = static fn (string $path): ?string => File::exists(public_path(ltrim($path, '/'))) ? $path : null;
+
+        return [
+            'key' => config('pwa.push.vapid.public_key'),
+            'url' => $prefix.'/push/subscriptions',
+            'name' => Value::string(config('pwa.short_name')) ?: Value::string(config('pwa.name'), 'Laravel'),
+            'icon' => config('pwa.push.icon') ?? $existing($icons.'/icon-192.png'),
+            'badge' => config('pwa.push.badge') ?? $existing($icons.'/monochrome-512.png'),
+            // Shown instead of the content on a device where another user is signed in.
+            'fallback' => __('pwa::messages.push_fallback'),
+        ];
     }
 
     /**

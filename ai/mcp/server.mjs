@@ -147,6 +147,9 @@ const API_GROUPS = [
   { owner: 'ManifestValidator', file: path.join(srcDir, 'Manifest', 'ManifestValidator.php'), calledFrom: 'app(ManifestValidator::class)->validate($manifest) — also behind assertValidManifest()' },
   { owner: 'CacheRule', file: path.join(srcDir, 'ServiceWorker', 'CacheRule.php'), calledFrom: 'Pwa::serviceWorker()->cache($pattern) — fluent rule; also built from config pwa.cache.rules' },
   { owner: 'Middleware', dir: path.join(srcDir, 'Http', 'Middleware'), calledFrom: 'route middleware pwa.remember, pwa.cache; PwaWebMiddleware is appended to the web group' },
+  { owner: 'WebPush', file: path.join(srcDir, 'Push', 'WebPush.php'), calledFrom: 'the WebPush facade (NyonCode\\LaravelPwa\\Facades\\WebPush) — optional push module, pwa.push.enabled' },
+  { owner: 'WebPushMessage', file: path.join(srcDir, 'Push', 'WebPushMessage.php'), calledFrom: 'returned from a notification toWebPush($notifiable) for WebPushChannel, or passed to WebPush::send()' },
+  { owner: 'WebPushFake', file: path.join(srcDir, 'Testing', 'WebPushFake.php'), calledFrom: 'WebPush::fake() in application tests' },
 ]
 
 /** Collapse a docblock to its prose, dropping the comment furniture and tags. */

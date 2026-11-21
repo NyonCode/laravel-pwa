@@ -16,6 +16,10 @@ in `AppServiceProvider::boot()` with `Event::listen()` or in auto-discovered lis
 | `KillSwitchActivated` | `pwa:disable` / `Pwa::disable()` | – |
 | `KillSwitchDeactivated` | `pwa:enable` / `Pwa::enable()` | – |
 | `TelemetryReceived` | the service worker or client reported errors (`POST /pwa/telemetry`) | `$source` (`sw`, `client`), `$events`, `$userAgent` |
+| `PushSubscribed` | a browser stored or renewed its [push](push.md) subscription | `$subscription` |
+| `PushUnsubscribed` | a subscription was removed (unsubscribe, logout, device limit) | `$subscription` |
+| `PushSubscriptionExpired` | the push service answered 404/410; the subscription was deleted | `$subscription`, `$report` |
+| `PushFailed` | delivery failed otherwise (413, 429, 5xx, network, endpoint not allowed) | `$subscription`, `$report` |
 
 Maintenance mode (`pwa:down`) calls `artisan down`, so Laravel's own
 `Illuminate\Foundation\Events\MaintenanceModeEnabled` and `MaintenanceModeDisabled` events apply.

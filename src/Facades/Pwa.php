@@ -19,6 +19,8 @@ use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
  * @method static bool isStandaloneRequest(?Request $request = null)
  * @method static bool isStandaloneClient(?Request $request = null)
  * @method static string userHash(?Request $request = null)
+ * @method static string identityHash(mixed $id)
+ * @method static bool pushEnabled()
  * @method static \NyonCode\LaravelPwa\Pwa warmUsing(\Closure(Request): iterable<mixed> $callback)
  * @method static list<string> warmUrls(?Request $request = null)
  * @method static array<string, mixed> clientConfig()

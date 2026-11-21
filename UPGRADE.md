@@ -9,6 +9,19 @@ Before 1.0 any minor version may change the cache or service worker format. On e
 
 The service worker migrates caches itself in its `activate` event (it deletes old ones).
 
+## From 0.3 to 0.4
+
+- **Nothing changes unless you enable push.** The new `push` config section is off by default and
+  no migration runs by itself.
+- **To use web push:** `composer require minishlink/web-push`, `php artisan pwa:push:vapid`,
+  `php artisan vendor:publish --tag="pwa::migrations" && php artisan migrate`, set
+  `PWA_PUSH_ENABLED=true` and `PWA_VAPID_SUBJECT`, add `HasPushSubscriptions` to your user model and
+  run `php artisan pwa:build`. See the [push docs](https://nyoncode.github.io/laravel-pwa/push.html).
+- **Coming from a separate push package** (`laravel-notification-channels/webpush`): its
+  subscriptions cannot be moved, because they are bound to that package's VAPID key unless you reuse
+  the same keys in `PWA_VAPID_PUBLIC_KEY` / `PWA_VAPID_PRIVATE_KEY`. Remove its worker listeners from
+  `sw.import` once the built-in ones are on, or keep it and set `push.handle_in_worker = false`.
+
 ## From 0.2 to 0.3
 
 - **Run `php artisan pwa:icons` again** to get `monochrome-512.png` (listed in the manifest once it

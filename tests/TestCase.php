@@ -30,6 +30,19 @@ abstract class TestCase extends Orchestra
         $app['config']->set('pwa.name', 'Testovací aplikace');
         $app['config']->set('session.driver', 'array');
         $app['config']->set('cache.default', 'array');
+
+        if (method_exists($this, 'enablePush')) {
+            $this->enablePush($app);
+        }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (method_exists($this, 'setUpWithPush')) {
+            $this->setUpWithPush();
+        }
     }
 
     protected function tearDown(): void

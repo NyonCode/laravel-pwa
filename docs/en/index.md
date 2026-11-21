@@ -25,14 +25,14 @@ It supports Laravel 12 and 13 and PHP 8.2+. It is built on
 | Maintenance | maintenance screen, `pwa:down`, telling a 503 apart from a network failure | [Maintenance mode](maintenance.md) |
 | Kill switch | `pwa:disable` removes the service worker from every device | [Kill switch](kill-switch.md) |
 | Client | `window.Pwa`, `pwa:*` events | [JavaScript client](client.md) |
-| Push | only an interface for a separate push system | [Push](push.md) |
+| Push | optional: notification channel, `Pwa.push`, per-device subscriptions; or a slot for your own push system | [Push notifications](push.md) |
 | AI | MCP server, skill and reference for coding agents | [AI agents](ai.md) |
 
 ## What it does not do
 
-- **It does not send push notifications.** A scope can have only one service worker, so the
-  package gives your push system a slot in its own worker (`sw.import`). The rest is up to the
-  push system. See [Push](push.md).
+- **It does not push on its own.** The push module stays off until you enable it, and the browser
+  asks for permission only when your code calls `Pwa.push.subscribe()`. See
+  [Push notifications](push.md).
 - **It does not build your frontend.** It takes assets from your app's Vite build
   (`public/build/manifest.json`).
 - **It does not decide what is available offline.** No page is cached until the server allows it

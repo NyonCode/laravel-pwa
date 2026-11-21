@@ -24,13 +24,13 @@ Podporuje Laravel 12 a 13 a PHP 8.2+. Postavený je na
 | Údržba | obrazovka údržby, `pwa:down`, rozlišení 503 od výpadku sítě | [Údržba](maintenance.md) |
 | Nouzové vypnutí | `pwa:disable` odstraní service worker ze všech zařízení | [Nouzové vypnutí](kill-switch.md) |
 | Klient | `window.Pwa`, události `pwa:*` | [JavaScript klient](client.md) |
-| Push | jen rozhraní pro samostatný push systém | [Push](push.md) |
+| Push | volitelně: kanál pro notifikace, `Pwa.push`, odběry po zařízeních; nebo místo pro vlastní push systém | [Push notifikace](push.md) |
 | AI | MCP server, skill a reference pro coding agenty | [AI agenti](ai.md) |
 
 ## Co balíček nedělá
 
-- **Push notifikace neodesílá.** Na jednom scope smí být jen jeden service worker, proto balíček
-  push systému dá místo v tom svém (`sw.import`). Zbytek je na push systému. Viz [Push](push.md).
+- **Sám od sebe push neposílá.** Modul push je vypnutý, dokud ho nezapnete, a prohlížeč se na
+  oprávnění zeptá, až když váš kód zavolá `Pwa.push.subscribe()`. Viz [Push notifikace](push.md).
 - **Nebuildí frontend.** Assety bere z Vite buildu aplikace (`public/build/manifest.json`).
 - **Nerozhoduje o tom, co je offline.** Žádná stránka se neuloží, dokud to server nepovolí
   middlewarem `pwa.cache`.

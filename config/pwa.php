@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use NyonCode\LaravelPwa\Push\PushSubscription;
+
 return [
 
     /*
@@ -272,6 +274,44 @@ return [
         'log' => true,                  // log TelemetryReceived events (off when you handle them yourself)
         'channel' => env('PWA_LOG_CHANNEL'),
         'max_events' => 20,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Web push notifications (optional module)
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. Needs minishlink/web-push, VAPID keys (php artisan
+    | pwa:push:vapid) and the subscriptions table (php artisan vendor:publish
+    | --tag="pwa::migrations"). Notify through WebPushChannel; the worker shows
+    | the notifications unless handle_in_worker is false (own sw.import code).
+    |
+    */
+
+    'push' => [
+        'enabled' => env('PWA_PUSH_ENABLED', false),
+        'vapid' => [
+            'subject' => env('PWA_VAPID_SUBJECT', env('APP_URL')),   // mailto: or https: contact
+            'public_key' => env('PWA_VAPID_PUBLIC_KEY'),
+            'private_key' => env('PWA_VAPID_PRIVATE_KEY'),
+        ],
+        'model' => PushSubscription::class,
+        'table' => 'pwa_push_subscriptions',
+        'middleware' => ['auth'],       // subscription routes, after the web group
+        'max_subscriptions' => 10,      // devices per owner; the least recently used goes first
+        // The server only sends to these push services (no requests to arbitrary hosts). null = any.
+        'endpoints' => [
+            'fcm.googleapis.com',
+            'android.googleapis.com',
+            '*.push.services.mozilla.com',
+            '*.notify.windows.com',
+            '*.push.apple.com',
+        ],
+        'ttl' => 60 * 60 * 24 * 28,     // seconds the push service keeps an undelivered message
+        'urgency' => 'normal',          // very-low, low, normal, high
+        'icon' => null,                 // null = /{icons.path}/icon-192.png when it exists
+        'badge' => null,                // null = /{icons.path}/monochrome-512.png when it exists
+        'handle_in_worker' => true,
     ],
 
     /*

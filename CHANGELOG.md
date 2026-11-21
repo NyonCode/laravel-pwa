@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Upgrading from 0.3? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).
+
+### Added
+- Optional web push module (`pwa.push.enabled`, off by default; needs `minishlink/web-push` ^10 or
+  ^11): `Push\WebPushChannel` for Laravel notifications (also `'webpush'`) with the fluent
+  `Push\WebPushMessage` (actions, tag, app badge, TTL, urgency, topic, Declarative Web Push), the
+  `WebPush` facade for direct sends, the `Push\HasPushSubscriptions` trait and the
+  `Push\PushSubscription` model (publishable migration `pwa::migrations`, `model:prune` for expired
+  rows).
+- `php artisan pwa:push:vapid` generates the VAPID key pair with OpenSSL and writes it to `.env`.
+- Subscription routes `POST|DELETE /pwa/push/subscriptions` (web, `auth`, throttled). Endpoints must
+  be https URLs of the push services in `pwa.push.endpoints`, checked again before every send, so
+  users cannot make the server call other hosts. At most `pwa.push.max_subscriptions` devices per
+  owner.
+- Shared devices: logout removes the subscriptions of that session, a device moves to the user who
+  subscribes on it, and the worker shows a neutral notification instead of the content when another
+  user (or nobody) is signed in.
+- Worker: `push`, `notificationclick` (same-origin URLs only, focuses or reuses an app window) and
+  `pushsubscriptionchange` (renewal accepted only in place of the user's own endpoint);
+  `pwa.push.handle_in_worker = false` leaves them to your `sw.import` code.
+- Client: `Pwa.push.supported()`, `permission()`, `state()`, `subscribe()`, `unsubscribe()`,
+  `subscription()`; daily confirmation with the server, renewal after a key change, events
+  `pwa:push`, `pwa:push-received`, `pwa:push-renewed` and `pwa:notification-click`.
+- Events `PushSubscribed`, `PushUnsubscribed`, `PushSubscriptionExpired` (404/410, row deleted) and
+  `PushFailed`; `Contracts\PushTransport` to replace the delivery library.
+- `WebPush::fake()` with `assertSentTo()`, `assertNotSentTo()`, `assertSent()`, `assertSentCount()`,
+  `assertNothingSent()`.
+- `pwa:doctor` checks the push library, the VAPID keys and subject, the subscriptions table and the
+  endpoint allowlist when push is enabled; `php artisan about` shows the push state.
+- `Pwa::identityHash()` returns the user hash for any user id.
+
 ## [0.3.0] - 2026-11-21
 
 Upgrading from 0.2? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).

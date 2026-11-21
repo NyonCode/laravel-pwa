@@ -16,6 +16,10 @@ objevováním. Všechny jsou ve jmenném prostoru `NyonCode\LaravelPwa\Events`.
 | `KillSwitchActivated` | `pwa:disable` / `Pwa::disable()` | – |
 | `KillSwitchDeactivated` | `pwa:enable` / `Pwa::enable()` | – |
 | `TelemetryReceived` | SW nebo klient nahlásil chyby (`POST /pwa/telemetry`) | `$source` (`sw`, `client`), `$events`, `$userAgent` |
+| `PushSubscribed` | prohlížeč uložil nebo obnovil [push](push.md) odběr | `$subscription` |
+| `PushUnsubscribed` | odběr byl odebrán (odhlášení odběru, odhlášení, limit zařízení) | `$subscription` |
+| `PushSubscriptionExpired` | push služba odpověděla 404/410; odběr byl smazán | `$subscription`, `$report` |
+| `PushFailed` | doručení selhalo jinak (413, 429, 5xx, síť, nepovolený endpoint) | `$subscription`, `$report` |
 
 Režim údržby (`pwa:down`) volá `artisan down`, takže platí Laravel události
 `Illuminate\Foundation\Events\MaintenanceModeEnabled` a `MaintenanceModeDisabled`.

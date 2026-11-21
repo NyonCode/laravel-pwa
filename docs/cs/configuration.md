@@ -20,6 +20,9 @@ takže po nasazení s `pwa:build` se zařízení aktualizují sama.
 | `PWA_DISPLAY_STRATEGY` | `display.strategy` | `override` |
 | `PWA_KILL_SWITCH_STORE` | `sw.kill_switch_store` | `null` (výchozí cache store) |
 | `PWA_LOG_CHANNEL` | `telemetry.channel` | `null` (výchozí log) |
+| `PWA_PUSH_ENABLED` | `push.enabled` | `false` |
+| `PWA_VAPID_SUBJECT` | `push.vapid.subject` | `APP_URL` |
+| `PWA_VAPID_PUBLIC_KEY`, `PWA_VAPID_PRIVATE_KEY` | `push.vapid.*` | `null` (`pwa:push:vapid`) |
 
 ## Obecné
 
@@ -155,3 +158,22 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `adapters.livewire` | bool | `true` | Adaptér pro Livewire 3. |
 | `adapters.inertia` | bool | `true` | Adaptér pro Inertia. |
 | `adapters.reload_on_resume` | bool | `false` | Inertia `reload()` po návratu do aplikace. |
+
+## Web push
+
+Viz [Push notifikace](push.md).
+
+| Klíč | Typ | Výchozí | Popis |
+| --- | --- | --- | --- |
+| `push.enabled` | bool | `false` | Volitelný modul push: routy pro odběry, `Pwa.push`, push listenery ve workeru. |
+| `push.vapid.subject` | string | `APP_URL` | Kontakt pro push služby: `mailto:` nebo `https://`. |
+| `push.vapid.public_key`, `push.vapid.private_key` | ?string | `null` | Zapíše `pwa:push:vapid`; nové klíče zneplatní všechny odběry. |
+| `push.model` | class-string | `Push\PushSubscription` | Vlastní model musí dědit z tohoto. |
+| `push.table` | string | `pwa_push_subscriptions` | Tabulka publikované migrace. |
+| `push.middleware` | list | `['auth']` | Middleware rout pro odběry (po `web`, omezeno na 20/min). |
+| `push.max_subscriptions` | int | `10` | Zařízení na vlastníka; nejdéle nepoužité se odebere první. |
+| `push.endpoints` | ?list | FCM, Mozilla, Windows, Apple | Hosty push služeb, které server přijme a na které posílá (zástupný znak `*`); `null` = jakýkoli https host. |
+| `push.ttl` | int (s) | `2419200` | Jak dlouho push služba drží nedoručenou zprávu (28 dní). |
+| `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
+| `push.icon`, `push.badge` | ?string | `null` | Výchozí hodnoty zpráv; `null` = `icon-192.png` a `monochrome-512.png` z `icons.path`, pokud existují. |
+| `push.handle_in_worker` | bool | `true` | Worker zobrazuje notifikace a obsluhuje kliknutí; `false`, když to dělá skript v `sw.import`. |

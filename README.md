@@ -54,6 +54,9 @@ real Laravel app is everything around it, and that is what this package is built
   a deploy, because a broken worker survives a fixed server.
 - **One app, one URL.** Desktop Edge and Chrome get `minimal-ui` with Back and Reload buttons;
   phones, tablets and Safari get `standalone`. No user-agent sniffing.
+- **Push that respects shared devices.** Optional web push with a Laravel notification channel:
+  logout removes the device's subscription, and a device where someone else is signed in shows a
+  neutral notification instead of the content.
 
 ## Features
 
@@ -65,18 +68,16 @@ real Laravel app is everything around it, and that is what this package is built
 | Service worker | Built from your Vite manifest, versioned, auto-updating | [Service worker](docs/en/service-worker.md) |
 | Cache rules | network-first, cache-first, stale-while-revalidate, network-only, cache-only; per user or shared; limits and expiry | [Cache rules](docs/en/service-worker.md#cache-rules) |
 | Offline | Offline screen, offline pages with server consent, warm-up of unvisited pages, offline queue for forms and API calls | [Offline](docs/en/offline.md) |
+| Push notifications | Optional: `WebPushChannel`, `Pwa.push.subscribe()`, VAPID keys, per-device subscriptions, Declarative Web Push, `WebPush::fake()` | [Push notifications](docs/en/push.md) |
 | Multi-tenant | One installable app per path tenant (`/t/acme/`): own worker scope, manifest identity and caches | [Multi-tenant apps](docs/en/tenancy.md) |
 | Session | Persistent login in the installed app, keep-alive, CSRF refresh | [Persistent login](docs/en/session.md) |
 | Maintenance | Maintenance screen, `pwa:down`, 503 vs. network failure | [Maintenance](docs/en/maintenance.md) |
 | Kill switch | `pwa:disable` / `pwa:enable` | [Kill switch](docs/en/kill-switch.md) |
 | Client | `window.Pwa`, `pwa:*` events, Livewire and Inertia adapters | [Client](docs/en/client.md), [Adapters](docs/en/adapters.md) |
-| Events | `ManifestResolving`, `ServiceWorkerBuilt`, kill switch and telemetry events | [Events](docs/en/events.md) |
+| Events | `ManifestResolving`, `ServiceWorkerBuilt`, kill switch, telemetry and push events | [Events](docs/en/events.md) |
 | Testing | `asInstalledApp()`, `assertPwaCacheable()`, `assertValidManifest()` and more | [Testing](docs/en/testing.md) |
 | Extensibility | `sw.import` / `sw.extend` and `self.PwaWorker` for your own worker code | [Service worker](docs/en/service-worker.md#swextend) |
 | AI agents | MCP server, agent guide and Claude Code skill, read from your installed version | [AI agents](docs/en/ai.md) |
-
-Web push is not part of 0.3: the worker gives your push system a place to run (`sw.import`).
-See [Push](docs/en/push.md).
 
 ## A taste of the API
 
@@ -111,6 +112,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | `pwa:icons {source}` | Generates any, maskable, apple-touch-icon and favicon icons |
 | `pwa:down` | `artisan down` with the PWA maintenance screen |
 | `pwa:disable` / `pwa:enable` | Kill switch for the service worker on every device |
+| `pwa:push:vapid` | Generates the VAPID keys for web push |
 | `pwa:doctor` | Checks HTTPS, icons, build, cache rules, maintenance exceptions, session |
 
 ## Documentation
@@ -121,7 +123,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | [Installation](docs/en/installation.md) | [Manifest](docs/en/manifest.md) | [Events](docs/en/events.md) | [Deployment](docs/en/deployment.md) |
 | [Configuration](docs/en/configuration.md) | [Blade components](docs/en/components.md) | [Multi-tenant apps](docs/en/tenancy.md) | [Security](docs/en/security.md) |
 | | [Service worker](docs/en/service-worker.md) | [Livewire and Inertia](docs/en/adapters.md) | [Platform support](docs/en/platforms.md) |
-| | [Offline](docs/en/offline.md) | [Push](docs/en/push.md) | [Troubleshooting](docs/en/troubleshooting.md) |
+| | [Offline](docs/en/offline.md) | [Push notifications](docs/en/push.md) | [Troubleshooting](docs/en/troubleshooting.md) |
 | | [Persistent login](docs/en/session.md) | [AI agents](docs/en/ai.md) | [Testing](docs/en/testing.md) |
 | | [Maintenance](docs/en/maintenance.md) | | |
 | | [Kill switch](docs/en/kill-switch.md) | | |
@@ -132,7 +134,8 @@ The documentation is also available in [Czech](docs/cs/index.md).
 
 | Version | PHP | Laravel | Status |
 | --- | --- | --- | --- |
-| 0.3 | 8.2 – 8.5 | 12, 13 | Active |
+| 0.4 | 8.2 – 8.5 | 12, 13 | Active |
+| 0.3 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.4.0 + 3 months |
 | 0.2 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.3.0 + 3 months |
 | 0.1 | 8.2 – 8.5 | 12, 13 | Security fixes until 0.2.0 + 3 months |
 

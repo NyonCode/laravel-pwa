@@ -69,6 +69,8 @@ JS tests run the real source files: `tests/js/support/sw-env.mjs` evaluates `res
 in a `vm` context with in-memory Cache Storage, a scripted `fetch` and fake IndexedDB;
 `tests/js/support/client-env.mjs` runs `resources/js/pwa.js` in happy-dom. Offline e2e specs are
 tagged `@offline` and run in Chromium only (Playwright's Firefox offline mode skips worker requests).
+`tests/e2e/push.spec.mjs` delivers pushes over CDP to the real worker in the full Chromium build
+(`channel: 'chromium'`; the headless shell has no notifications).
 
 CI: `tests.yml` (Pest on PHP 8.2–8.5 × Laravel 12/13 × lowest/stable, Laravel 13 skipped on 8.2,
 plus coverage), `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml`
@@ -80,8 +82,10 @@ mentioned in `ai/AGENTS.md`, so update that file whenever you add one.
 
 ## Conventions
 
-- Push notifications are **out of scope**. Do not add VAPID, subscriptions or sending; the only
-  push surface is `config('pwa.sw.import')`.
+- Web push is an **opt-in module** (`pwa.push.enabled = false` by default; `minishlink/web-push`
+  is only a `suggest`). Its migration is published, never loaded. It keeps the per-user rule: logout
+  removes the session's subscriptions, the worker hides content for another signed-in user, and the
+  server sends only to `pwa.push.endpoints` hosts. External push systems keep using `sw.import`.
 - Nothing HTML is cached without `X-PWA-Cache: allow`. Do not change that default.
 - Never send `Clear-Site-Data: "storage"` — it unregisters the worker and kills push subscriptions.
 - Offline and maintenance views stay self-contained (inline CSS/SVG/JS). The maintenance script
