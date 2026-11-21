@@ -1,0 +1,7 @@
+[
+  { "section": "Začínáme", "pages": ["index.md", "installation.md", "configuration.md"] },
+  { "section": "Funkce", "pages": ["display-modes.md", "manifest.md", "components.md", "service-worker.md", "offline.md", "session.md", "maintenance.md", "kill-switch.md"] },
+  { "section": "Integrace", "pages": ["client.md", "push.md", "adapters.md"] },
+  { "section": "Provoz", "pages": ["commands.md", "deployment.md", "security.md", "platforms.md", "troubleshooting.md"] },
+  { "section": "Vývoj", "pages": ["testing.md", "ai.md"] }
+]

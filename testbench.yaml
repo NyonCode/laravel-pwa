@@ -1,0 +1,16 @@
+providers:
+  - NyonCode\LaravelPwa\PwaServiceProvider
+
+env:
+  - APP_NAME="PWA Workbench"
+  - APP_KEY=base64:M0hhlrmBeaviLoDKzTV5wjpcSuKltb/Smy8qAF55fVc=
+  - APP_DEBUG=true
+  - PWA_ENABLED=true
+  - SESSION_DRIVER=file
+  - CACHE_STORE=file
+
+workbench:
+  start: '/'
+  discovers:
+    web: true
+    views: true

@@ -1,0 +1,76 @@
+{
+    "name": "nyoncode/laravel-pwa",
+    "description": "Progressive Web App pro Laravel: manifest, service worker, offline, údržba a trvalé přihlášení",
+    "type": "library",
+    "keywords": [
+        "laravel",
+        "pwa",
+        "progressive-web-app",
+        "service-worker",
+        "offline",
+        "manifest",
+        "nyoncode",
+        "mcp",
+        "ai"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ondřej Nyklíček",
+            "email": "ondrej@nyoncode.cz",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0|^13.0",
+        "nyoncode/laravel-package-toolkit": "^2.5"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.24",
+        "nyoncode/laravel-package-console": "^1.0",
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^3.8|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.2|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "NyonCode\\LaravelPwa\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "NyonCode\\LaravelPwa\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "NyonCode\\LaravelPwa\\PwaServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse",
+        "mcp:self-test": "node ai/mcp/server.mjs --self-test"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "homepage": "https://github.com/NyonCode/laravel-pwa",
+    "suggest": {
+        "ext-gd": "Generování ikon příkazem pwa:icons",
+        "ext-imagick": "Generování ikon ze SVG příkazem pwa:icons"
+    },
+    "bin": [
+        "bin/pwa-ai"
+    ]
+}
