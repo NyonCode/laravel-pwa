@@ -7,20 +7,21 @@ Prefer it — and the package's MCP server, if registered — over recalling the
 
 Requires PHP 8.2+ (8.3+ with Laravel 13) and Laravel 12.x or 13.x. Built on
 `nyoncode/laravel-package-toolkit`; short name `pwa` (views `pwa::`, translations `pwa::`, publish
-tags `pwa::config`, `pwa::views`, `pwa::translations`).
+tags `pwa::config`, `pwa::views`, `pwa::translations`, `pwa::migrations`).
 
 ## Mental model
 
 - **One app, one origin.** Manifest `display: standalone` + `display_override: ["minimal-ui"]`:
   Edge/Chrome on desktop get `minimal-ui` (Back/Reload), phones, tablets and Safari get `standalone`.
 - **The package owns the service worker at `/sw.js`.** It is a route, not a file in `public/`.
-  Never create `public/sw.js` or a second service worker on scope `/`. Extra worker code (push,
-  Sentry) goes through `config('pwa.sw.import')` → `importScripts`; custom caching routes go
+  Never create `public/sw.js` or a second service worker on scope `/`. Extra worker code (an
+  external push system, Sentry) goes through `config('pwa.sw.import')` → `importScripts`; custom caching routes go
   through `config('pwa.sw.extend')` and `self.PwaWorker`.
 - **Nothing HTML is cached unless the server allows it** with the `pwa.cache` middleware.
-- **Push notifications are NOT implemented by this package.** It only provides the slot
-  (`sw.import`), install state and events. Do not add VAPID/subscription code to this package's
-  config; build it in the app or a separate push package.
+- **Web push is an optional module, off by default** (`pwa.push.enabled`). Use it instead of a
+  second push package: `WebPushChannel` for notifications, `Pwa.push.subscribe()` in the browser.
+  An existing push system plugs in through `sw.import` with `push.enabled = false` (or
+  `push.handle_in_worker = false`). Never register another worker for push.
 - **Login persistence in the installed app** relies on the server-set HttpOnly remember cookie
   (`pwa.remember` middleware), never on localStorage.
 
@@ -64,6 +65,8 @@ Deploy: `npm run build` → `php artisan pwa:build` (also run by `php artisan op
 | GET | `/pwa/session` | `pwa.session` | web | keep-alive: `{authenticated, user, csrf, lifetime}` |
 | POST | `/pwa/telemetry` | `pwa.telemetry` | web, throttle:30,1, no CSRF | service-worker error log |
 | GET | `/offline` (`pwa.offline.route`) | `pwa.offline` | web | offline screen |
+| POST | `/pwa/push/subscriptions` | `pwa.push.subscribe` | web, `push.middleware` (`auth`), throttle:20,1 | store `PushSubscription.toJSON()` + `contentEncoding` (+ `replaces`); only with `push.enabled` |
+| DELETE | `/pwa/push/subscriptions` | `pwa.push.unsubscribe` | same | `{endpoint}`; removes the signed-in user's own subscription |
 
 The `pwa` prefix is `config('pwa.route_prefix')`.
 
@@ -76,7 +79,8 @@ The `pwa` prefix is `config('pwa.route_prefix')`.
 | appended to `web` | `Http\Middleware\PwaWebMiddleware` | marks session from `?source=pwa`; sends `X-PWA-User` (HMAC hash of user id); after logout sends `X-PWA-Logout: 1` + `Clear-Site-Data: "cache"` |
 
 Logout detection is the `Illuminate\Auth\Events\Logout` listener `Listeners\MarkLogout` — nothing
-to wire.
+to wire. `Listeners\ForgetPushSubscriptions` (same event) deletes the push subscriptions stored in
+that session (session key `pwa.push.endpoints`).
 
 ## Facade `NyonCode\LaravelPwa\Facades\Pwa` (→ `NyonCode\LaravelPwa\Pwa`, singleton)
 
@@ -89,6 +93,8 @@ to wire.
 | `isStandaloneRequest(?Request)` | bool | header `X-PWA-Display`, cookie `pwa_display`, `?source=pwa`, or session `pwa.standalone` |
 | `isStandaloneClient(?Request)` | bool | header `X-PWA-Display` or cookie `pwa_display` only; `?source=pwa` and the session flag can be planted by a link, so only this one drives `pwa.remember` |
 | `userHash(?Request)` | string | `guest` or 16-char HMAC of the auth id |
+| `identityHash(mixed $id)` | string | the same HMAC for any user id (push payload `user`) |
+| `pushEnabled()` | bool | `push.enabled` and a public VAPID key |
 | `warmUsing(Closure(Request): iterable)` | static | adds pages to warm for the current user; runs on every `/pwa/session` request, keep it cheap |
 | `warmUrls(?Request)` | `list<string>` | `offline.warm.urls` + `warmUsing()`: same-origin paths only, `never_cache` removed, at most `offline.warm.max` |
 | `warmsPages()` | bool | a warm-up is configured |
@@ -274,15 +280,67 @@ identity is shared by the origin (`pwa-meta`, `BroadcastChannel('pwa-identity')`
 logout seen by any worker purges the user caches of every namespace and the shared offline queue
 (IndexedDB `pwa`). The kill switch is origin-wide too.
 
+## Web push (`pwa.push.*`, optional)
+
+Setup: `composer require minishlink/web-push` (^10|^11), `php artisan pwa:push:vapid` (writes
+`PWA_VAPID_PUBLIC_KEY`/`PWA_VAPID_PRIVATE_KEY` to `.env`), `php artisan vendor:publish
+--tag="pwa::migrations" && php artisan migrate` (table `pwa_push_subscriptions`, `morphs('subscribable')`;
+the migration is never loaded automatically), `PWA_PUSH_ENABLED=true`, `PWA_VAPID_SUBJECT=mailto:…`,
+`use Push\HasPushSubscriptions` on the notifiable model (`pushSubscriptions()` morphMany,
+`routeNotificationForWebPush()`), then `pwa:build`.
+
+```php
+public function via(object $notifiable): array { return [WebPushChannel::class]; } // or 'webpush'
+
+public function toWebPush(object $notifiable): WebPushMessage
+{
+    return WebPushMessage::create('Order shipped')->body('…')->url(route('orders.show', $this->order))->tag('order-1');
+}
+
+WebPush::send($user, WebPushMessage::create('Export ready')); // Facades\WebPush, also one PushSubscription or a list
+```
+
+`Push\WebPushMessage`: `create(title)`, `title`, `body`, `icon`, `badge`, `image`, `url` (same origin
+only, else the scope opens), `action(id, title, ?url, ?icon)`, `tag(tag, renotify)`, `requireInteraction`,
+`silent`, `lang`, `dir`, `timestamp`, `data([...])`, `appBadge(n)`, `ttl(s)`, `urgency(very-low|low|normal|high)`,
+`topic([A-Za-z0-9_-]{1,32})`, `declarative()` (Declarative Web Push `web_push: 8030`, needs `url`, no
+per-user check), `public()` (no recipient hash). Payload max 4078 bytes (throws). Results: list of
+`Push\PushReport {endpoint, success, status, reason, expired()}`; 2xx touches `last_used_at`, 404/410
+deletes + `PushSubscriptionExpired`, other failures `PushFailed`. Transport: `Contracts\PushTransport`
+(default `Push\MinishlinkTransport`). Prune: `model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`
+(past `expires_at`).
+
+Safety rules: endpoints must be `https` on `push.endpoints` hosts (FCM, Mozilla, Windows, Apple;
+checked on subscribe and on send, no port, no credentials); the same endpoint subscribed by another
+user moves to them; `replaces` (worker renewal) is accepted only for an endpoint the user owns; at
+most `push.max_subscriptions` per owner. Each private message carries the recipient's
+`identityHash`; the worker shows `pwa::messages.push_fallback` with the app name instead of the
+content when the device's current user differs (or is a guest). The client never adopts a
+subscription for another user: localStorage `pwa:push` = `{endpoint, user, at}`; logout and the
+`identity` message of another user unsubscribe the browser.
+
+Worker (with `push.handle_in_worker`): `push` always shows a notification (Safari rule), defaults
+`push.icon`/`push.badge` or `icon-192.png`/`monochrome-512.png`; `notificationclick` focuses/navigates/opens
+a same-origin URL (`data.url` or `data.actions[action]`); `pushsubscriptionchange` re-subscribes with the
+key and POSTs with a fresh CSRF token and `replaces`. Broadcasts `push-received` `{tag}`,
+`notification-click` `{url, action}`, `push-renewed`.
+
+Testing: `WebPush::fake()` → `assertSentTo($notifiable, ?fn(WebPushMessage): bool)`,
+`assertNotSentTo`, `assertSent`, `assertSentCount(n)`, `assertNothingSent()`, `sent(?notifiable)`;
+messages are built and size-checked, nothing is sent.
+
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
-`update()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`.
+`update()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
+`push.supported()`, `push.permission()`, `push.state()` → `subscribed|unsubscribed|denied|install-required|unsupported`,
+`push.subscribe()` (call from a click) → subscription or `null`, `push.unsubscribe()`, `push.subscription()`.
 
 DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `resume`, `online`,
 `offline`, `maintenance`, `logout`, `queue` `{count}`, `replayed` `{url,status}`,
 `update-available` `{worker}`, `activated` `{version}`, `installed`, `csrf` `{token}`,
-`csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`.
+`csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`,
+`push` `{state, lost?, error?}`, `push-received` `{tag}`, `push-renewed`, `notification-click` `{url, action}`.
 
 Warm-up (`offline.warm`, `Pwa::warmUsing()`): `/pwa/session` returns `warm: [paths]` for the current
 user (`no-store`, never in `sw.js`). The worker fetches them (2 at a time, max 50, request header
@@ -308,6 +366,9 @@ bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia
 | `ServiceWorkerBuilt` | `pwa:build` / `ServiceWorkerBuilder::write()` | `version`, `path`, `precache` |
 | `KillSwitchActivated` / `KillSwitchDeactivated` | `pwa:disable` / `pwa:enable` (`Pwa::disable()` / `enable()`) | — |
 | `TelemetryReceived` | `POST /pwa/telemetry` validated | `source` (`sw`\|`client`), `events` (type, message, stack, version, display), `userAgent` |
+| `PushSubscribed` / `PushUnsubscribed` | subscription stored or renewed / removed (DELETE, logout, device limit) | `subscription` |
+| `PushSubscriptionExpired` | push service answered 404/410, row deleted | `subscription`, `report` |
+| `PushFailed` | other delivery failure or endpoint not allowed | `subscription`, `report` |
 
 `pwa:down` wraps `artisan down`: use Laravel's `MaintenanceModeEnabled` / `MaintenanceModeDisabled`.
 Telemetry is logged by the `LogTelemetry` listener (`pwa.telemetry.channel`); set
@@ -341,6 +402,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | `pwa:doctor {--ci}` | checks; `--ci` exits 1 on errors |
 | `pwa:down {--message=} {--until=} {--retry=} {--refresh=} {--secret=} {--with-secret}` | `artisan down --render=pwa::maintenance` |
 | `pwa:disable {--force}` / `pwa:enable` | kill switch: `/sw.js` serves a worker that deletes `pwa-*` caches and unregisters |
+| `pwa:push:vapid {--show} {--force}` | P-256 VAPID keys via OpenSSL into `.env`; refuses to replace existing keys without `--force` (new keys invalidate all subscriptions) |
 
 ## Config `config/pwa.php` (top-level keys)
 
@@ -352,11 +414,13 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
-`telemetry.{enabled,channel,max_events}`, `adapters.{livewire,inertia,reload_on_resume}`,
+`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker}`,
+`adapters.{livewire,inertia,reload_on_resume}`,
 `route_prefix`. Use the MCP tool `describe_config` for defaults and comments.
 
 Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHORT_NAME`,
-`PWA_DESCRIPTION`, `PWA_DISPLAY_STRATEGY`, `PWA_KILL_SWITCH_STORE`, `PWA_LOG_CHANNEL`.
+`PWA_DESCRIPTION`, `PWA_DISPLAY_STRATEGY`, `PWA_KILL_SWITCH_STORE`, `PWA_LOG_CHANNEL`,
+`PWA_PUSH_ENABLED`, `PWA_VAPID_SUBJECT`, `PWA_VAPID_PUBLIC_KEY`, `PWA_VAPID_PRIVATE_KEY`.
 
 ## Common mistakes (all silent)
 
@@ -376,13 +440,19 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
     push subscriptions. The package sends only `"cache"` on purpose.
 11. **Session driver `array`/`cookie` or no shared cache store on multiple servers** → logouts,
     kill switch not seen by all servers.
-12. **Expecting push from this package** → there is none; see `docs/en/push.md`.
+12. **Asking for notification permission on page load** → browsers block or hide the prompt; call
+    `Pwa.push.subscribe()` from a click. On iPhone/iPad it works only in the Home Screen app
+    (`Pwa.push.state() === 'install-required'` in Safari).
 13. **Inertia `useForm({ remember: false })` on login** → the explicit `false` wins over `pwa.remember`,
     so the installed app is not remembered. Default it to `window.Pwa?.isInstalled() ?? false`.
 14. **`shared: true` on personal data** → the worker refuses `Cache-Control: private` and signed-in
     responses, so nothing is cached offline. Keep personal API rules per user (the default).
 15. **A broad rule before a narrow one** (`/api/*` before `/api/live`) → the first match wins; put the
     narrow rule (often `network-only`) first.
+16. **Personal content in `declarative()` or `public()` push messages** → shown to whoever is signed in
+    on the device. Keep private messages default.
+17. **A push service host missing from `push.endpoints`** (e.g. a self-hosted autopush) → subscribe
+    returns 422 and nothing is sent. Add the host; do not set the list to `null` in production.
 
 ## Before you call the work done
 

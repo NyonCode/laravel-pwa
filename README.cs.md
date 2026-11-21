@@ -49,6 +49,9 @@ Tím máte instalovatelnou PWA s offline obrazovkou. Všechno ostatní se zapín
   nasazení.
 - **Jedna aplikace na jedné adrese.** Edge a Chrome na desktopu dostanou `minimal-ui` s tlačítky
   Zpět a Obnovit, telefony, tablety a Safari `standalone`. Bez detekce zařízení.
+- **Push, který počítá se sdíleným zařízením.** Volitelný web push s kanálem pro Laravel notifikace:
+  odhlášení odebere odběr zařízení a zařízení s jiným přihlášeným uživatelem ukáže místo obsahu
+  neutrální notifikaci.
 
 ## Funkce
 
@@ -60,18 +63,16 @@ Tím máte instalovatelnou PWA s offline obrazovkou. Všechno ostatní se zapín
 | Service worker | Sestavený z Vite manifestu, verzovaný, sám se aktualizuje | [Service worker](docs/cs/service-worker.md) |
 | Pravidla cache | network-first, cache-first, stale-while-revalidate, network-only, cache-only; per uživatel nebo sdílené; limity a expirace | [Service worker](docs/cs/service-worker.md) |
 | Offline | Offline obrazovka, stránky offline se souhlasem serveru, předehřátí nenavštívených stránek, fronta formulářů a API volání | [Offline](docs/cs/offline.md) |
+| Push notifikace | Volitelné: `WebPushChannel`, `Pwa.push.subscribe()`, klíče VAPID, odběry po zařízeních, Declarative Web Push, `WebPush::fake()` | [Push notifikace](docs/cs/push.md) |
 | Více tenantů | Samostatně instalovatelná aplikace pro každého tenanta na cestě (`/t/acme/`): vlastní scope workeru, identita v manifestu a cache | [Více tenantů](docs/cs/tenancy.md) |
 | Session | Trvalé přihlášení v aplikaci, keep-alive, obnova CSRF | [Trvalé přihlášení](docs/cs/session.md) |
 | Údržba | Obrazovka údržby, `pwa:down`, 503 vs. výpadek sítě | [Údržba](docs/cs/maintenance.md) |
 | Nouzové vypnutí | `pwa:disable` / `pwa:enable` | [Nouzové vypnutí](docs/cs/kill-switch.md) |
 | Klient | `window.Pwa`, události `pwa:*`, adaptéry Livewire a Inertia | [Klient](docs/cs/client.md), [Adaptéry](docs/cs/adapters.md) |
-| Události | `ManifestResolving`, `ServiceWorkerBuilt`, nouzové vypnutí, telemetrie | [Události](docs/cs/events.md) |
+| Události | `ManifestResolving`, `ServiceWorkerBuilt`, nouzové vypnutí, telemetrie, push | [Události](docs/cs/events.md) |
 | Testování | `asInstalledApp()`, `assertPwaCacheable()`, `assertValidManifest()` a další | [Testování](docs/cs/testing.md) |
 | Rozšiřitelnost | `sw.import` / `sw.extend` a `self.PwaWorker` pro vlastní kód workeru | [Service worker](docs/cs/service-worker.md) |
 | AI agenti | MCP server, průvodce pro agenty a Claude Code skill z nainstalované verze | [AI agenti](docs/cs/ai.md) |
-
-Push notifikace nejsou součástí 0.3: worker dá vašemu push systému místo (`sw.import`).
-Viz [Push](docs/cs/push.md).
 
 ## Ukázka API
 
@@ -106,6 +107,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | `pwa:icons {source}` | Ikony any, maskable, apple-touch-icon a favicon |
 | `pwa:down` | `artisan down` s obrazovkou údržby PWA |
 | `pwa:disable` / `pwa:enable` | Nouzové vypnutí service workeru na všech zařízeních |
+| `pwa:push:vapid` | Vygeneruje klíče VAPID pro web push |
 | `pwa:doctor` | Kontrola HTTPS, ikon, buildu, pravidel cache, výjimek z údržby, session |
 
 ## Dokumentace
@@ -116,7 +118,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | [Instalace](docs/cs/installation.md) | [Manifest](docs/cs/manifest.md) | [Události](docs/cs/events.md) | [Nasazení](docs/cs/deployment.md) |
 | [Konfigurace](docs/cs/configuration.md) | [Blade komponenty](docs/cs/components.md) | [Více tenantů](docs/cs/tenancy.md) | [Bezpečnost](docs/cs/security.md) |
 | | [Service worker](docs/cs/service-worker.md) | [Livewire a Inertia](docs/cs/adapters.md) | [Podpora platforem](docs/cs/platforms.md) |
-| | [Offline](docs/cs/offline.md) | [Push](docs/cs/push.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
+| | [Offline](docs/cs/offline.md) | [Push notifikace](docs/cs/push.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
 | | [Trvalé přihlášení](docs/cs/session.md) | [AI agenti](docs/cs/ai.md) | [Testování](docs/cs/testing.md) |
 | | [Údržba](docs/cs/maintenance.md) | | |
 | | [Nouzové vypnutí](docs/cs/kill-switch.md) | | |
@@ -125,7 +127,8 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 
 | Verze | PHP | Laravel | Stav |
 | --- | --- | --- | --- |
-| 0.3 | 8.2 – 8.5 | 12, 13 | Aktivní |
+| 0.4 | 8.2 – 8.5 | 12, 13 | Aktivní |
+| 0.3 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.4.0 |
 | 0.2 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.3.0 |
 | 0.1 | 8.2 – 8.5 | 12, 13 | Bezpečnostní opravy do 3 měsíců po vydání 0.2.0 |
 

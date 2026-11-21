@@ -33,6 +33,7 @@ description: The window.Pwa API, pwa:* events, the status bar, installation, bad
 | `on(event, fn)` | function | listener without the `pwa:` prefix; returns a function that removes it |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
 | `badge.clear()` | Promise | |
+| `push.*` | | `supported()`, `permission()`, `state()`, `subscribe()`, `unsubscribe()`, `subscription()`; see [Push notifications](push.md#subscribing-in-the-browser) |
 
 ```js
 if (!Pwa.isInstalled() && Pwa.isIos()) showIosHelp()
@@ -63,6 +64,10 @@ Every event is dispatched as a `CustomEvent` on `document` (`pwa:name`) and is a
 | `pwa:csrf-refreshed` | `{}` | a Livewire 419 was resolved |
 | `pwa:identity` | `{user}` | another user signed in (user hash) |
 | `pwa:warmed` | `{count, skipped, failed}` | a warm-up finished |
+| `pwa:push` | `{state, lost?, error?}` | the push subscription changed (`subscribed`, `unsubscribed`, `denied`) |
+| `pwa:push-received` | `{tag}` | the worker showed a push notification |
+| `pwa:push-renewed` | `{}` | the worker renewed a rotated subscription |
+| `pwa:notification-click` | `{url, action}` | the user clicked a notification |
 
 ```js
 document.addEventListener('pwa:resume', () => refreshDashboard())
@@ -89,5 +94,6 @@ closed. For your own UI, use `pwa:update-available` and `detail.worker.postMessa
 | `pwa:visits` | number of visits |
 | `pwa:install-dismissed` | time the install prompt was dismissed |
 | `pwa:warm` | user hash and time of the last warm-up |
+| `pwa:push` | endpoint, user hash and time of the last confirmation of this browser's push subscription |
 
 Access is wrapped in `try/catch` (private mode, full storage). Login never depends on localStorage.

@@ -2,7 +2,8 @@
  * nyoncode/laravel-pwa — browser client (loaded by <x-pwa::head/>).
  *
  * Service worker registration and updates, installation, session and CSRF
- * keep-alive, offline/maintenance bars and adapters for Livewire and Inertia.
+ * keep-alive, offline/maintenance bars, web push subscriptions and adapters for
+ * Livewire and Inertia.
  * Public API: window.Pwa.
  */
 const configEl = document.getElementById('pwa-config');
@@ -142,6 +143,7 @@ const registerServiceWorker = async () => {
         emit('offline', data);
         break;
       case 'logout':
+        if (C.push) dropSubscription().catch(() => {});
         emit('logout', data);
         break;
       case 'queued':
@@ -154,6 +156,7 @@ const registerServiceWorker = async () => {
       case 'identity':
         // Another user signed in without a navigation (Inertia, Livewire): fetch their warm-up list.
         emit('identity', data);
+        if (C.push && store.get('push')?.user && store.get('push').user !== data.user) dropSubscription().catch(() => {});
         if (C.warm?.enabled && data.user !== 'guest') keepAlive(true);
         break;
       default:
@@ -193,6 +196,7 @@ const keepAlive = async (force = false, autoWarm = true) => {
     // The worker never sees /pwa/session: tell it who is signed in, so it purges another user's data.
     if (data.user) navigator.serviceWorker?.controller?.postMessage({ type: 'IDENTITY', user: data.user });
     if (autoWarm) warmUp(data);
+    if (C.push) syncPush(data).catch(() => {});
     return data;
   } catch {
     return null;
@@ -293,6 +297,150 @@ const resume = () => {
   if (navigator.onLine) navigator.serviceWorker?.controller?.postMessage({ type: 'REPLAY_QUEUE' });
   emit('resume', { displayMode: displayMode() });
   if (C.adapters?.reloadOnResume && window.Inertia?.reload) window.Inertia.reload();
+};
+
+/* ---------------------------------------------------------------------- *
+ * Web push (pwa.push.enabled)
+ * ---------------------------------------------------------------------- */
+
+// localStorage pwa:push = { endpoint, user, at }: who subscribed this browser and when it was last
+// confirmed with the server. Another user on the device never inherits the subscription.
+const PUSH_SYNC = 24 * 60 * 60_000;
+
+const pushSupported = () => !!C.push?.key && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+const pushPermission = () => (window.Notification ? window.Notification.permission : 'unsupported');
+
+const keyBytes = (base64url) => {
+  const raw = window.atob(base64url.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(base64url.length / 4) * 4, '='));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+};
+
+const sameKey = (buffer, bytes) => {
+  if (!buffer) return true;
+  const a = new Uint8Array(buffer);
+  return a.length === bytes.length && a.every((v, i) => v === bytes[i]);
+};
+
+const pushRegistration = async () => registration || (await navigator.serviceWorker.ready);
+
+const currentSubscription = async () => {
+  if (!pushSupported()) return null;
+  try {
+    return (await (await pushRegistration()).pushManager.getSubscription()) || null;
+  } catch {
+    return null;
+  }
+};
+
+const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+/** POST/DELETE to the subscriptions route, retried once with a fresh token after 419. */
+const pushRequest = async (method, body) => {
+  const send = (token) => nativeFetch(C.push.url, {
+    method,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token },
+    body: JSON.stringify(body),
+  });
+  let res = await send(csrfToken());
+  if (res.status === 419) {
+    const data = await keepAlive(true, false);
+    if (data?.csrf) res = await send(data.csrf);
+  }
+  return res;
+};
+
+const encoding = () => ((window.PushManager?.supportedContentEncodings || []).includes('aes128gcm') ? 'aes128gcm' : 'aesgcm');
+
+const saveSubscription = async (subscription) => {
+  const res = await pushRequest('POST', { ...subscription.toJSON(), contentEncoding: encoding() });
+  if (!res.ok) return false;
+  const data = await res.json().catch(() => ({}));
+  store.set('push', { endpoint: subscription.endpoint, user: data.user ?? null, at: Date.now() });
+  return true;
+};
+
+const pushState = async () => {
+  if (!pushSupported()) return C.push && isIos() && !isInstalled() ? 'install-required' : 'unsupported';
+  if (pushPermission() === 'denied') return 'denied';
+  return (await currentSubscription()) && store.get('push') ? 'subscribed' : 'unsubscribed';
+};
+
+/** Asks for permission and subscribes. Call it from a click: browsers refuse the prompt otherwise. */
+const subscribe = async () => {
+  if (!pushSupported()) return null;
+  const permission = await window.Notification.requestPermission();
+  if (permission !== 'granted') {
+    emit('push', { state: permission === 'denied' ? 'denied' : 'unsubscribed' });
+    return null;
+  }
+
+  const reg = await pushRegistration();
+  const key = keyBytes(C.push.key);
+  let subscription = await reg.pushManager.getSubscription();
+  // Made with an older VAPID key (or by another push system): it cannot receive our messages.
+  if (subscription && !sameKey(subscription.options?.applicationServerKey, key)) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+  subscription ||= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+
+  if (!(await saveSubscription(subscription))) {
+    await subscription.unsubscribe().catch(() => {});
+    emit('push', { state: 'unsubscribed', error: true });
+    return null;
+  }
+  emit('push', { state: 'subscribed' });
+  return subscription;
+};
+
+const unsubscribe = async () => {
+  const subscription = await currentSubscription();
+  store.set('push', null);
+  if (!subscription) return false;
+  await pushRequest('DELETE', { endpoint: subscription.endpoint }).catch(() => null);
+  await subscription.unsubscribe().catch(() => {});
+  emit('push', { state: 'unsubscribed' });
+  return true;
+};
+
+/** Drops the browser's subscription without asking the server (logout already removed it there). */
+const dropSubscription = async () => {
+  const saved = store.get('push');
+  if (!saved) return;
+  store.set('push', null);
+  const subscription = await currentSubscription();
+  if (subscription?.endpoint === saved.endpoint) await subscription.unsubscribe().catch(() => {});
+  emit('push', { state: 'unsubscribed' });
+};
+
+/**
+ * After keep-alive: confirms this browser's subscription with the server once a day, renews it
+ * after a VAPID key change and notices when the browser dropped it. Never subscribes a user who
+ * did not subscribe on this device.
+ */
+const syncPush = async (session) => {
+  const saved = store.get('push');
+  if (!saved || !pushSupported() || !session?.authenticated) return;
+  if (saved.user && session.user && saved.user !== session.user) { await dropSubscription(); return; }
+
+  let subscription = await currentSubscription();
+  if (!subscription) {
+    store.set('push', null);
+    emit('push', { state: 'unsubscribed', lost: true });
+    return;
+  }
+
+  const key = keyBytes(C.push.key);
+  const rotated = !sameKey(subscription.options?.applicationServerKey, key);
+  if (rotated && pushPermission() === 'granted') {
+    await subscription.unsubscribe();
+    subscription = await (await pushRegistration()).pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+  }
+  if (rotated || subscription.endpoint !== saved.endpoint || Date.now() - (saved.at || 0) >= PUSH_SYNC) {
+    await saveSubscription(subscription);
+  }
 };
 
 /* ---------------------------------------------------------------------- *
@@ -412,6 +560,7 @@ const boot = async () => {
   try { await registerServiceWorker(); } catch (e) { console.warn('[pwa]', e); }
 
   if (C.warm?.enabled && navigator.serviceWorker?.controller && warmDue(store.get('warm', {}).user)) keepAlive(true);
+  else if (C.push && Date.now() - (store.get('push')?.at || Infinity) >= PUSH_SYNC) keepAlive(true);
   registerPeriodicWarm();
 
   if (C.session?.keepalive > 0) {
@@ -429,6 +578,14 @@ window.Pwa = {
   keepAlive: () => keepAlive(true),
   warm,
   on(name, fn) { listeners.set(name, [...(listeners.get(name) || []), fn]); return () => listeners.set(name, (listeners.get(name) || []).filter((f) => f !== fn)); },
+  push: {
+    supported: pushSupported,
+    permission: pushPermission,
+    state: pushState,
+    subscribe,
+    unsubscribe,
+    subscription: currentSubscription,
+  },
   badge: {
     set: (count) => navigator.setAppBadge?.(count).catch(() => {}),
     clear: () => navigator.clearAppBadge?.().catch(() => {}),

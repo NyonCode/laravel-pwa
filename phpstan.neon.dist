@@ -11,3 +11,7 @@ parameters:
         -
             identifier: trait.unused
             path: src/Testing/InteractsWithPwa.php
+        # Public trait for the application's notifiable models.
+        -
+            identifier: trait.unused
+            path: src/Push/HasPushSubscriptions.php

@@ -1,6 +1,6 @@
 ---
 name: laravel-pwa
-description: Set up or change the Progressive Web App of a Laravel application that uses nyoncode/laravel-pwa. Use when touching the web app manifest, display mode (minimal-ui on desktop, standalone on phones), the service worker or /sw.js, offline pages (pwa.cache), the offline queue, install prompts, <x-pwa::head/>, <x-pwa::nav/>, <x-pwa::install/>, maintenance mode for the PWA (pwa:down), the kill switch (pwa:disable), staying logged in in the installed app (pwa.remember, CSRF 419), or wiring a push system into the PWA's service worker (sw.import).
+description: Set up or change the Progressive Web App of a Laravel application that uses nyoncode/laravel-pwa. Use when touching the web app manifest, display mode (minimal-ui on desktop, standalone on phones), the service worker or /sw.js, offline pages (pwa.cache), the offline queue, install prompts, <x-pwa::head/>, <x-pwa::nav/>, <x-pwa::install/>, maintenance mode for the PWA (pwa:down), the kill switch (pwa:disable), staying logged in in the installed app (pwa.remember, CSRF 419), web push notifications (WebPushChannel, Pwa.push.subscribe(), pwa:push:vapid), or wiring an external push system into the PWA's service worker (sw.import).
 ---
 
 # Laravel PWA
@@ -44,9 +44,10 @@ Deploy: `npm run build` → `php artisan pwa:build` → `php artisan pwa:doctor 
 **One service worker.** Never register another worker on `/` and never create `public/sw.js`. Push,
 Sentry or any worker code goes into a public JS file listed in `pwa.sw.import`.
 
-**Push is not part of this package.** It provides only the `sw.import` slot, `Pwa.isInstalled()`,
-and the `pwa:installed` / `pwa:resume` / `pwa:logout` events. On iPhone push can be enabled only
-inside the Home Screen app, after a user gesture.
+**Push is an optional module.** Turn it on with `PWA_PUSH_ENABLED=true` after `pwa:push:vapid`
+and the published migration; send with `WebPushChannel`, subscribe with `Pwa.push.subscribe()`
+from a click. Never add a second push package with its own worker. On iPhone push works only
+inside the Home Screen app (`Pwa.push.state()` returns `install-required`).
 
 **Offline is opt-in.** No HTML is stored without `pwa.cache`. Do not put it on payment, admin or
 one-time-token pages. Only `fetch`/XHR mutations are queued offline; classic form POSTs are not.

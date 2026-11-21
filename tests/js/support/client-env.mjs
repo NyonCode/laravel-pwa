@@ -90,6 +90,9 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
       update: async () => {},
       addEventListener() {},
     },
+    get ready() {
+      return Promise.resolve(sw.registration);
+    },
     /** Simulates a message from the worker. */
     receive: (data) => (sw.listeners.get('message') ?? []).forEach((fn) => fn({ data })),
   };
@@ -98,7 +101,7 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
 
   const events = [];
   const record = (name) => document.addEventListener(name, (e) => events.push({ name, detail: e.detail }));
-  for (const name of ['ready', 'csrf', 'offline', 'maintenance', 'logout', 'queue', 'replayed', 'resume', 'online', 'csrf-refreshed', 'installed', 'update-available', 'activated']) {
+  for (const name of ['ready', 'csrf', 'offline', 'maintenance', 'logout', 'queue', 'replayed', 'resume', 'online', 'csrf-refreshed', 'installed', 'update-available', 'activated', 'push', 'push-received', 'notification-click', 'identity']) {
     record(`pwa:${name}`);
   }
 

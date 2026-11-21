@@ -13,6 +13,7 @@ description: Reference for the pwa:* Artisan commands, covering options, output,
 | `pwa:doctor` | after installation, in CI and in your deploy script |
 | `pwa:down` | maintenance mode |
 | `pwa:disable` / `pwa:enable` | kill switch for the service worker |
+| `pwa:push:vapid` | once, before enabling [push notifications](push.md) |
 
 ## pwa:install
 
@@ -89,6 +90,8 @@ php artisan pwa:doctor [--ci]
 | `pwa.remember` on some route | warning |
 | `pwa.cache` on some route | warning |
 | shared kill switch store | warning |
+| with `push.enabled`: `minishlink/web-push`, VAPID keys and subject, subscriptions table | error |
+| with `push.enabled`: `push.endpoints = null`, no worker showing notifications | warning |
 
 Without `--ci`, it always returns 0. With `--ci`, it returns 1 on any error (warnings don't count).
 
@@ -108,6 +111,17 @@ php artisan pwa:enable
 ```
 
 See [Kill switch](kill-switch.md). Without `--force`, it asks for confirmation; declining returns 1.
+
+## pwa:push:vapid
+
+```bash
+php artisan pwa:push:vapid [--show] [--force]
+```
+
+Generates a P-256 key pair (OpenSSL, no extra package) and writes `PWA_VAPID_PUBLIC_KEY` and
+`PWA_VAPID_PRIVATE_KEY` to `.env`. Existing keys are kept and the command returns 1; `--force`
+replaces them (every subscription stops working until the browser resubscribes). `--show` prints the
+keys for a secrets manager and writes nothing. See [Push notifications](push.md).
 
 ## php artisan about
 

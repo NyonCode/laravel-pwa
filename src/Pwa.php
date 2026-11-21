@@ -261,11 +261,15 @@ class Pwa
         $request ??= request();
         $user = $request->user();
 
-        if ($user === null) {
-            return 'guest';
-        }
+        return $user === null ? 'guest' : $this->identityHash($user->getAuthIdentifier());
+    }
 
-        return substr(hash_hmac('sha256', Value::string($user->getAuthIdentifier()), config()->string('app.key')), 0, 16);
+    /**
+     * The identity hash of a user id, as userHash() sends it for that user (HMAC with app.key).
+     */
+    public function identityHash(mixed $id): string
+    {
+        return substr(hash_hmac('sha256', Value::string($id), config()->string('app.key')), 0, 16);
     }
 
     /**
@@ -295,6 +299,11 @@ class Pwa
                 'enabled' => $this->warmsPages(),
                 'interval' => config()->integer('pwa.offline.warm.interval', 60),
             ],
+            // Web push: the public VAPID key and where the browser stores its subscription.
+            'push' => $this->pushEnabled() ? [
+                'key' => config('pwa.push.vapid.public_key'),
+                'url' => $prefix.'/push/subscriptions',
+            ] : null,
             'ping' => $prefix.'/ping',
             'telemetry' => config('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'install' => [
@@ -319,6 +328,16 @@ class Pwa
                 'reload' => __('pwa::messages.reload'),
             ],
         ];
+    }
+
+    /**
+     * Is the web push module on (pwa.push.enabled) with a public key to subscribe with?
+     */
+    public function pushEnabled(): bool
+    {
+        $key = config('pwa.push.vapid.public_key');
+
+        return filter_var(config('pwa.push.enabled', false), FILTER_VALIDATE_BOOL) && is_string($key) && $key !== '';
     }
 
     public function cspNonce(): ?string

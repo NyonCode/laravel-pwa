@@ -124,15 +124,20 @@ export const offline = () => {
  * @param {object} [options.registration] extra registration members (sync, navigationPreload)
  * @param {string[]} [options.extensions] sw.extend sources, evaluated after the runtime
  * @param {MemoryCacheStorage} [options.caches] Cache Storage shared with another worker (same origin)
+ * @param {object[]} [options.windows] window clients (default: one at the origin root)
  */
-export const createWorker = ({ config = {}, fetch: network = offline, registration = {}, extensions = [], caches: sharedCaches } = {}) => {
+export const createWorker = ({ config = {}, fetch: network = offline, registration = {}, extensions = [], caches: sharedCaches, windows } = {}) => {
   const listeners = new Map();
   const messages = [];
   const requests = [];
+  const notifications = [];
+  const opened = [];
+  const badges = [];
   const caches = sharedCaches ?? new MemoryCacheStorage();
   let handler = network;
 
-  const client = { postMessage: (message) => messages.push(message) };
+  const client = { url: `${ORIGIN}/`, postMessage: (message) => messages.push(message) };
+  const clientList = windows ?? [client];
 
   const self = {
     __PWA: {
@@ -150,11 +155,20 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
       ...config,
     },
     location: new URL('/sw.js', ORIGIN),
-    registration: { scope: `${ORIGIN}/`, navigationPreload: undefined, ...registration },
+    registration: {
+      scope: `${ORIGIN}/`,
+      navigationPreload: undefined,
+      showNotification: async (title, options = {}) => { notifications.push({ title, options }); },
+      ...registration,
+    },
+    navigator: {
+      setAppBadge: async (count) => { badges.push(count); },
+      clearAppBadge: async () => { badges.push(0); },
+    },
     clients: {
-      matchAll: async () => [client],
+      matchAll: async () => clientList,
       claim: async () => {},
-      openWindow: async () => null,
+      openWindow: async (url) => { opened.push(url); return null; },
     },
     skipWaiting: () => {},
     addEventListener: (type, fn) => {
@@ -190,6 +204,7 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
     URLSearchParams,
     TextEncoder,
     TextDecoder,
+    atob,
     Promise,
     setTimeout: (...args) => globalThis.setTimeout(...args),
     clearTimeout: (...args) => globalThis.clearTimeout(...args),
@@ -232,6 +247,9 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
     caches,
     messages,
     requests,
+    notifications,
+    opened,
+    badges,
     dispatch,
     /** Replace the network for the following requests. */
     network: (fn) => {
@@ -240,6 +258,18 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
     fetchEvent: (path, init) => dispatch('fetch', { request: makeRequest(path, init), preloadResponse: undefined }),
     navigate: (path, init = {}) => dispatch('fetch', { request: makeRequest(path, { mode: 'navigate', ...init }), preloadResponse: undefined }),
     message: (data, ports = []) => dispatch('message', { data, ports }),
+    /** A push event; `data` is the JSON payload (or a string). */
+    push: (data) => dispatch('push', {
+      data: data === undefined ? null : {
+        json: () => (typeof data === 'string' ? JSON.parse(data) : data),
+        text: () => (typeof data === 'string' ? data : JSON.stringify(data)),
+      },
+    }),
+    /** A click on a notification shown before; `action` is the button. */
+    click: (notification, action = '') => {
+      const event = { notification: { ...notification.options, data: notification.options.data, close: () => { event.closed = true; } }, action };
+      return dispatch('notificationclick', event).then((result) => ({ ...result, closed: event.closed === true }));
+    },
     install: () => dispatch('install'),
     activate: () => dispatch('activate'),
   };

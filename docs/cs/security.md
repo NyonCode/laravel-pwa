@@ -76,6 +76,12 @@ ping, telemetrie).
 
 Vypnutí: `telemetry.enabled = false`.
 
+## Push notifikace
+
+Volitelný modul push se řídí stejným pravidlem po uživatelích: odhlášení odebere odběry session,
+zařízení s jiným přihlášeným uživatelem ukáže jen neutrální notifikaci a server posílá jen na push
+služby z `push.endpoints`. Podrobnosti v [Push notifikace](push.md#bezpečnost-na-serveru).
+
 ## Co balíček záměrně nedělá
 
 - Nemaže `storage` při odhlášení (zrušilo by SW a push odběr).

@@ -13,6 +13,7 @@ description: Reference artisan příkazů pwa:* – volby, výstup, návratové 
 | `pwa:doctor` | po instalaci, v CI a deploy skriptu |
 | `pwa:down` | údržba |
 | `pwa:disable` / `pwa:enable` | nouzové vypnutí SW |
+| `pwa:push:vapid` | jednou, před zapnutím [push notifikací](push.md) |
 
 ## pwa:install
 
@@ -89,6 +90,8 @@ php artisan pwa:doctor [--ci]
 | `pwa.remember` na nějaké routě | varování |
 | `pwa.cache` na nějaké routě | varování |
 | sdílené úložiště nouzového vypnutí | varování |
+| s `push.enabled`: `minishlink/web-push`, klíče VAPID a subject, tabulka odběrů | chyba |
+| s `push.enabled`: `push.endpoints = null`, žádný worker nezobrazuje notifikace | varování |
 
 Bez `--ci` vrací vždy 0; s `--ci` vrací 1 při jakékoli chybě (varování ne).
 
@@ -108,6 +111,17 @@ php artisan pwa:enable
 ```
 
 Viz [Nouzové vypnutí](kill-switch.md). Bez `--force` se ptá; zamítnutí = 1.
+
+## pwa:push:vapid
+
+```bash
+php artisan pwa:push:vapid [--show] [--force]
+```
+
+Vygeneruje pár klíčů P-256 (OpenSSL, bez dalšího balíčku) a zapíše `PWA_VAPID_PUBLIC_KEY` a
+`PWA_VAPID_PRIVATE_KEY` do `.env`. Existující klíče ponechá a vrátí 1; `--force` je nahradí (všechny
+odběry přestanou fungovat, dokud se prohlížeč nepřihlásí znovu). `--show` klíče vypíše pro správce
+tajemství a nic nezapíše. Viz [Push notifikace](push.md).
 
 ## php artisan about
 

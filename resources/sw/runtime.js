@@ -786,6 +786,133 @@
   });
 
   /* ------------------------------------------------------------------ *
+   * Web push (pwa.push.enabled with handle_in_worker). Every push shows a notification:
+   * Safari cancels subscriptions that receive pushes without one.
+   * ------------------------------------------------------------------ */
+
+  const P = C.push || null;
+  const scopeUrl = () => new URL(self.registration?.scope || '/', origin).href;
+
+  /** Same-origin targets only; anything else opens the app's scope. */
+  const pushTarget = (raw) => {
+    try {
+      const url = new URL(raw || scopeUrl(), scopeUrl());
+      return sameOrigin(url) ? url.href : scopeUrl();
+    } catch {
+      return scopeUrl();
+    }
+  };
+
+  const readPush = (event) => {
+    if (!event.data) return {};
+    try {
+      return event.data.json() || {};
+    } catch {
+      return { title: event.data.text() };
+    }
+  };
+
+  // Declarative Web Push (WebKit): { web_push: 8030, notification: { title, navigate, … }, app_badge }
+  const fromDeclarative = (data) => {
+    const n = data.notification || {};
+    const actions = Array.isArray(n.actions) ? n.actions : [];
+    return {
+      title: n.title,
+      appBadge: data.app_badge === undefined ? undefined : Number(data.app_badge),
+      options: {
+        body: n.body,
+        lang: n.lang,
+        dir: n.dir,
+        silent: n.silent,
+        tag: n.tag,
+        actions: actions.map((a) => ({ action: a.action || a.navigate, title: a.title })),
+        data: { url: n.navigate, actions: Object.fromEntries(actions.map((a) => [a.action || a.navigate, a.navigate])) },
+      },
+    };
+  };
+
+  const showPush = async (data) => {
+    const message = data.web_push === 8030 ? fromDeclarative(data) : data;
+    let title = message.title || P.name;
+    let options = { ...(message.options || {}) };
+
+    // Sent to another user than the one signed in on this device (shared device, signed out):
+    // say that something arrived, never what.
+    if (message.user && message.user !== (await currentUserHash())) {
+      title = P.name;
+      options = { body: P.fallback, tag: 'pwa-private', data: { url: scopeUrl() } };
+    }
+
+    options.icon ??= P.icon || undefined;
+    options.badge ??= P.badge || undefined;
+    await self.registration.showNotification(title, options);
+
+    if (Number.isInteger(message.appBadge) && self.navigator?.setAppBadge) {
+      try {
+        await (message.appBadge > 0 ? self.navigator.setAppBadge(message.appBadge) : self.navigator.clearAppBadge());
+      } catch { /* Badging API unavailable */ }
+    }
+    await broadcast({ type: 'push-received', tag: options.tag ?? null });
+  };
+
+  /** Focuses a window showing the target, else navigates a window of the app, else opens one. */
+  const openFromNotification = async (href, action) => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const exact = windows.find((client) => client.url === href);
+    const inApp = windows.find((client) => client.url.startsWith(scopeUrl()));
+
+    try {
+      if (exact) await exact.focus();
+      else if (inApp?.navigate) await (await inApp.navigate(href))?.focus();
+      else await self.clients.openWindow(href);
+    } catch {
+      await self.clients.openWindow(href);
+    }
+    await broadcast({ type: 'notification-click', url: href, action: action || null });
+  };
+
+  const keyBytes = (base64url) => {
+    const raw = atob(base64url.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(base64url.length / 4) * 4, '='));
+    return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  };
+
+  // The push service rotated the subscription: store the new one for the same user. The server
+  // accepts it only in place of an endpoint that user owns.
+  const renewSubscription = async (event) => {
+    const subscription = event.newSubscription
+      || await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(P.key) });
+    const replaces = event.oldSubscription?.endpoint;
+    if (!subscription || !replaces) return;
+    const token = await freshCsrf();
+    if (!token) return;
+    const encoding = (self.PushManager?.supportedContentEncodings || []).includes('aes128gcm') ? 'aes128gcm' : 'aesgcm';
+    await fetch(P.url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token },
+      body: JSON.stringify({ ...subscription.toJSON(), contentEncoding: encoding, replaces }),
+    });
+    await broadcast({ type: 'push-renewed' });
+  };
+
+  if (P) {
+    self.addEventListener('push', (event) => {
+      event.waitUntil(showPush(readPush(event)));
+    });
+
+    self.addEventListener('notificationclick', (event) => {
+      event.notification.close();
+      const data = event.notification.data || {};
+      const target = pushTarget((event.action && data.actions?.[event.action]) || data.url);
+      event.waitUntil(openFromNotification(target, event.action));
+    });
+
+    self.addEventListener('pushsubscriptionchange', (event) => {
+      event.waitUntil(renewSubscription(event).catch((error) => report('push', error)));
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Extension API for sw.extend files
    * ------------------------------------------------------------------ */
 

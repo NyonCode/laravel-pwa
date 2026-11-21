@@ -9,7 +9,12 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use Illuminate\Support\Facades\Schema;
+use NyonCode\LaravelPwa\Contracts\PushTransport;
 use NyonCode\LaravelPwa\Icons\SplashScreens;
+use NyonCode\LaravelPwa\Push\MinishlinkTransport;
+use NyonCode\LaravelPwa\Push\Vapid;
+use NyonCode\LaravelPwa\Push\WebPush;
 use NyonCode\LaravelPwa\Pwa;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use NyonCode\LaravelPwa\Support\Value;
@@ -33,6 +38,7 @@ class DoctorCommand extends Command
         $this->checkServiceWorker($builder);
         $this->checkMaintenance();
         $this->checkSession();
+        $this->checkPush();
 
         foreach ($this->results as $result) {
             match ($result['level']) {
@@ -250,6 +256,39 @@ class DoctorCommand extends Command
 
         $store = Value::string(config('pwa.sw.kill_switch_store') ?? config('cache.default'));
         $this->add(in_array($store, ['file', 'array'], true) ? 'warn' : 'ok', "Kill switch store shared between servers ({$store})");
+    }
+
+    protected function checkPush(): void
+    {
+        if (! filter_var(config('pwa.push.enabled', false), FILTER_VALIDATE_BOOL)) {
+            return;
+        }
+
+        $this->add(MinishlinkTransport::available() ? 'ok' : 'error', MinishlinkTransport::available()
+            ? 'Web push library (minishlink/web-push)'
+            : 'Web push library missing: composer require minishlink/web-push (or bind your own '.PushTransport::class.')');
+
+        $vapid = (array) config('pwa.push.vapid', []);
+        $problem = Vapid::problem($vapid['public_key'] ?? null, $vapid['private_key'] ?? null, $vapid['subject'] ?? null);
+        $this->add($problem === null ? 'ok' : 'error', $problem ?? 'VAPID keys and subject');
+
+        try {
+            $table = (new (WebPush::subscriptionModel()))->getTable();
+            $exists = Schema::hasTable($table);
+            $this->add($exists ? 'ok' : 'error', $exists
+                ? "Push subscriptions table ({$table})"
+                : "Push subscriptions table {$table} missing: php artisan vendor:publish --tag=\"pwa::migrations\" && php artisan migrate");
+        } catch (Throwable $e) {
+            $this->add('warn', 'Push subscriptions table not checked: '.$e->getMessage());
+        }
+
+        if (config('pwa.push.endpoints') === null) {
+            $this->add('warn', 'pwa.push.endpoints is null: the server sends to any host a browser registers');
+        }
+
+        if (! config()->boolean('pwa.push.handle_in_worker', true) && (array) config('pwa.sw.import', []) === []) {
+            $this->add('warn', 'pwa.push.handle_in_worker is off and no sw.import script shows the notifications');
+        }
     }
 
     protected function add(string $level, string $message): void

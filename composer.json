@@ -1,6 +1,6 @@
 {
     "name": "nyoncode/laravel-pwa",
-    "description": "Production-grade PWA for Laravel: offline-first service worker with per-user caches and cache rules, persistent login, maintenance screen, kill switch and per-tenant manifests.",
+    "description": "Production-grade PWA for Laravel: offline-first service worker with per-user caches and cache rules, persistent login, maintenance screen, kill switch, web push notifications and per-tenant manifests.",
     "type": "library",
     "keywords": [
         "laravel",
@@ -10,6 +10,9 @@
         "offline",
         "offline-first",
         "manifest",
+        "web-push",
+        "push-notifications",
+        "notifications",
         "web-app-manifest",
         "installable",
         "cache",
@@ -44,6 +47,7 @@
         "driftingly/rector-laravel": "^2.7",
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.24",
+        "minishlink/web-push": "^10.0|^11.0",
         "nyoncode/laravel-package-console": "^1.0",
         "orchestra/testbench": "^10.0|^11.0",
         "pestphp/pest": "^3.8|^4.0",
@@ -95,7 +99,8 @@
     "prefer-stable": true,
     "suggest": {
         "ext-gd": "Required to generate icons from PNG with pwa:icons",
-        "ext-imagick": "Required to generate icons from SVG with pwa:icons"
+        "ext-imagick": "Required to generate icons from SVG with pwa:icons",
+        "minishlink/web-push": "Required to send web push notifications (pwa.push.enabled)"
     },
     "bin": [
         "bin/pwa-ai"

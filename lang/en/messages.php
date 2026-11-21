@@ -27,6 +27,7 @@ return [
     'offline_lead' => 'Could not connect to the internet. The page will reload by itself once the connection is back.',
     'offline_title' => 'You are offline',
     'online' => 'You are online',
+    'push_fallback' => 'You have a new notification. Open the app to see it.',
     'queued_count' => ':n action waiting|:n actions waiting',
     'queued_lead' => 'Saved on this device. It will be sent automatically once connected; nothing is lost.',
     'queued_title' => 'Waiting to be sent',
