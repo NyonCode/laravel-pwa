@@ -70,7 +70,8 @@ ping, telemetrie).
 - bez CSRF (posílá ji SW bez cookies), rate limit 30 požadavků za minutu,
 - validace: `source` `sw|client`, max. `telemetry.max_events` událostí, zpráva do 500 znaků, stack
   do 2000,
-- zapisuje `warning` s prefixem `[pwa]` do `telemetry.channel` (nebo výchozího logu),
+- pošle událost `TelemetryReceived` ([Události](events.md)); výchozí listener zapíše `warning`
+  s prefixem `[pwa]` do `telemetry.channel` (nebo výchozího logu), vypnete ho `telemetry.log = false`,
 - obsahuje User-Agent (300 znaků), žádné osobní údaje.
 
 Vypnutí: `telemetry.enabled = false`.

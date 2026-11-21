@@ -9,6 +9,8 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Vite;
+use NyonCode\LaravelPwa\Events\KillSwitchActivated;
+use NyonCode\LaravelPwa\Events\KillSwitchDeactivated;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 
@@ -48,11 +50,15 @@ class Pwa
     public function disable(): void
     {
         $this->killSwitchStore()->forever(self::KILL_SWITCH_KEY, true);
+
+        KillSwitchActivated::dispatch();
     }
 
     public function enable(): void
     {
         $this->killSwitchStore()->forget(self::KILL_SWITCH_KEY);
+
+        KillSwitchDeactivated::dispatch();
     }
 
     public function manifest(): ManifestBuilder

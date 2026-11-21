@@ -1,36 +1,65 @@
 ---
 title: Testování
-description: Jak testovat aplikaci s balíčkem a jak vyvíjet a testovat balíček samotný (Pest, workbench, prohlížečový test).
+description: Jak testovat aplikaci s balíčkem (pomocníci a aserce) a jak vyvíjet a testovat balíček samotný (Pest, JS testy, Playwright, CI).
 ---
 
 # Testování
 
 ## V aplikaci
 
-### Feature testy
+### Pomocníci a aserce
+
+Balíček přidává k `TestResponse` aserce (registruje je sám) a trait `InteractsWithPwa` pro
+požadavky z nainstalované aplikace:
 
 ```php
-it('allows the dashboard offline', function () {
-    $this->actingAs(User::factory()->create())
-        ->get('/dashboard')
-        ->assertHeader('X-PWA-Cache', 'allow');
+// tests/TestCase.php
+use NyonCode\LaravelPwa\Testing\InteractsWithPwa;
+
+abstract class TestCase extends BaseTestCase
+{
+    use InteractsWithPwa;
+}
+```
+
+```php
+it('allows the dashboard offline, but never the billing page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/dashboard')->assertPwaCacheable()->assertPwaUser($user);
+    $this->actingAs($user)->get('/billing')->assertNotPwaCacheable();
 });
 
 it('remembers users of the installed app', function () {
     $user = User::factory()->create();
 
-    $this->withHeaders(['X-PWA-Display' => 'standalone'])
+    $this->asInstalledApp()
         ->post('/login', ['email' => $user->email, 'password' => 'password'])
         ->assertCookie(Auth::guard()->getRecallerName());
 });
 
-it('serves a valid manifest', function () {
-    $this->get('/manifest.webmanifest')
-        ->assertOk()
-        ->assertJsonPath('display', 'standalone')
-        ->assertJsonPath('display_override.0', 'minimal-ui');
+it('tells the worker about the logout', function () {
+    $this->actingAs(User::factory()->create())->post('/logout')->assertPwaLogout();
+});
+
+it('serves an installable manifest', function () {
+    $this->get('/manifest.webmanifest')->assertValidManifest();
 });
 ```
+
+| Pomocník | Co ověří / udělá |
+| --- | --- |
+| `asInstalledApp($mode = 'standalone')` | pošle hlavičku `X-PWA-Display` a cookie `pwa_display` jako nainstalovaná aplikace |
+| `asBrowserTab()` | totéž s režimem `browser` |
+| `assertPwaCacheable()` | `X-PWA-Cache: allow` a žádné `Cache-Control: no-store` |
+| `assertNotPwaCacheable()` | stránka do offline cache nesmí |
+| `assertPwaLogout()` | `X-PWA-Logout: 1` a `Clear-Site-Data` bez `"storage"` |
+| `assertPwaUser($user)` | `X-PWA-User` odpovídá uživateli (`null` = `guest`) |
+| `assertValidManifest($strict = false)` | manifest je instalovatelný (`name`, `start_url`, `display`, ikony 192 a 512); se `strict` i bez varování (maskable ikona, `id`, délka `short_name`, barvy) |
+
+Kontrolu manifestu najdete i samostatně: `app(ManifestValidator::class)->validate($manifest)`
+vrátí `['errors' => [...], 'warnings' => [...]]`. Události balíčku testujte přes `Event::fake()`
+([Události](events.md#testovani)).
 
 ### Doctor v CI
 

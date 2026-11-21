@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 use NyonCode\LaravelPwa\Contracts\ManifestParameters;
 use NyonCode\LaravelPwa\Contracts\ManifestResolver;
+use NyonCode\LaravelPwa\Events\ManifestResolving;
 
 /**
  * Builds the web app manifest from the config, fluent calls and per-request resolvers.
@@ -250,6 +251,8 @@ class ManifestBuilder
                 ? $resolver->resolve($request, $manifest)
                 : $resolver($request, $manifest);
         }
+
+        ManifestResolving::dispatch($request, $manifest);
 
         return $manifest;
     }

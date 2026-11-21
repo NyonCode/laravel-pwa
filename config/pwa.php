@@ -236,6 +236,7 @@ return [
 
     'telemetry' => [
         'enabled' => true,
+        'log' => true,                  // log TelemetryReceived events (off when you handle them yourself)
         'channel' => env('PWA_LOG_CHANNEL'),
         'max_events' => 20,
     ],

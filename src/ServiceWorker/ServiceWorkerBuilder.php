@@ -6,6 +6,7 @@ namespace NyonCode\LaravelPwa\ServiceWorker;
 
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
+use NyonCode\LaravelPwa\Events\ServiceWorkerBuilt;
 use RuntimeException;
 
 /**
@@ -120,7 +121,10 @@ class ServiceWorkerBuilder
         File::ensureDirectoryExists(dirname($path));
         File::put($path, $contents);
 
-        return $this->versionOf($contents);
+        $version = $this->versionOf($contents);
+        ServiceWorkerBuilt::dispatch($version, $path, $this->precache());
+
+        return $version;
     }
 
     public function clear(): bool

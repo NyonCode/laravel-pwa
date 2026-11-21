@@ -16,12 +16,15 @@ use NyonCode\LaravelPwa\Console\DoctorCommand;
 use NyonCode\LaravelPwa\Console\DownCommand;
 use NyonCode\LaravelPwa\Console\EnableCommand;
 use NyonCode\LaravelPwa\Console\IconsCommand;
+use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Http\Middleware\CachePage;
 use NyonCode\LaravelPwa\Http\Middleware\PwaWebMiddleware;
 use NyonCode\LaravelPwa\Http\Middleware\RememberStandalone;
+use NyonCode\LaravelPwa\Listeners\LogTelemetry;
 use NyonCode\LaravelPwa\Listeners\MarkLogout;
 use NyonCode\LaravelPwa\Manifest\ManifestBuilder;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
+use NyonCode\LaravelPwa\Testing\PwaAssertions;
 
 class PwaServiceProvider extends PackageServiceProvider
 {
@@ -43,6 +46,7 @@ class PwaServiceProvider extends PackageServiceProvider
                 'web' => [PwaWebMiddleware::class],
             ])
             ->hasEvent(Logout::class, MarkLogout::class)
+            ->hasEvent(TelemetryReceived::class, LogTelemetry::class)
             ->hasCommands([
                 BuildCommand::class,
                 ClearCommand::class,
@@ -82,8 +86,10 @@ class PwaServiceProvider extends PackageServiceProvider
     {
         parent::bootedPackage();
 
-        // Nápověda o režimu zobrazení z klienta: nešifrovaná, nic citlivého.
+        // Display-mode hint from the client: unencrypted, nothing sensitive.
         EncryptCookies::except([Pwa::DISPLAY_COOKIE]);
+
+        PwaAssertions::register();
     }
 
     /**

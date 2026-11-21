@@ -20,6 +20,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `themeColor()`, `backgroundColor()`, `icon()`, `locale()`, plus `private()` and `vary()` for the
   manifest's cache headers, and `forRequest()`, `parameters()`, `url()`.
 - `<x-pwa::head/>` takes `theme-color` and the iOS title from the resolved manifest.
+- Events `ManifestResolving`, `ServiceWorkerBuilt`, `KillSwitchActivated`, `KillSwitchDeactivated`
+  and `TelemetryReceived`; telemetry logging moved to the `LogTelemetry` listener
+  (`pwa.telemetry.log` turns it off).
+- Testing helpers for applications: the `InteractsWithPwa` trait (`asInstalledApp()`,
+  `asBrowserTab()`) and the TestResponse assertions `assertPwaCacheable()`, `assertNotPwaCacheable()`,
+  `assertPwaLogout()`, `assertPwaUser()` and `assertValidManifest()`, backed by `ManifestValidator`.
 - `pwa:doctor` validates cache rules and warns about shared rules over never-cached paths.
 - Unit tests for the service worker (`tests/js/sw`) and the browser client (`tests/js/client`),
   run with `node:test` against the real source files.

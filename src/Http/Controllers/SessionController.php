@@ -7,8 +7,8 @@ namespace NyonCode\LaravelPwa\Http\Controllers;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Pwa;
 
 class SessionController
@@ -53,22 +53,20 @@ class SessionController
             'events.*.display' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $channel = config('pwa.telemetry.channel');
-        $logger = is_string($channel) && config("logging.channels.{$channel}") !== null
-            ? Log::channel($channel)
-            : Log::getFacadeRoot();
+        $events = array_values(array_map(static fn (array $event): array => [
+            'type' => (string) $event['type'],
+            'message' => (string) $event['message'],
+            'stack' => isset($event['stack']) ? (string) $event['stack'] : null,
+            'version' => isset($event['version']) ? (string) $event['version'] : null,
+            'display' => isset($event['display']) ? (string) $event['display'] : null,
+        ], $data['events']));
 
-        foreach ($data['events'] as $event) {
-            $logger->warning('[pwa] '.$event['type'].': '.$event['message'], [
-                'pwa' => true,
-                'source' => $data['source'],
-                'version' => $event['version'] ?? null,
-                'display' => $event['display'] ?? null,
-                'stack' => $event['stack'] ?? null,
-                'user_agent' => substr((string) $request->userAgent(), 0, 300),
-            ]);
-        }
+        TelemetryReceived::dispatch(
+            $data['source'] === 'client' ? 'client' : 'sw',
+            $events,
+            $request->userAgent() !== null ? substr($request->userAgent(), 0, 300) : null,
+        );
 
-        return response()->json(['logged' => count($data['events'])], 202);
+        return response()->json(['logged' => count($events)], 202);
     }
 }

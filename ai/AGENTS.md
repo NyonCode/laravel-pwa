@@ -269,6 +269,36 @@ to `meta[name=csrf-token]`, `input[name=_token]`, axios defaults and `livewireSc
 Adapters: Livewire 3 (`Livewire.hook('request')` fail: 503 → reload, 419 → refresh token, offline →
 bar) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia:exception` offline).
 
+## Events (`NyonCode\LaravelPwa\Events`, Laravel `Dispatchable`)
+
+| Event | When | Properties |
+|---|---|---|
+| `ManifestResolving` | every manifest request, after the resolvers | `request`, `manifest` (per-request copy, mutable) |
+| `ServiceWorkerBuilt` | `pwa:build` / `ServiceWorkerBuilder::write()` | `version`, `path`, `precache` |
+| `KillSwitchActivated` / `KillSwitchDeactivated` | `pwa:disable` / `pwa:enable` (`Pwa::disable()` / `enable()`) | — |
+| `TelemetryReceived` | `POST /pwa/telemetry` validated | `source` (`sw`\|`client`), `events` (type, message, stack, version, display), `userAgent` |
+
+`pwa:down` wraps `artisan down`: use Laravel's `MaintenanceModeEnabled` / `MaintenanceModeDisabled`.
+Telemetry is logged by the `LogTelemetry` listener (`pwa.telemetry.channel`); set
+`pwa.telemetry.log = false` when you handle `TelemetryReceived` yourself.
+
+## Testing an application
+
+`use NyonCode\LaravelPwa\Testing\InteractsWithPwa;` in `tests/TestCase.php` gives
+`asInstalledApp(string $mode = 'standalone')` (header `X-PWA-Display` + cookie `pwa_display`) and
+`asBrowserTab()`. TestResponse macros (registered by the package): `assertPwaCacheable()`,
+`assertNotPwaCacheable()`, `assertPwaLogout()`, `assertPwaUser(Authenticatable|string|null $user)`
+(`null` = `guest`), `assertValidManifest(bool $strict = false)` (errors: name, start_url, display,
+192/512 "any" icons; strict adds warnings: maskable, id, short_name ≤ 12, colours).
+`app(Manifest\ManifestValidator::class)->validate(array $manifest)` returns
+`['errors' => [...], 'warnings' => [...]]`. There is no marker for replayed offline-queue requests.
+
+```php
+$this->asInstalledApp()->post('/login', $credentials)->assertCookie(Auth::guard()->getRecallerName());
+$this->actingAs($user)->get('/dashboard')->assertPwaCacheable()->assertPwaUser($user);
+$this->get('/manifest.webmanifest')->assertValidManifest();
+```
+
 ## Artisan commands
 
 | Command | Notes |
