@@ -151,8 +151,10 @@ describe('rule matching', () => {
     const worker = createWorker({ config: { rules: [rule({ match: '*', strategy: 'cache-first', cache: 'all' })] }, fetch: counter() });
 
     assert.equal((await worker.fetchEvent('https://cdn.example.com/lib.js')).handled, false);
-    assert.equal((await worker.fetchEvent('/pwa/session')).handled, false);
     assert.equal((await worker.fetchEvent('/sw.js')).handled, false);
+
+    await worker.fetchEvent('/pwa/session');
+    assert.ok(!(await worker.caches.keys()).includes('pwa-rule-all-guest'), 'never_cache paths are not stored');
   });
 
   it('serves precached build files cache-first', async () => {
@@ -268,5 +270,90 @@ describe('sw.extend and PwaWorker', () => {
     assert.throws(() => api.route('/x'), /handler must be a function/);
     assert.throws(() => api.route(42, () => {}), /match must be/);
     assert.ok(Object.isFrozen(api));
+  });
+});
+
+describe('identity outside navigations (Inertia, Livewire)', () => {
+  const BOB = 'bbbbbbbbbbbbbbbb';
+  const apiRules = { rules: [rule({ match: '/api/*', strategy: 'cache-first', cache: 'api' })] };
+
+  const post = (worker, path) =>
+    worker.fetchEvent(path, { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } });
+
+  it('an XHR logout purges the user data', async () => {
+    const worker = createWorker({ config: apiRules });
+    await signIn(worker);
+    worker.network(() => json({ secret: 'alice' }, { 'X-PWA-User': ALICE }));
+    await worker.fetchEvent('/api/me');
+
+    worker.network(() => json({ ok: true }, { 'X-PWA-Logout': '1', 'X-PWA-User': 'guest' }));
+    await post(worker, '/logout');
+
+    assert.ok(!(await worker.caches.keys()).includes(`pwa-rule-api-${ALICE}`));
+    assert.ok(worker.messages.some((m) => m.type === 'logout'));
+  });
+
+  it('an XHR login of another user hides the previous user data from them', async () => {
+    const worker = createWorker({ config: apiRules });
+    await signIn(worker);
+    worker.network(() => json({ secret: 'alice' }, { 'X-PWA-User': ALICE }));
+    await worker.fetchEvent('/api/me');
+
+    worker.network(() => json({ ok: true }, { 'X-PWA-User': BOB }));
+    await post(worker, '/login');
+
+    worker.network(() => json({ secret: 'bob' }, { 'X-PWA-User': BOB }));
+    const { response } = await worker.fetchEvent('/api/me');
+
+    assert.deepEqual(await response.json(), { secret: 'bob' });
+    assert.ok(!(await worker.caches.keys()).includes(`pwa-rule-api-${ALICE}`));
+    assert.deepEqual(worker.caches.urls(`pwa-rule-api-${BOB}`), ['/api/me']);
+  });
+
+  it('never stores a response of another user in the current user cache', async () => {
+    const worker = createWorker({ config: apiRules });
+    await signIn(worker);
+
+    // The session changed server-side; the first rule response reveals it.
+    worker.network(() => json({ secret: 'bob' }, { 'X-PWA-User': BOB }));
+    await worker.fetchEvent('/api/me');
+
+    assert.ok(!(await worker.caches.keys()).includes(`pwa-rule-api-${ALICE}`));
+  });
+
+  it('ignores identity headers from other origins', async () => {
+    const worker = createWorker({
+      extensions: [`
+        self.PwaWorker.route(/^https:\\/\\/cdn\\.example\\.com\\//, (event) =>
+          self.PwaWorker.strategies.networkFirst(event, { cacheName: 'pwa-shared-cdn', shared: true }));
+      `],
+    });
+    await signIn(worker);
+
+    worker.network(() => json({}, { 'X-PWA-Logout': '1', 'X-PWA-User': BOB }));
+    await worker.fetchEvent('https://cdn.example.com/lib.json');
+
+    assert.equal(await worker.self.PwaWorker.currentUser(), ALICE);
+  });
+
+  it('passes never_cache requests through without storing or queueing them', async () => {
+    const worker = createWorker();
+
+    await assert.rejects(post(worker, '/login'), /Failed to fetch/);
+    assert.ok(!worker.messages.some((m) => m.type === 'queued'));
+  });
+
+  it('takes the identity from the client keep-alive (IDENTITY message)', async () => {
+    const worker = createWorker({ config: apiRules });
+    await signIn(worker);
+    worker.network(() => json({ secret: 'alice' }, { 'X-PWA-User': ALICE }));
+    await worker.fetchEvent('/api/me');
+
+    await worker.message({ type: 'IDENTITY', user: 'not-a-hash' });
+    assert.equal(await worker.self.PwaWorker.currentUser(), ALICE);
+
+    await worker.message({ type: 'IDENTITY', user: 'guest' });
+    assert.equal(await worker.self.PwaWorker.currentUser(), 'guest');
+    assert.ok(!(await worker.caches.keys()).includes(`pwa-rule-api-${ALICE}`));
   });
 });

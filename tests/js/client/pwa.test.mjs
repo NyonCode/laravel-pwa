@@ -91,6 +91,14 @@ describe('keep-alive and CSRF', () => {
     assert.ok(client.events.some((e) => e.name === 'pwa:csrf' && e.detail.token === 'fresh'));
   });
 
+  it('passes the signed-in user from the keep-alive to the worker', async () => {
+    client = await createClient({ fetch: () => sessionJson(client.window) });
+
+    await client.Pwa.keepAlive();
+
+    assert.ok(client.sw.posted.some((m) => m.type === 'IDENTITY' && m.user === 'guest'));
+  });
+
   it('sends the display mode with the keep-alive request', async () => {
     client = await createClient({ displayMode: 'minimal-ui', fetch: () => sessionJson(client.window) });
 

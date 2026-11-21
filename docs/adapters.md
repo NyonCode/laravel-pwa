@@ -20,8 +20,9 @@ Klient balíčku obsahuje dva malé adaptéry.
 ## Livewire 3
 
 Adaptér se zapne na `livewire:init` a používá `Livewire.hook('request', ({ fail }) => …)`.
-`/livewire/*` je v `cache.never_cache`: SW do Livewire požadavků nezasahuje a neukládá je do fronty
-(stav komponent by po odeslání se zpožděním nemusel sedět).
+`/livewire/*` je v `cache.never_cache`: SW Livewire požadavky jen propustí na síť (přečte z nich
+identitu uživatele), neukládá je do cache ani do fronty (stav komponent by po odeslání se zpožděním
+nemusel sedět).
 
 Offline stav v šabloně: vestavěné `wire:offline` funguje dál.
 

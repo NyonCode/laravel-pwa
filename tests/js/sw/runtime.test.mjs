@@ -210,7 +210,7 @@ describe('API network-first', () => {
     const worker = createWorker({ config: { rules: [apiRule('/api/catalog*')] }, fetch: () => json({}) });
 
     assert.equal((await worker.fetchEvent('/api/other')).handled, false);
-    assert.equal((await worker.fetchEvent('/pwa/session')).handled, false);
+    assert.equal((await worker.navigate('/login')).handled, false, 'never_cache navigations are untouched');
     assert.equal((await worker.fetchEvent('https://cdn.example.com/x.js')).handled, false);
   });
 });

@@ -150,7 +150,8 @@ Requests are handled in this order; the first row that applies wins.
 
 | Request | Handling | Cache name |
 |---|---|---|
-| `/sw.js`, `cache.never_cache` | untouched | — |
+| `/sw.js`; navigations to `cache.never_cache` paths | untouched | — |
+| fetch/XHR to `cache.never_cache` paths | passed to the network, never stored or queued; identity headers are read | — |
 | POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
 | navigation | network (+ Navigation Preload); after `cache.navigation_timeout` s use cache if present; on error cache, then `/offline` | `pwa-pages-{userHash}` |
 | `/build/*`, precache list | cache-first | `pwa-static-{version}` |
@@ -160,13 +161,17 @@ Requests are handled in this order; the first row that applies wins.
 
 Never cached: non-200, `Cache-Control: no-store`, 503, HTML without `X-PWA-Cache: allow`.
 503 navigations are shown as-is (maintenance screen), never replaced by the offline page.
+Identity headers are read from every same-origin response (navigations, mutations, rule responses,
+`never_cache` pass-through), so XHR logins/logouts of Inertia and Livewire are seen; responses of
+other origins never change the identity, and a per-user cache only stores responses whose
+`X-PWA-User` matches its owner. The client also posts `IDENTITY` from each keep-alive.
 User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's `pwa-pages-*` and
 `pwa-rule-*` caches and the queue; `pwa-shared-*` caches survive. Version = hash of runtime config
 (incl. rules) + precache list + `sw.import`/`sw.extend` contents + runtime file. New versions wait;
 the client asks the user, then sends `SKIP_WAITING`. Activation removes caches of rules that no
 longer exist and 0.1.x caches (`pwa-api-*`, `pwa-images*`).
 
-Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `GET_VERSION` (with a port).
+Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION` (with a port).
 Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503.
 
 ### Cache rules (`pwa.cache.rules`, `Pwa::serviceWorker()->cache()`)

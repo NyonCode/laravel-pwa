@@ -103,7 +103,7 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `cache.images.enabled` | bool | `true` | Výchozí pravidlo pro obrázky a fonty (stale-while-revalidate). |
 | `cache.images.max_entries` | int | `120` | Limit obrázků a fontů v cache. |
 | `cache.images.max_age` | int (s) | 30 dní | Starší obrázek se načte znovu (offline se použije i starší). |
-| `cache.never_cache` | list | login, logout, register, broadcasting, livewire, sanctum, `/pwa/*` | Cesty, do kterých SW nezasahuje (ani fronta). |
+| `cache.never_cache` | list | login, logout, register, broadcasting, livewire, sanctum, `/pwa/*` | Cesty, které SW nikdy neuloží ani nezařadí do fronty; fetch/XHR jen propustí na síť a přečte z nich identitu uživatele. |
 
 ## Offline
 

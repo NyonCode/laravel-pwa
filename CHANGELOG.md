@@ -30,6 +30,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `pwa:icons` rejects an invalid `--background` colour instead of silently using white, and accepts
   short `#rgb` colours.
 
+### Security
+- The worker now reads the user identity (`X-PWA-User`, `X-PWA-Logout`) from every same-origin
+  response, not only from navigations. Before, an XHR logout and login of another user (Inertia,
+  Livewire) on the same device left the previous user's API data readable through `pwa.cache.api`.
+  `never_cache` fetch/XHR requests now pass through the worker for this (still never stored or
+  queued), per-user caches only store responses of their owner, identity headers of other origins
+  are ignored, and the client forwards the identity from each keep-alive (`IDENTITY` message).
+
 ### Changed
 - API and image caches are rule caches now (`pwa-rule-api-*`, `pwa-rule-images-*`); the worker
   removes the 0.1 caches on activation. See UPGRADE.md.

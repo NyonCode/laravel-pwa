@@ -88,6 +88,9 @@
     await meta.set('user', user);
   };
 
+  // Valid identities: 'guest' or the 16-hex HMAC from Pwa::userHash().
+  const validUser = (user) => user === 'guest' || /^[a-f0-9]{16}$/.test(user || '');
+
   const observeIdentity = async (response) => {
     const logout = response.headers.get('X-PWA-Logout') === '1';
     const user = response.headers.get('X-PWA-User');
@@ -99,10 +102,15 @@
       return;
     }
 
-    if (user && user !== (await currentUserHash())) {
+    if (validUser(user) && user !== (await currentUserHash())) {
       await purgeUserData(user);
       await switchUser(user);
     }
+  };
+
+  // Only our own server may change the identity (a foreign CORS response could expose the headers).
+  const observeFrom = async (request, response) => {
+    if (sameOrigin(new URL(request.url))) await observeIdentity(response);
   };
 
   /* ------------------------------------------------------------------ *
@@ -283,6 +291,9 @@
 
   const store = async (cacheName, request, response, options) => {
     if (!storable(response, options)) return;
+    // A per-user cache only takes responses of that user (identity may have changed meanwhile).
+    const owner = response.headers.get('X-PWA-User');
+    if (options.forUser && owner && owner !== options.forUser) return;
     const cache = await caches.open(cacheName);
     await cache.put(request, await stamp(response));
     await trim(cacheName, options);
@@ -306,6 +317,7 @@
     async networkFirst(event, options) {
       const { request } = event;
       const network = fetch(request).then(async (response) => {
+        await observeFrom(request, response);
         if (response.status === 503) {
           await maintenance(response);
           return (await lookup(request, options)) || response;
@@ -339,6 +351,7 @@
       if (cached && fresh(cached, options.maxAge)) return cached;
       try {
         const response = await fetch(request);
+        await observeFrom(request, response);
         event.waitUntil(store(options.cacheName, request, response.clone(), options));
         return response;
       } catch (error) {
@@ -351,6 +364,7 @@
       const { request } = event;
       const cached = await caches.match(request, { cacheName: options.cacheName });
       const network = fetch(request).then(async (response) => {
+        await observeFrom(request, response);
         await store(options.cacheName, request, response.clone(), options);
         return response;
       });
@@ -399,7 +413,9 @@
       && (rule.destinations.length === 0 || rule.destinations.includes(request.destination)));
 
   const applyRule = async (event, rule) => {
+    const forUser = rule.shared ? null : await currentUserHash();
     const options = {
+      forUser,
       cacheName: await cacheNameFor(rule.cache, rule),
       maxEntries: rule.maxEntries,
       maxAge: rule.maxAge,
@@ -475,7 +491,10 @@
   const handleMutation = async (request) => {
     const copy = request.clone();
     try {
-      return await fetch(request);
+      const response = await fetch(request);
+      // XHR logins and logouts (Inertia, Livewire) never navigate: read the identity here too.
+      await observeIdentity(response);
+      return response;
     } catch {
       await queuePush(copy);
       await broadcast({ type: 'offline' });
@@ -484,6 +503,12 @@
         headers: { 'Content-Type': 'application/json', 'X-PWA-Queued': '1' },
       });
     }
+  };
+
+  const passThrough = async (request) => {
+    const response = await fetch(request);
+    await observeIdentity(response);
+    return response;
   };
 
   const precached = (url) => url.pathname.startsWith(C.buildPrefix || '/build/') || (C.precache || []).includes(url.pathname);
@@ -548,6 +573,12 @@
       case 'CLEAR_USER':
         event.waitUntil(purgeUserData().then(() => switchUser('guest')));
         break;
+      case 'IDENTITY':
+        // From the client's keep-alive (/pwa/session is never routed through the worker).
+        if (validUser(data.user)) {
+          event.waitUntil(observeIdentity(new Response(null, { headers: { 'X-PWA-User': data.user } })));
+        }
+        break;
       case 'GET_VERSION':
         if (event.ports[0]) event.ports[0].postMessage({ version: V });
         break;
@@ -560,7 +591,7 @@
   });
 
   /* ------------------------------------------------------------------ *
-   * Fetch routing. Order: worker script and never_cache → mutations →
+   * Fetch routing. Order: worker script → never_cache (pass-through) → mutations →
    * navigations → precached build files → sw.extend routes → rules.
    * ------------------------------------------------------------------ */
 
@@ -569,7 +600,14 @@
     const url = new URL(request.url);
     const local = sameOrigin(url);
 
-    if (local && (url.pathname === workerPath || matches(neverCache, url.pathname))) return;
+    if (local && url.pathname === workerPath) return;
+
+    // never_cache: never stored or queued. Fetch/XHR requests still pass through the worker so it
+    // sees identity changes (XHR login/logout of Inertia and Livewire hit /login, /logout).
+    if (local && matches(neverCache, url.pathname)) {
+      if (request.mode !== 'navigate') event.respondWith(passThrough(request));
+      return;
+    }
 
     if (request.method !== 'GET') {
       if (local && C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && request.mode !== 'navigate') {

@@ -51,7 +51,8 @@ navigaci.
 
 | Požadavek | Zpracování | Cache |
 | --- | --- | --- |
-| `/sw.js`, `cache.never_cache` | SW nezasahuje | – |
+| `/sw.js`; navigace na cesty z `cache.never_cache` | SW nezasahuje | – |
+| fetch/XHR na cesty z `cache.never_cache` | rovnou na síť, nic neukládá ani neřadí do fronty; jen přečte hlavičky identity | – |
 | POST/PUT/PATCH/DELETE (`fetch`/XHR) | síť; při výpadku fronta a `202` | IndexedDB `pwa` / `queue` |
 | navigace (HTML) | síť (s Navigation Preload); po `cache.navigation_timeout` cache, pokud existuje; při chybě cache, pak `/offline` | `pwa-pages-{user}` |
 | `/build/*` a precache | cache-first | `pwa-static-{version}` |
@@ -129,7 +130,7 @@ přes cesty z `never_cache`.
 | Hlavička | Posílá | Účinek |
 | --- | --- | --- |
 | `X-PWA-Cache: allow` | middleware `pwa.cache` | HTML smí do cache |
-| `X-PWA-User: {hash}` | `PwaWebMiddleware` (skupina `web`) | změna uživatele smaže cache předchozího |
+| `X-PWA-User: {hash}` | `PwaWebMiddleware` (skupina `web`) | změna uživatele smaže cache předchozího; SW ji čte z každé odpovědi vlastní domény (navigace, mutace, pravidla, `never_cache`), takže zachytí i XHR přihlášení v Inertii a Livewire |
 | `X-PWA-Logout: 1` | po události `Logout` | smaže cache a frontu, pošle `logout` klientům |
 | `Retry-After` | údržba | předá se v události `maintenance` |
 
@@ -142,6 +143,7 @@ Klient → SW (`navigator.serviceWorker.controller.postMessage`):
 | `{type: 'SKIP_WAITING'}` | aktivovat čekající verzi |
 | `{type: 'REPLAY_QUEUE'}` | odeslat frontu |
 | `{type: 'CLEAR_USER'}` | smazat cache a frontu uživatele |
+| `{type: 'IDENTITY', user}` | identita z keep-alive (`/pwa/session`); jiný uživatel = smazat data předchozího |
 | `{type: 'GET_VERSION'}` + `MessagePort` | vrátí `{version}` (`window.Pwa.version()`) |
 
 SW → klient (`{source: 'pwa', type}`): `activated`, `offline`, `maintenance`, `logout`, `queued`,
