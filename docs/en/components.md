@@ -1,6 +1,6 @@
 ---
 title: Blade components
-description: "<x-pwa::head/>, <x-pwa::nav/> and <x-pwa::install/>: what they render, their attributes, and how to customize them."
+description: "<x-pwa::head/>, <x-pwa::nav/>, <x-pwa::install/>, <x-pwa::update-toast/> and <x-pwa::push-toggle/>: what they render, their attributes, styling, and Vue or React equivalents."
 ---
 
 # Blade components
@@ -54,13 +54,16 @@ Styling: the `.pwa-nav` and `.pwa-nav__btn` classes, with color from `currentCol
 
 ```blade
 <x-pwa::install class="btn btn-primary">Install app</x-pwa::install>
-<x-pwa::install :dismissible="false"/>
+<x-pwa::install ios="hint" :dismissible="false"/>
 ```
 
 | Prop | Default | Description |
 | --- | --- | --- |
 | slot | translated "Install app" | button text |
-| `dismissible` | `true` | Close button in the iOS hint |
+| `ios` | `sheet` | iPhone / iPad instructions: `sheet` (two steps with the Share icon), `hint` (one line), `none` |
+| `dismissible` | `true` | Close button in the iOS instructions |
+| `styles` | `true` | [base styles](#styling) |
+| slot `ios-hint` | – | your own content for the iOS instructions |
 | attributes | – | passed to the `<button>` (the class is merged with `pwa-install`) |
 
 It renders a hidden `[data-pwa-install]` button and a hidden `[data-pwa-ios-hint]` hint. The client
@@ -73,7 +76,129 @@ reveals them when:
   is an iPhone / iPad (the hint).
 
 To use your own button anywhere, add the `data-pwa-install` attribute to any element; to close the
-hint, use `data-pwa-install-dismiss`.
+hint, use `data-pwa-install-dismiss`. `Pwa.canInstall()` and the `pwa:installable` event tell your own
+code the same thing.
+
+## `<x-pwa::update-toast/>`
+
+```blade
+<x-pwa::update-toast/>
+<x-pwa::update-toast class="my-toast">The app was updated.<x-slot:apply>Restart</x-slot:apply></x-pwa::update-toast>
+```
+
+| Prop | Default | Description |
+| --- | --- | --- |
+| slot | translated "A new version is available." | text |
+| slot `apply` | translated "Update" | text of the button that activates the new version |
+| `dismissible` | `true` | "Later" button; the toast comes back on the next visit |
+| `styles` | `true` | [base styles](#styling) |
+| attributes | – | passed to the toast (`role=status`, class `pwa-toast`) |
+
+Hidden until a new service worker waits. "Update" calls `Pwa.applyUpdate()`: the new worker takes over
+and the page reloads. With the toast on the page, the built-in [update bar](client.md#service-worker-updates)
+is not shown. Your own markup works the same way: `[data-pwa-update]` (shown while an update waits),
+`[data-pwa-update-apply]` and `[data-pwa-update-dismiss]`.
+
+## `<x-pwa::push-toggle/>`
+
+```blade
+<x-pwa::push-toggle class="btn"/>
+<x-pwa::push-toggle>
+    <x-slot:enable>Notify me about my orders</x-slot:enable>
+</x-pwa::push-toggle>
+```
+
+| Prop / slot | Default | Description |
+| --- | --- | --- |
+| slot `enable` | translated "Turn on notifications" | button text when not subscribed |
+| slot `disable` | translated "Turn off notifications" | button text when subscribed |
+| slot `denied` | translated hint | shown when the user blocked notifications |
+| slot `install-required` | translated hint | iPhone / iPad in Safari: push works only in the Home Screen app |
+| `styles` | `true` | [base styles](#styling) |
+| attributes | – | passed to the `<button>` (class `pwa-push__toggle`) |
+
+Needs the [web push module](push.md). A click subscribes or unsubscribes this device
+(`Pwa.push.toggle()`); the permission prompt appears only then. The wrapper gets
+`data-pwa-push-state` (`subscribed`, `unsubscribed`, `denied`, `install-required`), the button
+`aria-pressed`, and the matching `[data-pwa-push-label]` is shown. Without push on the server, or in a
+browser without push, the toggle stays hidden.
+
+## Styling
+
+`install`, `update-toast` and `push-toggle` print a small stylesheet once per page (with the CSP nonce).
+Theme it with CSS variables, or pass `:styles="false"` and style the `pwa-*` classes yourself.
+The rules use `:where()`, so any class of yours wins.
+
+```css
+.pwa-ui {
+  --pwa-surface: #0f172a;   /* background of the toast and the iOS sheet */
+  --pwa-on-surface: #fff;   /* text */
+  --pwa-muted: #cbd5e1;     /* secondary text */
+  --pwa-action: #2563eb;    /* buttons */
+  --pwa-radius: 16px;
+  --pwa-shadow: 0 8px 24px rgb(0 0 0 / .2);
+  --pwa-font: 500 15px/1.4 Inter, sans-serif;
+}
+```
+
+All logic lives in the client (`pwa.js`), so the components need no inline script.
+Elements added later (Livewire `wire:navigate`, Inertia, a Vue or React render) are picked up on
+`livewire:navigated`, `inertia:navigate`, or when you call `Pwa.refreshUi()`.
+
+## Vue and React
+
+The Blade components only render markup with `data-pwa-*` attributes. In Vue or React, render the same
+attributes or use the client API directly.
+
+```js
+// resources/js/composables/usePwa.js (Vue 3)
+import { onMounted, onUnmounted, ref } from 'vue'
+
+export function usePwa() {
+  const canInstall = ref(window.Pwa?.canInstall() ?? false)
+  const updateAvailable = ref(window.Pwa?.updateAvailable() ?? false)
+  const push = ref('unsupported')
+  const offs = []
+
+  onMounted(async () => {
+    offs.push(Pwa.on('installable', () => (canInstall.value = Pwa.canInstall())))
+    offs.push(Pwa.on('installed', () => (canInstall.value = false)))
+    offs.push(Pwa.on('update-available', () => (updateAvailable.value = true)))
+    offs.push(Pwa.on('push', ({ state }) => (push.value = state)))
+    push.value = await Pwa.push.state()
+  })
+  onUnmounted(() => offs.forEach((off) => off()))
+
+  return { canInstall, updateAvailable, push, install: () => Pwa.install(), update: () => Pwa.applyUpdate(), togglePush: () => Pwa.push.toggle() }
+}
+```
+
+```jsx
+// resources/js/hooks/usePwa.js (React)
+import { useEffect, useState } from 'react'
+
+export function usePwa() {
+  const [canInstall, setCanInstall] = useState(() => window.Pwa?.canInstall() ?? false)
+  const [updateAvailable, setUpdateAvailable] = useState(() => window.Pwa?.updateAvailable() ?? false)
+  const [push, setPush] = useState('unsupported')
+
+  useEffect(() => {
+    const offs = [
+      Pwa.on('installable', () => setCanInstall(Pwa.canInstall())),
+      Pwa.on('installed', () => setCanInstall(false)),
+      Pwa.on('update-available', () => setUpdateAvailable(true)),
+      Pwa.on('push', ({ state }) => setPush(state)),
+    ]
+    Pwa.push.state().then(setPush)
+    return () => offs.forEach((off) => off())
+  }, [])
+
+  return { canInstall, updateAvailable, push, install: () => Pwa.install(), update: () => Pwa.applyUpdate(), togglePush: () => Pwa.push.toggle() }
+}
+```
+
+`window.Pwa` exists once the client module has run; for server-side rendering, call the hook only in
+the browser. Call `Pwa.push.toggle()` and `Pwa.install()` from a click handler.
 
 ## Offline and maintenance
 

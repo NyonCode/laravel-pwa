@@ -144,13 +144,14 @@ You can translate `name`, `short_name` and `description` in
 | `maintenance.retry` | int (s) | `60` | Default `Retry-After` and check interval (15–300 s). |
 | `maintenance.refresh` | ?int | `null` | Default `--refresh` for `pwa:down`. |
 
-## Install, telemetry, adapters
+## Install, updates, telemetry, adapters
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `install.min_visits` | int | `2` | The visit from which `<x-pwa::install/>` is shown. |
 | `install.dismiss_days` | int | `30` | How long to hide the prompt after the user dismisses it. |
 | `install.ios_hint` | bool | `true` | The "Share → Add to Home Screen" hint on iPhone and iPad. |
+| `updates.bar` | bool | `true` | The built-in "new version" bar; off for your own UI (skipped anyway on pages with `<x-pwa::update-toast/>`). |
 | `telemetry.log` | bool | `true` | Write `TelemetryReceived` to the log; turn it off when you handle the events yourself ([Events](events.md)). |
 | `telemetry.enabled` | bool | `true` | Send service worker errors to `/pwa/telemetry`. |
 | `telemetry.channel` | ?string | `null` | Log channel; a channel that does not exist falls back to the default log. |

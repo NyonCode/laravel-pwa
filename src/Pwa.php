@@ -311,6 +311,9 @@ class Pwa
                 'dismissDays' => config()->integer('pwa.install.dismiss_days', 30),
                 'iosHint' => config()->boolean('pwa.install.ios_hint', true),
             ],
+            'updates' => [
+                'bar' => config()->boolean('pwa.updates.bar', true),
+            ],
             'nav' => [
                 'enabled' => config()->boolean('pwa.desktop_nav.enabled', true),
                 'minWidth' => config()->integer('pwa.desktop_nav.min_width', 900),

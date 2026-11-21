@@ -54,13 +54,16 @@ Styl: třídy `.pwa-nav` a `.pwa-nav__btn`, barva z `currentColor`. Reaguje na `
 
 ```blade
 <x-pwa::install class="btn btn-primary">Nainstalovat aplikaci</x-pwa::install>
-<x-pwa::install :dismissible="false"/>
+<x-pwa::install ios="hint" :dismissible="false"/>
 ```
 
 | Prop | Výchozí | Popis |
 | --- | --- | --- |
 | slot | přeložené „Nainstalovat aplikaci“ | text tlačítka |
-| `dismissible` | `true` | tlačítko Zavřít v iOS nápovědě |
+| `ios` | `sheet` | návod pro iPhone / iPad: `sheet` (dva kroky s ikonou Sdílet), `hint` (jeden řádek), `none` |
+| `dismissible` | `true` | tlačítko Zavřít v iOS návodu |
+| `styles` | `true` | [základní styly](#stylování) |
+| slot `ios-hint` | – | vlastní obsah iOS návodu |
 | atributy | – | předají se na `<button>` (třída se sloučí s `pwa-install`) |
 
 Vykreslí skryté tlačítko `[data-pwa-install]` a skrytou nápovědu `[data-pwa-ios-hint]`. Klient je
@@ -73,7 +76,127 @@ odkryje, když:
   iPhone / iPad (nápověda).
 
 Vlastní tlačítko kdekoli: atribut `data-pwa-install` na libovolném prvku; zavření nápovědy
-`data-pwa-install-dismiss`.
+`data-pwa-install-dismiss`. Totéž zjistí váš kód přes `Pwa.canInstall()` a událost `pwa:installable`.
+
+## `<x-pwa::update-toast/>`
+
+```blade
+<x-pwa::update-toast/>
+<x-pwa::update-toast class="my-toast">Aplikace se aktualizovala.<x-slot:apply>Restartovat</x-slot:apply></x-pwa::update-toast>
+```
+
+| Prop | Výchozí | Popis |
+| --- | --- | --- |
+| slot | přeložené „Je k dispozici nová verze.“ | text |
+| slot `apply` | přeložené „Aktualizovat“ | text tlačítka, které aktivuje novou verzi |
+| `dismissible` | `true` | tlačítko „Později“; při další návštěvě se toast ukáže znovu |
+| `styles` | `true` | [základní styly](#stylování) |
+| atributy | – | předají se na toast (`role=status`, třída `pwa-toast`) |
+
+Skrytý, dokud nečeká nový service worker. „Aktualizovat“ zavolá `Pwa.applyUpdate()`: nový worker
+převezme stránku a ta se znovu načte. S toastem na stránce se vestavěná
+[lišta aktualizace](client.md#aktualizace-service-workeru) neukáže. Vlastní markup funguje stejně:
+`[data-pwa-update]` (viditelný, dokud aktualizace čeká), `[data-pwa-update-apply]` a `[data-pwa-update-dismiss]`.
+
+## `<x-pwa::push-toggle/>`
+
+```blade
+<x-pwa::push-toggle class="btn"/>
+<x-pwa::push-toggle>
+    <x-slot:enable>Upozorňovat na moje objednávky</x-slot:enable>
+</x-pwa::push-toggle>
+```
+
+| Prop / slot | Výchozí | Popis |
+| --- | --- | --- |
+| slot `enable` | přeložené „Zapnout oznámení“ | text tlačítka bez odběru |
+| slot `disable` | přeložené „Vypnout oznámení“ | text tlačítka s odběrem |
+| slot `denied` | přeložená nápověda | uživatel oznámení zablokoval |
+| slot `install-required` | přeložená nápověda | iPhone / iPad v Safari: push funguje jen v aplikaci z plochy |
+| `styles` | `true` | [základní styly](#stylování) |
+| atributy | – | předají se na `<button>` (třída `pwa-push__toggle`) |
+
+Potřebuje [modul web push](push.md). Kliknutí přihlásí nebo odhlásí odběr tohoto zařízení
+(`Pwa.push.toggle()`); dotaz na oprávnění se objeví až tehdy. Obal dostane `data-pwa-push-state`
+(`subscribed`, `unsubscribed`, `denied`, `install-required`), tlačítko `aria-pressed` a zobrazí se
+odpovídající `[data-pwa-push-label]`. Bez push na serveru nebo v prohlížeči bez push zůstane skrytý.
+
+## Stylování
+
+`install`, `update-toast` a `push-toggle` vypíšou jednou na stránku malý stylopis (s CSP nonce).
+Upravte ho CSS proměnnými, nebo předejte `:styles="false"` a nastylujte třídy `pwa-*` sami.
+Pravidla používají `:where()`, takže vaše třída vždy vyhraje.
+
+```css
+.pwa-ui {
+  --pwa-surface: #0f172a;   /* pozadí toastu a iOS návodu */
+  --pwa-on-surface: #fff;   /* text */
+  --pwa-muted: #cbd5e1;     /* vedlejší text */
+  --pwa-action: #2563eb;    /* tlačítka */
+  --pwa-radius: 16px;
+  --pwa-shadow: 0 8px 24px rgb(0 0 0 / .2);
+  --pwa-font: 500 15px/1.4 Inter, sans-serif;
+}
+```
+
+Veškerá logika je v klientovi (`pwa.js`), komponenty tedy nepotřebují inline skript.
+Prvky přidané později (Livewire `wire:navigate`, Inertia, vykreslení ve Vue nebo Reactu) klient najde
+po `livewire:navigated`, `inertia:navigate` nebo po zavolání `Pwa.refreshUi()`.
+
+## Vue a React
+
+Blade komponenty jen vykreslí markup s atributy `data-pwa-*`. Ve Vue nebo Reactu vykreslete stejné
+atributy, nebo použijte přímo API klienta.
+
+```js
+// resources/js/composables/usePwa.js (Vue 3)
+import { onMounted, onUnmounted, ref } from 'vue'
+
+export function usePwa() {
+  const canInstall = ref(window.Pwa?.canInstall() ?? false)
+  const updateAvailable = ref(window.Pwa?.updateAvailable() ?? false)
+  const push = ref('unsupported')
+  const offs = []
+
+  onMounted(async () => {
+    offs.push(Pwa.on('installable', () => (canInstall.value = Pwa.canInstall())))
+    offs.push(Pwa.on('installed', () => (canInstall.value = false)))
+    offs.push(Pwa.on('update-available', () => (updateAvailable.value = true)))
+    offs.push(Pwa.on('push', ({ state }) => (push.value = state)))
+    push.value = await Pwa.push.state()
+  })
+  onUnmounted(() => offs.forEach((off) => off()))
+
+  return { canInstall, updateAvailable, push, install: () => Pwa.install(), update: () => Pwa.applyUpdate(), togglePush: () => Pwa.push.toggle() }
+}
+```
+
+```jsx
+// resources/js/hooks/usePwa.js (React)
+import { useEffect, useState } from 'react'
+
+export function usePwa() {
+  const [canInstall, setCanInstall] = useState(() => window.Pwa?.canInstall() ?? false)
+  const [updateAvailable, setUpdateAvailable] = useState(() => window.Pwa?.updateAvailable() ?? false)
+  const [push, setPush] = useState('unsupported')
+
+  useEffect(() => {
+    const offs = [
+      Pwa.on('installable', () => setCanInstall(Pwa.canInstall())),
+      Pwa.on('installed', () => setCanInstall(false)),
+      Pwa.on('update-available', () => setUpdateAvailable(true)),
+      Pwa.on('push', ({ state }) => setPush(state)),
+    ]
+    Pwa.push.state().then(setPush)
+    return () => offs.forEach((off) => off())
+  }, [])
+
+  return { canInstall, updateAvailable, push, install: () => Pwa.install(), update: () => Pwa.applyUpdate(), togglePush: () => Pwa.push.toggle() }
+}
+```
+
+`window.Pwa` existuje, jakmile se spustí modul klienta; při vykreslování na serveru volejte hook jen
+v prohlížeči. `Pwa.push.toggle()` a `Pwa.install()` volejte z obsluhy kliknutí.
 
 ## Offline a údržba
 

@@ -64,6 +64,9 @@ button.addEventListener('click', async () => {
 Pwa.on('push', ({ state }) => (button.hidden = state === 'subscribed'))
 ```
 
+Nebo vložte [`<x-pwa::push-toggle/>`](components.md#x-pwapush-toggle): jedno tlačítko, které dělá totéž,
+včetně textů pro zablokovaná oznámení a iPhone.
+
 | `Pwa.push` | Vrací | Popis |
 | --- | --- | --- |
 | `supported()` | bool | push je zapnutý na serveru i v tomto prohlížeči |
@@ -71,6 +74,7 @@ Pwa.on('push', ({ state }) => (button.hidden = state === 'subscribed'))
 | `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unsupported` |
 | `subscribe()` | `Promise<PushSubscription\|null>` | požádá o oprávnění, přihlásí odběr a uloží ho na server |
 | `unsubscribe()` | `Promise<bool>` | odebere odběr na serveru i v prohlížeči |
+| `toggle()` | Promise | `unsubscribe()`, když odběr existuje, jinak `subscribe()` |
 | `subscription()` | `Promise<PushSubscription\|null>` | aktuální odběr prohlížeče |
 
 Klient drží odběr v souladu sám:

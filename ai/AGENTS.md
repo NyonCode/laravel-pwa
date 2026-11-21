@@ -178,11 +178,22 @@ Safari reports Mac even on iPad; without Client Hints macOS is therefore not tre
   (browser draws them) and on phones. Prop `start-url`.
 - `<x-pwa::install>Text</x-pwa::install>` — hidden `[data-pwa-install]` button + hidden
   `[data-pwa-ios-hint]`; client reveals them when installable, visits ≥ `install.min_visits`, not
-  dismissed within `install.dismiss_days`. Prop `dismissible` (default true). Any element with
+  dismissed within `install.dismiss_days`. Props `dismissible` (true), `ios` (`sheet` steps with the
+  Share icon | `hint` one line | `none`), `styles` (true), slot `ios-hint`. Any element with
   `data-pwa-install` works as an install trigger; `data-pwa-install-dismiss` dismisses.
+- `<x-pwa::update-toast/>` — hidden `[data-pwa-update]` toast with `[data-pwa-update-apply]`
+  (→ `Pwa.applyUpdate()`) and `[data-pwa-update-dismiss]`; shown while a new worker waits. Its
+  presence (or `updates.bar = false`) suppresses the built-in update bar. Props `dismissible`, `styles`, slot `apply`.
+- `<x-pwa::push-toggle/>` — `[data-pwa-push]` wrapper with `[data-pwa-push-toggle]` button
+  (→ `Pwa.push.toggle()`); client sets `data-pwa-push-state` and `aria-pressed`, shows the matching
+  `[data-pwa-push-label]`; hidden when push is unavailable. Slots `enable`, `disable`, `denied`, `install-required`.
+- Base styles (`partials/ui-styles`) print once per page with the CSP nonce, `:where()` rules,
+  CSS variables `--pwa-surface|on-surface|muted|action|radius|shadow|font`; `:styles="false"` opts out.
+  No inline scripts: `pwa.js` drives every `[data-pwa-*]` element; `Pwa.refreshUi()` (also on
+  `livewire:navigated`, `inertia:navigate`, `pageshow`) re-scans elements added later.
 
 Views to customise (`php artisan vendor:publish --tag="pwa::views"`): `offline.blade.php`,
-`maintenance.blade.php`, `components/{head,nav,install}.blade.php`. Offline and maintenance pages
+`maintenance.blade.php`, `components/{head,nav,install,update-toast,push-toggle}.blade.php`, `partials/ui-styles.blade.php`. Offline and maintenance pages
 must stay self-contained (inline CSS/SVG/JS, no external URLs). In `maintenance.blade.php` pass PHP
 data only via `data-*` attributes on `#pwa-maintenance`, never inside `<script>` (keeps the CSP hash
 stable). Keep the `@if($nonce) nonce=…` attributes.
@@ -211,7 +222,8 @@ other origins never change the identity, and a per-user cache only stores respon
 User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's `pwa-pages-*` and
 `pwa-rule-*` caches and the queue; `pwa-shared-*` caches survive. Version = hash of runtime config
 (incl. rules) + precache list + `sw.import`/`sw.extend` contents + runtime file. New versions wait;
-the client asks the user, then sends `SKIP_WAITING`. Activation removes caches of rules that no
+the client asks the user (bar or update toast), then `Pwa.applyUpdate()` sends `SKIP_WAITING`
+and reloads after `controllerchange`. Never post `SKIP_WAITING` from app code: the page would not reload. Activation removes caches of rules that no
 longer exist and 0.1.x caches (`pwa-api-*`, `pwa-images*`).
 
 Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION` (with a port).
@@ -332,13 +344,13 @@ messages are built and size-checked, nothing is sent.
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
-`update()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
+`canInstall()`, `update()` (check only), `updateAvailable()`, `applyUpdate()` → bool, `refreshUi()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
 `push.supported()`, `push.permission()`, `push.state()` → `subscribed|unsubscribed|denied|install-required|unsupported`,
-`push.subscribe()` (call from a click) → subscription or `null`, `push.unsubscribe()`, `push.subscription()`.
+`push.subscribe()` (call from a click) → subscription or `null`, `push.unsubscribe()`, `push.toggle()`, `push.subscription()`.
 
 DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `resume`, `online`,
 `offline`, `maintenance`, `logout`, `queue` `{count}`, `replayed` `{url,status}`,
-`update-available` `{worker}`, `activated` `{version}`, `installed`, `csrf` `{token}`,
+`update-available` `{worker}`, `activated` `{version}`, `installable` `{prompt, ios}`, `installed`, `csrf` `{token}`,
 `csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`,
 `push` `{state, lost?, error?}`, `push-received` `{tag}`, `push-renewed`, `notification-click` `{url, action}`.
 
@@ -413,7 +425,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
-`maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
+`maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`, `updates.bar`,
 `telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker}`,
 `adapters.{livewire,inertia,reload_on_resume}`,
 `route_prefix`. Use the MCP tool `describe_config` for defaults and comments.

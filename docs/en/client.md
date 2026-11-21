@@ -26,14 +26,18 @@ description: The window.Pwa API, pwa:* events, the status bar, installation, bad
 | `isInstalled()` | bool | `displayMode() !== 'browser'` (on iOS also `navigator.standalone`) |
 | `isIos()` | bool | iPhone, iPod, iPad (including an iPad that identifies as a Mac) |
 | `install()` | `Promise<string>` | `accepted`, `dismissed`, `unavailable`; uses `navigator.install()` or the stored prompt |
+| `canInstall()` | bool | installing makes sense now: a prompt is available, or the iOS instructions apply |
 | `update()` | Promise | checks for a new service worker version manually |
+| `updateAvailable()` | bool | a new version waits |
+| `applyUpdate()` | bool | activates the waiting version and reloads the page once it takes over; `false` when nothing waits |
+| `refreshUi()` | – | shows or hides `[data-pwa-*]` elements added after load (install, update, push) |
 | `keepAlive()` | `Promise<object\|null>` | calls `/pwa/session` right away |
 | `warm()` | `Promise<object\|null>` | downloads the warm-up pages now; `{count, skipped, failed}` ([Offline](offline.md#warm-up)) |
 | `version()` | `Promise<string\|null>` | version of the active service worker |
 | `on(event, fn)` | function | listener without the `pwa:` prefix; returns a function that removes it |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
 | `badge.clear()` | Promise | |
-| `push.*` | | `supported()`, `permission()`, `state()`, `subscribe()`, `unsubscribe()`, `subscription()`; see [Push notifications](push.md#subscribing-in-the-browser) |
+| `push.*` | | `supported()`, `permission()`, `state()`, `subscribe()`, `unsubscribe()`, `toggle()`, `subscription()`; see [Push notifications](push.md#subscribing-in-the-browser) |
 
 ```js
 if (!Pwa.isInstalled() && Pwa.isIos()) showIosHelp()
@@ -59,6 +63,7 @@ Every event is dispatched as a `CustomEvent` on `document` (`pwa:name`) and is a
 | `pwa:replayed` | `{url, status}` | a queued action was sent |
 | `pwa:update-available` | `{worker}` | a new service worker version is waiting |
 | `pwa:activated` | `{version}` | a service worker version was activated |
+| `pwa:installable` | `{prompt, ios}` | installation became possible (a prompt, or the iOS instructions) |
 | `pwa:installed` | `{}` | `appinstalled` |
 | `pwa:csrf` | `{token}` | a new CSRF token was applied |
 | `pwa:csrf-refreshed` | `{}` | a Livewire 419 was resolved |
@@ -79,13 +84,24 @@ document.addEventListener('pwa:logout', () => pushSystem.unsubscribe())
 For offline, maintenance mode, the queue and updates, the client shows a small bar at the bottom (`.pwa-bar`, `role=status`,
 `aria-live=polite`, respects the safe area). Its texts come from `pwa::messages`. It is styled through
 `element.style` (CSP-safe). For your own UI, hide the bar (`.pwa-bar { display: none !important }`)
-and react to the events.
+and react to the events. For updates, `updates.bar = false` or an `<x-pwa::update-toast/>` on the page
+is enough.
 
 ## Service worker updates
 
-A new version waits; the bar offers a "Reload" button. When the user clicks it, the client sends `SKIP_WAITING` and reloads
-the page after `controllerchange`. Without a click, the new version activates once all app windows are
-closed. For your own UI, use `pwa:update-available` and `detail.worker.postMessage({type: 'SKIP_WAITING'})`.
+A new version waits until the user accepts it; until then the page keeps the version it loaded with.
+The bar (or [`<x-pwa::update-toast/>`](components.md#x-pwaupdate-toast)) offers to update. On click, the
+client sends `SKIP_WAITING` to the waiting worker and reloads the page after `controllerchange`. Without a
+click, the new version activates once all app windows are closed.
+
+For your own UI, set `updates.bar` to `false`, listen to `pwa:update-available` and call `Pwa.applyUpdate()`:
+
+```js
+Pwa.on('update-available', () => showMyToast({ onAccept: () => Pwa.applyUpdate() }))
+```
+
+Do not post `SKIP_WAITING` yourself: the client would not know to reload, and the page would run
+old JavaScript against the new worker.
 
 ## Storage
 

@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- `<x-pwa::update-toast/>`: "A new version is available" with Update and Later; replaces the built-in
+  update bar on pages that include it.
+- `<x-pwa::push-toggle/>`: one button to turn web push on and off for the device, with texts for
+  blocked notifications and for iPhone / iPad outside the Home Screen app.
+- `<x-pwa::install ios="sheet">` (the new default): step-by-step "Share → Add to Home Screen"
+  instructions with the Share icon; `ios="hint"` keeps the one-line hint, `ios="none"` drops it.
+- Optional base styles for the components, themable with `--pwa-*` CSS variables, printed once per
+  page with the CSP nonce (`:styles="false"` opts out).
+- Client API: `Pwa.canInstall()`, `Pwa.updateAvailable()`, `Pwa.applyUpdate()`, `Pwa.refreshUi()`,
+  `Pwa.push.toggle()` and the `pwa:installable` event.
+- `updates.bar` config option to turn off the built-in update bar.
+- Vue 3 and React examples for the client API in the docs.
+
+### Fixed
+- A custom update UI that posted `SKIP_WAITING` itself (as the docs suggested) activated the new worker
+  but never reloaded the page. `Pwa.applyUpdate()` does both; the docs now use it.
+- Install, update and push elements rendered after page load (Livewire `wire:navigate`, Inertia,
+  Vue/React) stayed hidden; the client re-scans them on navigation and on `Pwa.refreshUi()`.
+- `<x-pwa::nav/>` read the CSP nonce from `Vite` directly instead of `Pwa::cspNonce()`.
+
 ## [0.4.0] - 2026-11-21
 
 Upgrading from 0.3? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).
