@@ -86,8 +86,18 @@ return [
         'path' => 'pwa/icons',          // directory inside public/
         'maskable_padding' => 0.1,
         'sizes' => [192, 512],
+        // iOS startup images (php artisan pwa:icons --splash), linked by <x-pwa::head/>.
+        'splash' => [
+            'background' => null,       // null = theme.background
+            'dark_background' => null,  // e.g. '#0b1220' adds prefers-color-scheme: dark variants
+            'icon_size' => 0.3,         // icon edge as a fraction of the shorter screen edge
+            'orientations' => ['portrait', 'landscape'],
+            'devices' => null,          // null = all, or keys of NyonCode\LaravelPwa\Icons\AppleDevices::SCREENS
+        ],
     ],
 
+    // Richer install dialog on Android and desktop Chrome: at least one 'wide' and one 'narrow'.
+    // ['src' => '/pwa/screenshots/desktop.png', 'sizes' => '1280x800', 'type' => 'image/png', 'form_factor' => 'wide']
     'screenshots' => [],
 
     /*
@@ -127,6 +137,22 @@ return [
 
     'manifest' => [
         'resolvers' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Path tenants on one domain
+    |--------------------------------------------------------------------------
+    |
+    | A class implementing NyonCode\LaravelPwa\Contracts\TenantResolver. Each
+    | tenant (/t/acme/, /t/globex/) then installs as its own app: own worker
+    | scope, manifest id and start_url, own caches. Tenants on subdomains need
+    | nothing here, the browser already keeps origins apart.
+    |
+    */
+
+    'tenancy' => [
+        'resolver' => null,
     ],
 
     /*
@@ -188,6 +214,13 @@ return [
         'route' => '/offline',
         'precache' => [],
         'queue' => true,                // queue POST/PUT/PATCH/DELETE while the network is down
+        // Pages the worker downloads ahead of time, so they open offline without a prior visit.
+        // Only pages with the pwa.cache middleware are stored. Per-user lists: Pwa::warmUsing().
+        'warm' => [
+            'urls' => [],               // e.g. ['/dashboard', '/orders']
+            'max' => 20,                // at most this many URLs per warm-up
+            'interval' => 60,           // minutes between automatic warm-ups (login always warms)
+        ],
     ],
 
     /*

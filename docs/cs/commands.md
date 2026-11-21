@@ -25,16 +25,23 @@ Publikuje `config/pwa.php` (tag `pwa::config`) a vypíše další kroky. Při ch
 ## pwa:icons
 
 ```bash
-php artisan pwa:icons {source?} {--background=}
+php artisan pwa:icons {source?} {--background=} {--splash}
 ```
 
 | Argument / volba | Popis |
 | --- | --- |
 | `source` | PNG (gd nebo imagick) nebo SVG (jen imagick); bez něj `icons.source` |
 | `--background` | barva pozadí maskable a iOS ikony; výchozí `theme.background` |
+| `--splash` | vytvoří i úvodní obrazovky iOS pro každý iPhone a iPad (`icons.splash`) |
 
 Vytvoří v `public/{icons.path}`: `icon-{size}.png` pro `icons.sizes`, `maskable-512.png`,
-`apple-touch-icon.png` (180 px), `favicon-32.png`, ze SVG i `icon.svg`. Přepisuje existující.
+`monochrome-512.png`, `apple-touch-icon.png` (180 px), `favicon-32.png`, ze SVG i `icon.svg`.
+Přepisuje existující.
+
+S `--splash` vytvoří i `splash/apple-splash-{šířka}x{výška}.png` pro každou obrazovku
+z `AppleDevices::SCREENS` na výšku i na šířku a varianty `-dark`, když je nastavené
+`icons.splash.dark_background`. Starší úvodní obrazovky nejdřív smaže, takže značky `<link>`
+vždy odpovídají aktuální sadě. Všech 22 velikostí v obou orientacích zabere s GD pár sekund.
 
 ## pwa:build
 
@@ -68,7 +75,9 @@ php artisan pwa:doctor [--ci]
 | nouzové vypnutí neaktivní | chyba |
 | manifest: `name` | chyba |
 | ikony 192 a 512 | chyba |
-| maskable ikona, `apple-touch-icon` | varování |
+| maskable ikona, `apple-touch-icon`, úvodní obrazovky iOS | varování |
+| screenshoty: `wide` a `narrow` | varování |
+| screenshoty: soubor existuje, `sizes` a `type` mu odpovídají | chyba |
 | `start_url` uvnitř `scope` | chyba |
 | `public/sw.js` neexistuje | chyba |
 | Vite manifest | varování |

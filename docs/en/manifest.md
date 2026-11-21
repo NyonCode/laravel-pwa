@@ -149,9 +149,27 @@ parameters as the second argument: `resolveUsing($resolver, fn (Request $page) =
 | --- | --- |
 | `icon-192.png`, `icon-512.png` | `purpose: any` – required for installation |
 | `maskable-512.png` | `purpose: maskable` – Android adaptive icon |
+| `monochrome-512.png` | `purpose: monochrome` – the shape only, tinted by the system (Android themed icons, notification badges) |
 | `icon.svg` | `sizes: any` (only from an SVG source) |
 | `apple-touch-icon.png` | iPhone and iPad (through `<x-pwa::head/>`, not the manifest) |
 | `favicon-32.png` | for your own `<link rel="icon">` |
+| `splash/apple-splash-*.png` | iOS startup images (with `--splash`, through `<x-pwa::head/>`) |
+
+## Screenshots
+
+Chrome on Android and desktop shows a richer install dialog with screenshots. Add at least one
+`wide` (desktop) and one `narrow` (phone) screenshot:
+
+```php
+// config/pwa.php
+'screenshots' => [
+    ['src' => '/pwa/screenshots/desktop.png', 'sizes' => '1280x800', 'type' => 'image/png', 'form_factor' => 'wide', 'label' => 'Dashboard'],
+    ['src' => '/pwa/screenshots/phone.png', 'sizes' => '750x1334', 'type' => 'image/png', 'form_factor' => 'narrow', 'label' => 'Orders'],
+],
+```
+
+Chrome ignores a screenshot whose `sizes` or `type` don't match the file. `pwa:doctor` opens every
+local screenshot and compares them.
 
 ## Localization
 

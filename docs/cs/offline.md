@@ -1,15 +1,16 @@
 ---
 title: Offline
-description: Offline obrazovka, stránky dostupné bez připojení (pwa.cache), API cache a fronta offline akcí.
+description: Offline obrazovka, stránky dostupné bez připojení (pwa.cache), předehřátí nenavštívených stránek, API cache a fronta offline akcí.
 ---
 
 # Offline
 
-## Tři úrovně
+## Čtyři úrovně
 
 1. **Offline obrazovka** – vždy, když navigace selže a stránka není v cache.
 2. **Stránky dostupné offline** – co povolí middleware `pwa.cache`, uloží se při návštěvě.
-3. **Fronta akcí** – formuláře a API volání odeslané bez připojení se odešlou později.
+3. **Předehřátí** – vybrané stránky se stáhnou dopředu, bez návštěvy.
+4. **Fronta akcí** – formuláře a API volání odeslané bez připojení se odešlou později.
 
 ## Offline obrazovka
 
@@ -52,13 +53,58 @@ Co nepovolovat:
 
 Na sdíleném zařízení se cache při odhlášení maže ([Bezpečnost](security.md)).
 
+## Předehřátí
+
+Stránky, které uživatel nikdy neotevřel, se dají stáhnout dopředu, takže fungují offline hned po
+přihlášení:
+
+```php
+// config/pwa.php
+'offline' => [
+    'warm' => ['urls' => ['/dashboard', '/orders'], 'max' => 20, 'interval' => 60],
+],
+
+// AppServiceProvider::boot(): stránky pro konkrétního uživatele, např. poslední zakázky
+Pwa::warmUsing(fn (Request $request) => $request->user()
+    ? $request->user()->orders()->latest()->limit(10)->pluck('id')->map(fn ($id) => "/orders/{$id}")
+    : []);
+```
+
+Platí stejná pravidla jako pro navštívené stránky:
+
+- uloží se jen odpovědi s `X-PWA-Cache: allow`, takže stránky dál potřebují middleware `pwa.cache`;
+  ostatní se přeskočí,
+- stránky jdou do `pwa-pages-{user}` uživatele, který o ně požádal, a při odhlášení se smažou,
+- jen cesty na stejném originu mimo `cache.never_cache`, žádná přesměrování (přihlašovací stránka
+  se nikdy neuloží).
+
+Seznam přichází v odpovědi `/pwa/session` (`no-store`), nikdy v `sw.js`. Callback `warmUsing()`
+běží při každém keep-alive požadavku, ať je levný. Worker stahuje dvě stránky najednou a posílá
+`X-PWA-Warm: 1`, takže tyto požadavky poznáte (logy, rate limit).
+
+Kdy se spouští:
+
+| Spouštěč | Podrobnosti |
+| --- | --- |
+| přihlášení | po přihlašovací navigaci se worker sám zeptá `/pwa/session`; XHR přihlášení (Inertia, Livewire) přes klienta |
+| keep-alive | nejvýš jednou za `offline.warm.interval` minut |
+| Periodic Background Sync | nainstalované aplikace v Chromiu s uděleným oprávněním, tag `pwa-warm` |
+| `Pwa.warm()` | hned, vrátí `{count, skipped, failed}` |
+
+Se zapnutým Save-Data ani bez připojení se nic nestahuje.
+
+```js
+const { count } = await Pwa.warm()
+Pwa.on('warmed', ({ count, skipped }) => console.log(`${count} stránek připraveno offline`))
+```
+
 ## API cache
 
 ```php
 'cache' => ['api' => ['/api/catalog*', '/api/me']],
 ```
 
-GET na tyto cesty jde na síť a odpověď 200 se uloží do `pwa-api-{user}`. Při výpadku sítě nebo
+GET na tyto cesty jde na síť a odpověď 200 se uloží do `pwa-rule-api-{user}`. Při výpadku sítě nebo
 údržbě (503) SW vrátí uloženou odpověď. `no-store` se neukládá.
 
 ## Fronta offline akcí

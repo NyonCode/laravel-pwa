@@ -16,7 +16,7 @@
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
 <title>{{ __('pwa::messages.offline_title') }} · {{ $appName }}</title>
-{{-- Vše inline: stránka se zobrazuje bez sítě, žádné externí zdroje. --}}
+{{-- Everything inline: the page is shown without a network, no external resources. --}}
 <style @if($nonce) nonce="{{ $nonce }}" @endif>
 :root{
   --accent: {{ $accent }};
@@ -160,7 +160,7 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
   const card = $('card'), statusEl = $('status'), statusText = $('status-text');
   const retryBtn = $('retry'), slash = $('slash'), art = $('art');
 
-  // Plural pro češtinu: 1 | 2–4 | 5+
+  // Plural forms (Czech needs three): 1 | 2–4 | 5+
   const plural = n => {
     const forms = t.queued.split('|');
     const f = forms.length < 3
@@ -169,7 +169,7 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
     return f.replace(':n', n);
   };
 
-  // Stránka, kterou chtěl uživatel otevřít (SW sem servíruje offline odpověď pod původní URL).
+  // The page the user wanted (the worker serves the offline response under the original URL).
   const target = location.pathname === @json((string) config('pwa.offline.route', '/offline')) ? (document.referrer || @json($home)) : location.href;
 
   let delay = 2, timer = null, countdown = null, checking = false;
@@ -228,11 +228,22 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
   window.addEventListener('offline', () => { setStatus(t.waiting); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
 
-  // Seznam stránek uložených v cache (jen HTML navigace, max. 6).
+  // Cached pages of this app (HTML navigations only, max. 6). Path tenants have their own
+  // worker and caches (pwa-@{slug}.{hash}-pages-…, same naming as the worker runtime): list only
+  // the ones of the controlling worker.
+  const namespaceOf = (scope) => {
+    const path = new URL(scope, location.origin).pathname;
+    if (path === @json((string) config('pwa.scope', '/'))) return '';
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < path.length; i++) hash = Math.imul(hash ^ path.charCodeAt(i), 0x01000193) >>> 0;
+    return '@' + path.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 32) + '.' + hash.toString(16).padStart(8, '0') + '-';
+  };
   const listCached = async () => {
     if (!('caches' in window)) return;
     try {
-      const names = (await caches.keys()).filter(n => /pages|html|navigation/i.test(n));
+      const registration = await navigator.serviceWorker?.getRegistration?.();
+      const own = 'pwa-' + namespaceOf(registration?.scope || '/') + 'pages-';
+      const names = (await caches.keys()).filter(n => n.startsWith('pwa-') ? n.startsWith(own) : /pages|html|navigation/i.test(n));
       const seen = new Map();
       for (const name of names) {
         const cache = await caches.open(name);
@@ -261,15 +272,15 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
         li.append(a); list.append(li);
       }
       $('cached-section').hidden = false;
-    } catch { /* cache nedostupná, sekci nezobrazíme */ }
+    } catch { /* no cache access: the section stays hidden */ }
   };
 
-  // Počet akcí ve frontě (IndexedDB „pwa“, store „queue“ — plní ho service worker balíčku).
+  // Actions waiting in the queue (IndexedDB "pwa", store "queue", filled by the package's worker).
   const countQueue = () => {
     if (!('indexedDB' in window)) return;
     try {
       const req = indexedDB.open('pwa');
-      // Databáze ještě neexistuje → nevytvářet ji (zrušením upgrade se smaže).
+      // The database does not exist yet → do not create it (aborting the upgrade removes it).
       req.onupgradeneeded = () => req.transaction.abort();
       req.onerror = () => {};
       req.onsuccess = () => {

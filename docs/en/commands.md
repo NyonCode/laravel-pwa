@@ -25,16 +25,23 @@ Publishes `config/pwa.php` (tag `pwa::config`) and prints the next steps. Return
 ## pwa:icons
 
 ```bash
-php artisan pwa:icons {source?} {--background=}
+php artisan pwa:icons {source?} {--background=} {--splash}
 ```
 
 | Argument / option | Description |
 | --- | --- |
 | `source` | a PNG (gd or imagick) or an SVG (imagick only); defaults to `icons.source` |
 | `--background` | background color for the maskable and iOS icons; defaults to `theme.background` |
+| `--splash` | also generate iOS startup images for every iPhone and iPad (`icons.splash`) |
 
 Writes the following to `public/{icons.path}`: `icon-{size}.png` for each of `icons.sizes`, `maskable-512.png`,
-`apple-touch-icon.png` (180 px), `favicon-32.png`, and `icon.svg` when the source is an SVG. Existing files are overwritten.
+`monochrome-512.png`, `apple-touch-icon.png` (180 px), `favicon-32.png`, and `icon.svg` when the source is an SVG.
+Existing files are overwritten.
+
+With `--splash`, it also writes `splash/apple-splash-{width}x{height}.png` for each screen in
+`AppleDevices::SCREENS`, portrait and landscape, plus `-dark` variants when `icons.splash.dark_background`
+is set. Earlier splash images are deleted first, so the `<link>` tags always match the current set.
+All 22 screen sizes in both orientations take a few seconds with GD.
 
 ## pwa:build
 
@@ -68,7 +75,9 @@ php artisan pwa:doctor [--ci]
 | kill switch inactive | error |
 | manifest: `name` | error |
 | 192 and 512 icons | error |
-| maskable icon, `apple-touch-icon` | warning |
+| maskable icon, `apple-touch-icon`, iOS splash screens | warning |
+| screenshots: `wide` and `narrow` | warning |
+| screenshots: file exists, `sizes` and `type` match it | error |
 | `start_url` inside `scope` | error |
 | `public/sw.js` does not exist | error |
 | Vite manifest | warning |

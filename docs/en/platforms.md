@@ -26,6 +26,10 @@ browser brand, and silently skips whatever a platform lacks.
 
 - Installation is manual only; `<x-pwa::install/>` shows a hint.
 - iOS ignores `theme_color` from the manifest; the package sends `apple-mobile-web-app-*` meta tags.
+- iOS has no generated splash screen: without startup images the app opens on a white screen.
+  `php artisan pwa:icons --splash` creates one per screen size and `<x-pwa::head/>` links them.
+  iOS uses an image only when the media query matches the device exactly; new models need a
+  package update.
 - Notch and Dynamic Island: `viewport-fit=cover` + `env(safe-area-inset-*)`.
 - The Home Screen app can have different cookies than Safari.
 - The iOS Simulator doesn't support push; test on a device.

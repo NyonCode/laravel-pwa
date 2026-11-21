@@ -26,6 +26,10 @@ nemá, tiše vynechá.
 
 - Instalace jen ručně; `<x-pwa::install/>` ukáže nápovědu.
 - `theme_color` z manifestu iOS ignoruje; balíček posílá `apple-mobile-web-app-*` meta.
+- iOS si úvodní obrazovku nevygeneruje: bez obrázků se aplikace otevře na bílé ploše.
+  `php artisan pwa:icons --splash` vytvoří jeden pro každou velikost obrazovky a `<x-pwa::head/>`
+  je odkáže. iOS obrázek použije, jen když media query přesně sedí na zařízení; nové modely
+  vyžadují aktualizaci balíčku.
 - Výřez a Dynamic Island: `viewport-fit=cover` + `env(safe-area-inset-*)`.
 - Aplikace na ploše může mít jiné cookies než Safari.
 - Simulátor iOS push neumí; testujte na zařízení.

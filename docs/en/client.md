@@ -28,6 +28,7 @@ description: The window.Pwa API, pwa:* events, the status bar, installation, bad
 | `install()` | `Promise<string>` | `accepted`, `dismissed`, `unavailable`; uses `navigator.install()` or the stored prompt |
 | `update()` | Promise | checks for a new service worker version manually |
 | `keepAlive()` | `Promise<object\|null>` | calls `/pwa/session` right away |
+| `warm()` | `Promise<object\|null>` | downloads the warm-up pages now; `{count, skipped, failed}` ([Offline](offline.md#warm-up)) |
 | `version()` | `Promise<string\|null>` | version of the active service worker |
 | `on(event, fn)` | function | listener without the `pwa:` prefix; returns a function that removes it |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
@@ -60,6 +61,8 @@ Every event is dispatched as a `CustomEvent` on `document` (`pwa:name`) and is a
 | `pwa:installed` | `{}` | `appinstalled` |
 | `pwa:csrf` | `{token}` | a new CSRF token was applied |
 | `pwa:csrf-refreshed` | `{}` | a Livewire 419 was resolved |
+| `pwa:identity` | `{user}` | another user signed in (user hash) |
+| `pwa:warmed` | `{count, skipped, failed}` | a warm-up finished |
 
 ```js
 document.addEventListener('pwa:resume', () => refreshDashboard())
@@ -85,5 +88,6 @@ closed. For your own UI, use `pwa:update-available` and `detail.worker.postMessa
 | --- | --- |
 | `pwa:visits` | number of visits |
 | `pwa:install-dismissed` | time the install prompt was dismissed |
+| `pwa:warm` | user hash and time of the last warm-up |
 
 Access is wrapped in `try/catch` (private mode, full storage). Login never depends on localStorage.

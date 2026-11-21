@@ -9,6 +9,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use NyonCode\LaravelPwa\Icons\SplashScreens;
 use NyonCode\LaravelPwa\Pwa;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use NyonCode\LaravelPwa\Support\Value;
@@ -58,6 +59,14 @@ class DoctorCommand extends Command
         $this->add(str_starts_with($url, 'https://') || app()->isLocal() ? 'ok' : 'error', "HTTPS (APP_URL = {$url})");
         $this->add(config('pwa.enabled') ? 'ok' : 'warn', 'Service worker enabled in config (pwa.enabled)');
         $this->add($pwa->killed() ? 'error' : 'ok', 'Kill switch inactive (pwa:enable)');
+
+        if (config('pwa.tenancy.resolver') !== null) {
+            try {
+                $this->add('ok', 'Tenant resolver '.((object) $pwa->tenancy())::class);
+            } catch (Throwable $e) {
+                $this->add('error', 'Tenant resolver: '.$e->getMessage());
+            }
+        }
     }
 
     protected function checkManifest(Pwa $pwa): void
@@ -81,10 +90,57 @@ class DoctorCommand extends Command
 
         $iconPath = trim(config()->string('pwa.icons.path', 'pwa/icons'), '/');
         $this->add(File::exists(public_path($iconPath.'/apple-touch-icon.png')) ? 'ok' : 'warn', 'apple-touch-icon for iPhone and iPad');
+        $splash = count(SplashScreens::links(public_path($iconPath.'/splash'), $iconPath.'/splash'));
+        $this->add($splash > 0 ? 'ok' : 'warn', "iOS splash screens ({$splash}, php artisan pwa:icons --splash)");
+
+        $this->checkScreenshots(is_array($manifest['screenshots'] ?? null) ? $manifest['screenshots'] : []);
 
         $scope = Value::string($manifest['scope'] ?? '/', '/');
         $start = Value::string(parse_url(Value::string($manifest['start_url'] ?? '/', '/'), PHP_URL_PATH));
         $this->add(str_starts_with($start ?: '/', $scope) ? 'ok' : 'error', 'start_url inside scope');
+    }
+
+    /**
+     * Chrome shows the richer install dialog only with screenshots, and drops ones whose size or type is wrong.
+     *
+     * @param  array<array-key, mixed>  $screenshots
+     */
+    protected function checkScreenshots(array $screenshots): void
+    {
+        $factors = [];
+
+        foreach ($screenshots as $screenshot) {
+            $screenshot = is_array($screenshot) ? $screenshot : [];
+            $src = Value::string($screenshot['src'] ?? null);
+            $factors[] = Value::string($screenshot['form_factor'] ?? null, 'narrow');
+
+            if ($src === '' || preg_match('#^(https?:)?//#i', $src) === 1) {
+                continue;   // remote files are not checked
+            }
+
+            $file = public_path(ltrim(Value::string(parse_url($src, PHP_URL_PATH)), '/'));
+            $info = is_file($file) ? @getimagesize($file) : false;
+
+            if ($info === false) {
+                $this->add('error', "Screenshot {$src} exists and is an image");
+
+                continue;
+            }
+
+            $sizes = Value::string($screenshot['sizes'] ?? null);
+            $type = Value::string($screenshot['type'] ?? null);
+            $actual = "{$info[0]}x{$info[1]}";
+            $this->add(in_array($actual, explode(' ', $sizes), true) ? 'ok' : 'error', "Screenshot {$src} sizes \"{$sizes}\" match the file ({$actual})");
+
+            if ($type !== '') {
+                $this->add($type === $info['mime'] ? 'ok' : 'error', "Screenshot {$src} type \"{$type}\" matches the file ({$info['mime']})");
+            }
+        }
+
+        $this->add(
+            in_array('wide', $factors, true) && in_array('narrow', $factors, true) ? 'ok' : 'warn',
+            'Screenshots with form_factor wide and narrow (richer install dialog)',
+        );
     }
 
     protected function checkServiceWorker(ServiceWorkerBuilder $builder): void

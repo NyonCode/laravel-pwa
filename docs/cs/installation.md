@@ -58,7 +58,8 @@ php artisan pwa:icons resources/pwa/icon.png
 ```
 
 Zdroj ideálně 1024×1024, čtvercový, s logem uprostřed. Vznikne `public/pwa/icons/` s ikonami
-192 a 512 px, maskable ikonou pro Android, `apple-touch-icon.png` (180 px, s pozadím) a faviconou.
+192 a 512 px, maskable ikonou pro Android, `apple-touch-icon.png` (180 px, s pozadím),
+monochromatickou ikonou a faviconou. S `--splash` i úvodní obrazovky pro iOS.
 Manifest uvádí jen ikony, které na disku existují.
 
 ## 4. Routy

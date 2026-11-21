@@ -59,7 +59,8 @@ php artisan pwa:icons resources/pwa/icon.png
 
 Ideally the source is 1024×1024, square, with the logo centered. The command creates
 `public/pwa/icons/` with 192 and 512 px icons, a maskable icon for Android, `apple-touch-icon.png`
-(180 px, with a background) and a favicon. The manifest lists only icons that exist on disk.
+(180 px, with a background), a monochrome icon and a favicon. Add `--splash` for iOS startup
+images. The manifest lists only icons that exist on disk.
 
 ## 4. Routes
 

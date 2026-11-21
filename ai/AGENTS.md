@@ -89,6 +89,12 @@ to wire.
 | `isStandaloneRequest(?Request)` | bool | header `X-PWA-Display`, cookie `pwa_display`, `?source=pwa`, or session `pwa.standalone` |
 | `isStandaloneClient(?Request)` | bool | header `X-PWA-Display` or cookie `pwa_display` only; `?source=pwa` and the session flag can be planted by a link, so only this one drives `pwa.remember` |
 | `userHash(?Request)` | string | `guest` or 16-char HMAC of the auth id |
+| `warmUsing(Closure(Request): iterable)` | static | adds pages to warm for the current user; runs on every `/pwa/session` request, keep it cheap |
+| `warmUrls(?Request)` | `list<string>` | `offline.warm.urls` + `warmUsing()`: same-origin paths only, `never_cache` removed, at most `offline.warm.max` |
+| `warmsPages()` | bool | a warm-up is configured |
+| `resolveTenantsUsing(TenantResolver\|class-string\|null)` | static | path tenants; overrides `pwa.tenancy.resolver` |
+| `tenancy()` | ?`TenantResolver` | the configured resolver (throws if it does not implement the contract) |
+| `tenant(?Request)` | ?`Tenancy\Tenant` | `current()` on pages, `find(?tenant=)` on the manifest route; once per request |
 | `clientConfig()` | array | JSON passed to the client in `#pwa-config` |
 | `cspNonce()` | ?string | `Vite::cspNonce()` |
 | `cspHashes(string $view = 'pwa::maintenance')` | `['script-src' => [...], 'style-src' => [...]]` | SHA-256 hashes of the prerendered maintenance screen |
@@ -139,7 +145,9 @@ render: keep them cheap. Built-in `Manifest\LocaleResolver` (active when `pwa.lo
 `?lang={page locale}` and builds the manifest in it; only locales listed in `pwa.locales` are
 accepted (list the default too). A throwing resolver shows up in `pwa:doctor`.
 Icons are listed only if the files exist in `public/{pwa.icons.path}` (`icon-192.png`,
-`icon-512.png`, `maskable-512.png`, `icon.svg`).
+`icon-512.png`, `maskable-512.png`, `monochrome-512.png`, `icon.svg`). iOS startup images from
+`pwa:icons --splash` live in `{icons.path}/splash/` and `<x-pwa::head/>` links only those that exist
+(`Icons\SplashScreens`, screen list in `Icons\AppleDevices::SCREENS`).
 
 A share-target route receives a POST from the OS: exclude it from CSRF
 (`->withoutMiddleware(ValidateCsrfToken::class)`).
@@ -242,8 +250,8 @@ frozen `self.PwaWorker`: `route(match, handler)` (match = path pattern on the sa
 on the full URL, or `({url, request, event}) => bool`; handler returns a `Response`), `strategies`
 (`networkFirst`, `cacheFirst`, `staleWhileRevalidate`, `networkOnly`, `cacheOnly`, each
 `(event, {cacheName, maxEntries, maxAge, timeout, shared})`), `cacheName(name, {shared})` →
-`pwa-rule-{name}-{user}` or `pwa-shared-{name}`, `currentUser()`, `broadcast(message)`, `version`,
-`config`. Routes never see navigations, mutations or `never_cache` paths.
+`pwa-rule-{name}-{user}` or `pwa-shared-{name}`, `currentUser()`, `broadcast(message)`,
+`warm(urls)` (downloads pages for offline use, same rules as below), `version`, `config`. Routes never see navigations, mutations or `never_cache` paths.
 
 ```js
 // public/pwa-extend.js
@@ -251,15 +259,38 @@ const { route, strategies, cacheName } = self.PwaWorker;
 route('/reports/*', async (event) => strategies.cacheFirst(event, { cacheName: await cacheName('reports'), maxAge: 3600 }));
 ```
 
+### Path tenants (`tenancy.resolver`)
+
+Only for tenants sharing one domain under paths (`/t/acme/`); subdomain tenants need nothing.
+Implement `Contracts\TenantResolver` (`current(Request): ?Tenant` for pages, `find(string $key): ?Tenant`
+for the manifest route) returning `new Tenancy\Tenant(key, scope, ?startUrl, ?name, ?shortName)`
+(key `[A-Za-z0-9_-]{1,64}`, scope `/…/`, start URL inside the scope). Then on a tenant page:
+`#pwa-config` gets `scope`/`startUrl` of the tenant and `tenant` (the client registers the same
+`/sw.js` for that scope), the manifest link gets `?tenant={key}` and `Tenancy\TenantManifestResolver`
+(runs before all other resolvers) sets `id` = `scope` = tenant scope, `start_url`, `name`. The worker
+derives a cache namespace from its registration scope: `pwa-@{slug}.{fnv1a(scope path)}-static-…`,
+`-pages-`, `-rule-`, `-shared-`, `-meta`; the worker for `pwa.scope` keeps the plain names. The user
+identity is shared by the origin (`pwa-meta`, `BroadcastChannel('pwa-identity')`): a sign-in or
+logout seen by any worker purges the user caches of every namespace and the shared offline queue
+(IndexedDB `pwa`). The kill switch is origin-wide too.
+
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
-`update()`, `keepAlive()`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`.
+`update()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`.
 
 DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `resume`, `online`,
 `offline`, `maintenance`, `logout`, `queue` `{count}`, `replayed` `{url,status}`,
 `update-available` `{worker}`, `activated` `{version}`, `installed`, `csrf` `{token}`,
-`csrf-refreshed`.
+`csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`.
+
+Warm-up (`offline.warm`, `Pwa::warmUsing()`): `/pwa/session` returns `warm: [paths]` for the current
+user (`no-store`, never in `sw.js`). The worker fetches them (2 at a time, max 50, request header
+`X-PWA-Warm: 1`) into `pwa-pages-{userHash}` and stores **only** responses with `X-PWA-Cache: allow`
+for that same user, never redirects. Triggers: a sign-in navigation (the worker asks `/pwa/session`
+itself), the client keep-alive at most once per `offline.warm.interval` minutes or on a user change,
+the `identity` message (XHR sign-ins), Periodic Background Sync tag `pwa-warm` in installed Chromium
+apps, and `Pwa.warm()`. Skipped with Save-Data or offline. The list is forgotten on logout.
 
 On boot the client sets cookie `pwa_display`, wraps `window.fetch` and `window.axios` to retry a
 non-GET same-origin 419 once with a fresh token, registers or unregisters the worker, runs keep-alive on
@@ -304,7 +335,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | Command | Notes |
 |---|---|
 | `pwa:install` | publish config, print next steps |
-| `pwa:icons {source?} {--background=}` | writes `icon-{size}.png`, `maskable-512.png`, `apple-touch-icon.png`, `favicon-32.png` (+ `icon.svg`) |
+| `pwa:icons {source?} {--background=} {--splash}` | writes `icon-{size}.png`, `maskable-512.png`, `monochrome-512.png`, `apple-touch-icon.png`, `favicon-32.png` (+ `icon.svg`); `--splash` adds `splash/apple-splash-{w}x{h}[-dark].png`. Logic in `Icons\IconGenerator` (GD or Imagick driver) |
 | `pwa:build` | writes `{sw.compiled_path}/sw.js`; run after `npm run build`; hooked to `optimize` |
 | `pwa:clear` | deletes compiled worker; hooked to `optimize:clear` |
 | `pwa:doctor {--ci}` | checks; `--ci` exits 1 on errors |
@@ -315,10 +346,10 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 
 `enabled`, `name`, `short_name`, `description`, `id`, `start_url`, `scope`, `display.{strategy,value,override,desktop}`,
 `orientation`, `desktop_nav.{enabled,min_width}`, `theme.{light,dark,accent_dark,background}`,
-`icons.{source,path,maskable_padding,sizes}`, `screenshots`, `categories`, `shortcuts`,
+`icons.{source,path,maskable_padding,sizes}`, `icons.splash.{background,dark_background,icon_size,orientations,devices}`, `screenshots`, `categories`, `shortcuts`,
 `share_target`, `file_handlers`, `protocol_handlers`, `launch_handler`, `scope_extensions`,
 `locales`, `manifest.resolvers`, `sw.{url,import,extend,vite_manifest,build_directory,compiled_path,kill_switch_store}`,
-`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`,
+`cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`,
 `telemetry.{enabled,channel,max_events}`, `adapters.{livewire,inertia,reload_on_resume}`,

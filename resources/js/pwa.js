@@ -151,6 +151,11 @@ const registerServiceWorker = async () => {
       case 'replayed':
         emit('replayed', data);
         break;
+      case 'identity':
+        // Another user signed in without a navigation (Inertia, Livewire): fetch their warm-up list.
+        emit('identity', data);
+        if (C.warm?.enabled && data.user !== 'guest') keepAlive(true);
+        break;
       default:
         emit(data.type, data);
     }
@@ -160,7 +165,7 @@ const registerServiceWorker = async () => {
 };
 
 /* ---------------------------------------------------------------------- *
- * Keep-alive session a CSRF
+ * Session keep-alive, CSRF and offline warm-up
  * ---------------------------------------------------------------------- */
 
 const applyCsrf = (token) => {
@@ -174,7 +179,7 @@ const applyCsrf = (token) => {
 
 let lastKeepAlive = 0;
 
-const keepAlive = async (force = false) => {
+const keepAlive = async (force = false, autoWarm = true) => {
   if (!C.session || (!force && Date.now() - lastKeepAlive < 30_000)) return null;
   lastKeepAlive = Date.now();
   try {
@@ -187,10 +192,50 @@ const keepAlive = async (force = false) => {
     if (C.session.refreshCsrf) applyCsrf(data.csrf);
     // The worker never sees /pwa/session: tell it who is signed in, so it purges another user's data.
     if (data.user) navigator.serviceWorker?.controller?.postMessage({ type: 'IDENTITY', user: data.user });
+    if (autoWarm) warmUp(data);
     return data;
   } catch {
     return null;
   }
+};
+
+const WARM_TAG = 'pwa-warm';
+
+const warmDue = (user) => {
+  const last = store.get('warm', {});
+  return last.user !== user || Date.now() - (last.at || 0) >= (C.warm?.interval ?? 60) * 60_000;
+};
+
+/** Sends the list from /pwa/session to the worker: on sign-in, then at most once per interval. */
+const warmUp = (data, force = false) => {
+  const urls = data?.warm;
+  const worker = navigator.serviceWorker?.controller;
+  if (!worker || !Array.isArray(urls) || urls.length === 0) return false;
+  if (!navigator.onLine || navigator.connection?.saveData) return false;
+  if (!force && !warmDue(data.user)) return false;
+  store.set('warm', { user: data.user, at: Date.now() });
+  worker.postMessage({ type: 'WARM', urls, user: data.user, force });
+  return true;
+};
+
+const warm = async () => {
+  if (!navigator.serviceWorker?.controller) return null;
+  const done = new Promise((resolve) => {
+    const off = window.Pwa.on('warmed', (detail) => { off(); resolve(detail); });
+    setTimeout(() => { off(); resolve(null); }, 60_000);
+  });
+  lastKeepAlive = 0;
+  const data = await keepAlive(true, false);
+  return data && warmUp(data, true) ? done : null;
+};
+
+// Installed Chromium apps refresh the warm-up pages in the background.
+const registerPeriodicWarm = async () => {
+  if (!C.warm?.enabled || !isInstalled() || !registration?.periodicSync) return;
+  try {
+    const { state } = await navigator.permissions.query({ name: 'periodic-background-sync' });
+    if (state === 'granted') await registration.periodicSync.register(WARM_TAG, { minInterval: (C.warm.interval || 60) * 60_000 });
+  } catch { /* unsupported */ }
 };
 
 const nativeFetch = window.fetch.bind(window);
@@ -251,7 +296,7 @@ const resume = () => {
 };
 
 /* ---------------------------------------------------------------------- *
- * Instalace
+ * Installation
  * ---------------------------------------------------------------------- */
 
 let deferredPrompt = null;
@@ -320,7 +365,7 @@ const livewireAdapter = () => {
       fail(async ({ status, preventDefault }) => {
         if (status === 503) { preventDefault(); location.reload(); }
         else if (status === 419) { preventDefault(); await keepAlive(true); emit('csrf-refreshed', {}); }
-        else if (status === 0 || !navigator.onLine) { preventDefault(); showBar(t('offline', 'Jste offline.'), null, 'warn'); }
+        else if (status === 0 || !navigator.onLine) { preventDefault(); showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn'); }
       });
     });
   });
@@ -337,7 +382,7 @@ const inertiaAdapter = () => {
     else if (status === 503) { event.preventDefault(); location.reload(); }
   });
   document.addEventListener('inertia:exception', (event) => {
-    if (!navigator.onLine) { event.preventDefault(); showBar(t('offline', 'Jste offline.'), null, 'warn'); }
+    if (!navigator.onLine) { event.preventDefault(); showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn'); }
   });
 };
 
@@ -350,7 +395,7 @@ window.addEventListener('online', () => {
   navigator.serviceWorker?.controller?.postMessage({ type: 'REPLAY_QUEUE' });
   emit('online', {});
 });
-window.addEventListener('offline', () => showBar(t('offline', 'Jste offline.'), null, 'warn'));
+window.addEventListener('offline', () => showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn'));
 
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resume(); });
 window.addEventListener('pageshow', (event) => { if (event.persisted) resume(); });
@@ -366,6 +411,9 @@ const boot = async () => {
 
   try { await registerServiceWorker(); } catch (e) { console.warn('[pwa]', e); }
 
+  if (C.warm?.enabled && navigator.serviceWorker?.controller && warmDue(store.get('warm', {}).user)) keepAlive(true);
+  registerPeriodicWarm();
+
   if (C.session?.keepalive > 0) {
     setInterval(() => { if (document.visibilityState === 'visible') keepAlive(true); }, C.session.keepalive * 60_000);
   }
@@ -379,6 +427,7 @@ window.Pwa = {
   install,
   update: () => registration?.update(),
   keepAlive: () => keepAlive(true),
+  warm,
   on(name, fn) { listeners.set(name, [...(listeners.get(name) || []), fn]); return () => listeners.set(name, (listeners.get(name) || []).filter((f) => f !== fn)); },
   badge: {
     set: (count) => navigator.setAppBadge?.(count).catch(() => {}),

@@ -42,11 +42,23 @@ test('caches only pages the server allows (pwa.cache)', async () => {
   expect(await cachedPages(page)).not.toContain('/private');
 });
 
+test('warms pages the user has not visited (Pwa.warm)', async () => {
+  const result = await page.evaluate(() => window.Pwa.warm());
+
+  expect(result).toMatchObject({ count: 1, skipped: 1 });
+  const pages = await cachedPages(page);
+  expect(pages).toContain('/reports');
+  expect(pages).not.toContain('/private');
+});
+
 test('offline: cached page from cache, others get the offline screen', { tag: '@offline' }, async () => {
   await context.setOffline(true);
 
   await page.goto('/orders');
   await expect(page.locator('#title')).toHaveText('Objednávky');
+
+  await page.goto('/reports');
+  await expect(page.locator('#title')).toHaveText('Reporty');
 
   await page.goto('/private');
   await expect(page.locator('h1')).toHaveText(/You are offline|Jste offline/);

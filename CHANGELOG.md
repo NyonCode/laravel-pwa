@@ -6,6 +6,40 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-21
+
+Upgrading from 0.2? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).
+
+### Added
+- iOS startup images: `php artisan pwa:icons --splash` renders `apple-touch-startup-image` files for
+  every current iPhone and iPad screen (portrait and landscape, optional dark variants) and
+  `<x-pwa::head/>` links the ones that exist. Configured under `pwa.icons.splash`.
+- `monochrome-512.png` (`purpose: monochrome`) generated from the alpha channel of the source and
+  listed in the manifest.
+- Offline warm-up: `offline.warm.urls` and `Pwa::warmUsing()` list pages the worker downloads ahead
+  of time, so they open offline without a prior visit. The list travels in `/pwa/session`
+  (`no-store`); only responses with `X-PWA-Cache: allow` for the same user are stored. It runs after
+  a sign-in, at most once per `offline.warm.interval` on keep-alive, on Periodic Background Sync in
+  installed Chromium apps and on `Pwa.warm()`. New client events `pwa:identity` and `pwa:warmed`,
+  `self.PwaWorker.warm()` for `sw.extend` files.
+- Path tenants on one domain: `pwa.tenancy.resolver` / `Pwa::resolveTenantsUsing()` with
+  `Contracts\TenantResolver` and `Tenancy\Tenant`. Each tenant (`/t/acme/`) gets its own worker
+  registration for its scope, its own manifest `id`, `scope`, `start_url` and name (through
+  `?tenant=` on the manifest link) and namespaced caches (`pwa-@t-acme.{hash}-…`). The signed-in
+  user stays shared: a sign-in or logout under any tenant purges the user data of all of them. Recipes for stancl/tenancy and spatie/laravel-multitenancy in the docs.
+- `pwa:doctor` checks screenshots (a `wide` and a `narrow` one, file exists, `sizes` and `type`
+  match the file) and reports iOS splash screens.
+
+### Fixed
+- Client status bar texts that were still in Czech ("Jste offline.") are now English.
+- Docs named the 0.1 cache `pwa-api-{user}`; rule caches are `pwa-rule-{name}-{user}`.
+- The offline screen lists only pages of the worker that controls it.
+- Comments left in Czech in the views are now English.
+
+### Changed
+- Icon rendering moved from `pwa:icons` into `Icons\IconGenerator` with GD and Imagick drivers
+  behind `Icons\ImageDriver`. Invalid colour messages now read "Invalid colour […]".
+
 ## [0.2.0] - 2026-11-21
 
 Upgrading from 0.1? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).
@@ -102,7 +136,8 @@ Upgrading from 0.1? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blo
   and the `vendor/bin/pwa-ai` installer.
 - Documentation in `docs/` (21 pages, ordered by `docs/nav.json`).
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/NyonCode/laravel-pwa/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/NyonCode/laravel-pwa/releases/tag/v0.1.0

@@ -10,6 +10,7 @@
     $manifestUrl = $pwa->manifest()->url(request());
     $resolved = $pwa->manifest()->forRequest(request()->duplicate(query: $pwa->manifest()->parameters(request())))->toArray(request());
     $iconPath = trim((string) config('pwa.icons.path', 'pwa/icons'), '/');
+    $splashScreens = \NyonCode\LaravelPwa\Icons\SplashScreens::links(public_path($iconPath.'/splash'), $iconPath.'/splash');
     $appleIcon = is_file(public_path($iconPath.'/apple-touch-icon.png')) ? '/'.$iconPath.'/apple-touch-icon.png' : null;
     $clientFile = dirname((new ReflectionClass(\NyonCode\LaravelPwa\Pwa::class))->getFileName(), 2).'/resources/js/pwa.js';
     $clientVersion = substr((string) @hash_file('sha256', $clientFile), 0, 12);
@@ -25,5 +26,8 @@
 @if ($appleIcon)
 <link rel="apple-touch-icon" href="{{ $appleIcon }}">
 @endif
+@foreach ($splashScreens as $splash)
+<link rel="apple-touch-startup-image" media="{{ $splash['media'] }}" href="{{ $splash['href'] }}">
+@endforeach
 <script type="application/json" id="pwa-config">@json($pwa->clientConfig())</script>
 <script type="module" src="{{ route('pwa.client', absolute: false) }}?v={{ $clientVersion }}" @if ($nonce) nonce="{{ $nonce }}" @endif></script>

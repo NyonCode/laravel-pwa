@@ -264,3 +264,70 @@ describe('install', () => {
     assert.equal(await client.Pwa.install(), 'unavailable');
   });
 });
+
+describe('warm-up', () => {
+  const ALICE = 'aaaaaaaaaaaaaaaa';
+  const warmSession = (window, user = ALICE, warm = ['/orders']) =>
+    new window.Response(JSON.stringify({ csrf: 't', authenticated: true, user, lifetime: 120, warm }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  const warms = () => client.sw.posted.filter((m) => m.type === 'WARM');
+
+  it('sends the list from the keep-alive to the worker once per interval and user', async () => {
+    let user = ALICE;
+    client = await createClient({ fetch: () => warmSession(client.window, user) });
+
+    await client.Pwa.keepAlive();
+    await client.Pwa.keepAlive();
+    assert.deepEqual(warms().map((m) => [m.user, m.urls, m.force]), [[ALICE, ['/orders'], false]]);
+
+    user = 'bbbbbbbbbbbbbbbb';
+    await client.Pwa.keepAlive();
+    assert.equal(warms().length, 2, 'another user warms at once');
+  });
+
+  it('skips the warm-up with Save-Data or an empty list', async () => {
+    client = await createClient({
+      fetch: () => warmSession(client.window, ALICE, []),
+      before: (w) => Object.defineProperty(w.navigator, 'connection', { value: { saveData: true }, configurable: true }),
+    });
+    await client.Pwa.keepAlive();
+
+    assert.equal(warms().length, 0);
+  });
+
+  it('Pwa.warm() forces a warm-up and resolves with the result', async () => {
+    client = await createClient({ fetch: () => warmSession(client.window) });
+    await client.Pwa.keepAlive();
+
+    const result = client.Pwa.warm();
+    await client.flush();
+    await client.flush();
+    client.sw.receive({ source: 'pwa', type: 'warmed', count: 1, skipped: 0, failed: 0 });
+
+    assert.deepEqual(await result, { source: 'pwa', type: 'warmed', count: 1, skipped: 0, failed: 0 });
+    assert.deepEqual(warms().map((m) => m.force), [false, true]);
+  });
+
+  it('fetches the list when another user signs in without a navigation', async () => {
+    client = await createClient({ config: { warm: { enabled: true, interval: 60 } }, fetch: () => warmSession(client.window) });
+    client.window.localStorage.setItem('pwa:warm', JSON.stringify({ user: ALICE, at: Date.now() }));
+    const before = client.calls.filter((c) => c.url.pathname === '/pwa/session').length;
+
+    client.sw.receive({ source: 'pwa', type: 'identity', user: 'bbbbbbbbbbbbbbbb' });
+    await client.flush();
+
+    assert.equal(client.calls.filter((c) => c.url.pathname === '/pwa/session').length, before + 1);
+  });
+
+  it('asks for the list on boot only when a warm-up is configured and due', async () => {
+    client = await createClient({ config: { warm: { enabled: true, interval: 60 } }, fetch: () => warmSession(client.window) });
+    await client.flush();
+    assert.equal(client.calls.filter((c) => c.url.pathname === '/pwa/session').length, 1);
+    client.close();
+
+    client = await createClient({ fetch: () => warmSession(client.window) });
+    assert.equal(client.calls.filter((c) => c.url.pathname === '/pwa/session').length, 0);
+  });
+});

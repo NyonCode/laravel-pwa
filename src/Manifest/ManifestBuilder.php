@@ -11,6 +11,8 @@ use InvalidArgumentException;
 use NyonCode\LaravelPwa\Contracts\ManifestParameters;
 use NyonCode\LaravelPwa\Contracts\ManifestResolver;
 use NyonCode\LaravelPwa\Events\ManifestResolving;
+use NyonCode\LaravelPwa\Pwa;
+use NyonCode\LaravelPwa\Tenancy\TenantManifestResolver;
 
 /**
  * Builds the web app manifest from the config, fluent calls and per-request resolvers.
@@ -384,6 +386,10 @@ class ManifestBuilder
             $icons[] = ['src' => "/{$path}/maskable-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'];
         }
 
+        if (File::exists(public_path("{$path}/monochrome-512.png"))) {
+            $icons[] = ['src' => "/{$path}/monochrome-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'monochrome'];
+        }
+
         if (File::exists(public_path("{$path}/icon.svg"))) {
             $icons[] = ['src' => "/{$path}/icon.svg", 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any'];
         }
@@ -424,6 +430,10 @@ class ManifestBuilder
     protected function resolverPairs(): array
     {
         $pairs = [];
+
+        if (app(Pwa::class)->tenancy() !== null) {
+            $pairs[] = [app(TenantManifestResolver::class), null];
+        }
 
         if (config()->array('pwa.locales', []) !== []) {
             $pairs[] = [app(LocaleResolver::class), null];

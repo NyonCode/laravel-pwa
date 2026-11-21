@@ -9,6 +9,17 @@ Before 1.0 any minor version may change the cache or service worker format. On e
 
 The service worker migrates caches itself in its `activate` event (it deletes old ones).
 
+## From 0.2 to 0.3
+
+- **Run `php artisan pwa:icons` again** to get `monochrome-512.png` (listed in the manifest once it
+  exists). Add `--splash` for iOS startup images; they are linked by `<x-pwa::head/>` automatically.
+- **New config keys** (all optional): `icons.splash`, `offline.warm`, `tenancy.resolver`. Without
+  them nothing changes.
+- **Error message:** an invalid colour now reads `Invalid colour [red], expected #rgb or #rrggbb.`
+  (it was `Invalid background colour […]`). Only matters if you match the text.
+- **Cache names stay the same** for the worker of `pwa.scope`. Only path tenants (new in 0.3) get
+  namespaced names.
+
 ## From 0.1 to 0.2
 
 - **Cache names changed.** API and image data now live in rule caches: `pwa-api-{user}` became

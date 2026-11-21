@@ -100,7 +100,7 @@ it('keeps the agent guide in step with the code', function (): void {
         expect($guide)->toContain($key);
     }
 
-    foreach (['displayMode', 'isInstalled', 'isIos', 'install', 'update', 'keepAlive', 'version', 'badge.set'] as $member) {
+    foreach (['displayMode', 'isInstalled', 'isIos', 'install', 'update', 'keepAlive', 'warm', 'version', 'badge.set'] as $member) {
         expect($guide)->toContain($member);
     }
 

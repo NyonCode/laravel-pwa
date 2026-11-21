@@ -16,17 +16,41 @@
 
   const C = self.__PWA || {};
   const V = C.version || 'dev';
-  const STATIC = `pwa-static-${V}`;
-  const META = 'pwa-meta';
-  const PAGES_PREFIX = 'pwa-pages-';
-  const RULE_PREFIX = 'pwa-rule-';
-  const SHARED_PREFIX = 'pwa-shared-';
-  // Cache names of 0.1.x workers, removed on activation.
-  const LEGACY = (name) => name === 'pwa-images' || name.startsWith('pwa-images-') || name.startsWith('pwa-api-');
+
+  // Path tenants (TenantResolver) register this same script for their own scope, e.g. /t/acme/.
+  // Cache Storage is shared by the whole origin, so the static and data caches of a tenant carry
+  // its namespace: "@" + a readable slug + "." + a hash of the exact scope path, e.g.
+  // pwa-@t-acme.1a2b3c4d-pages-… ('@' never occurs in the plain names; the hash keeps /t/a-b/ and
+  // /t/a/b/ apart). The worker for the configured scope keeps the plain names. The user identity
+  // and the offline queue stay shared by the origin: one sign-in purges every tenant's user data.
+  const fnv1a = (text) => {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193) >>> 0;
+    return hash.toString(16).padStart(8, '0');
+  };
+  const scopePath = new URL(self.registration?.scope || '/', self.location.origin).pathname;
+  const NS = !C.scope || scopePath === C.scope
+    ? ''
+    : `@${scopePath.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 32)}.${fnv1a(scopePath)}-`;
+  // User data caches of every namespace on the origin: pwa-[@slug.hash-](pages|rule)-…
+  const USER_CACHE = /^pwa-(@[a-z0-9-]*\.[0-9a-f]{8}-)?(pages|rule)-/;
+  const META_CACHE = /^pwa-(@[a-z0-9-]*\.[0-9a-f]{8}-)?meta$/;
+  const SHARED_META = 'pwa-meta';
+  const STATIC_PREFIX = `pwa-${NS}static-`;
+  const STATIC = `${STATIC_PREFIX}${V}`;
+  const META = `pwa-${NS}meta`;
+  const PAGES_PREFIX = `pwa-${NS}pages-`;
+  const RULE_PREFIX = `pwa-${NS}rule-`;
+  const SHARED_PREFIX = `pwa-${NS}shared-`;
+  // Cache names of 0.1.x workers, removed on activation (only the root worker ever made them).
+  const LEGACY = (name) => NS === '' && (name === 'pwa-images' || name.startsWith('pwa-images-') || name.startsWith('pwa-api-'));
   const DB_NAME = 'pwa';
   const QUEUE = 'queue';
   const SYNC_TAG = 'pwa-queue';
   const CACHED_AT = 'X-PWA-Cached-At';
+  const WARM_TAG = 'pwa-warm';
+  const WARM_LIMIT = 50;
+  const WARM_CONCURRENCY = 2;
 
   /* ------------------------------------------------------------------ *
    * Helpers
@@ -47,15 +71,21 @@
     clients.forEach((client) => client.postMessage({ source: 'pwa', ...message }));
   };
 
-  const meta = {
+  const metaStore = (name) => ({
     async get(key) {
-      const res = await (await caches.open(META)).match(`/__pwa/${key}`);
+      const res = await (await caches.open(name)).match(`/__pwa/${key}`);
       return res ? res.text() : null;
     },
     async set(key, value) {
-      await (await caches.open(META)).put(`/__pwa/${key}`, new Response(String(value)));
+      await (await caches.open(name)).put(`/__pwa/${key}`, new Response(String(value)));
     },
-  };
+    async delete(key) {
+      await (await caches.open(name)).delete(`/__pwa/${key}`);
+    },
+  });
+
+  const meta = metaStore(META);          // this registration: version, warm-up list
+  const sharedMeta = metaStore(SHARED_META); // the whole origin: current user
 
   const timeout = (ms) => new Promise((resolve) => setTimeout(() => resolve(null), ms));
 
@@ -65,32 +95,41 @@
 
   let currentUser = null;
 
+  // Workers of other path tenants learn about a sign-in at once, not on their next response.
+  const identityChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('pwa-identity') : null;
+  identityChannel?.addEventListener('message', (event) => {
+    if (validUser(event.data?.user)) currentUser = event.data.user;
+  });
+
   const currentUserHash = async () => {
-    if (currentUser === null) currentUser = (await meta.get('user')) || 'guest';
+    if (currentUser === null) currentUser = (await sharedMeta.get('user')) || 'guest';
     return currentUser;
   };
 
-  /** Per-user caches; with `keepUser`, all except that user's. */
+  /** Per-user caches of every namespace; with `keepUser`, all except that user's. */
   const userCaches = async (keepUser) => {
     const keys = await caches.keys();
-    return keys.filter((k) => (k.startsWith(PAGES_PREFIX) || k.startsWith(RULE_PREFIX))
-      && (keepUser === undefined || !k.endsWith(`-${keepUser}`)));
+    return keys.filter((k) => USER_CACHE.test(k) && (keepUser === undefined || !k.endsWith(`-${keepUser}`)));
   };
 
   const purgeUserData = async (keepUser) => {
-    const stale = await userCaches(keepUser);
-    await Promise.all(stale.map((k) => caches.delete(k)));
+    const keys = await caches.keys();
+    await Promise.all((await userCaches(keepUser)).map((k) => caches.delete(k)));
     await queueClear();
+    // Warm-up lists name the previous user's pages, in every namespace.
+    await Promise.all(keys.filter((k) => META_CACHE.test(k)).map((k) => metaStore(k).delete('warm')));
   };
 
   const switchUser = async (user) => {
     currentUser = user;
-    await meta.set('user', user);
+    await sharedMeta.set('user', user);
+    identityChannel?.postMessage({ user });
   };
 
   // Valid identities: 'guest' or the 16-hex HMAC from Pwa::userHash().
   const validUser = (user) => user === 'guest' || /^[a-f0-9]{16}$/.test(user || '');
 
+  /** Resolves to true when another user signed in (not on logout). */
   const observeIdentity = async (response) => {
     const logout = response.headers.get('X-PWA-Logout') === '1';
     const user = response.headers.get('X-PWA-User');
@@ -99,13 +138,17 @@
       await purgeUserData();
       await switchUser('guest');
       await broadcast({ type: 'logout' });
-      return;
+      return false;
     }
 
     if (validUser(user) && user !== (await currentUserHash())) {
       await purgeUserData(user);
       await switchUser(user);
+      await broadcast({ type: 'identity', user });
+      return user !== 'guest';
     }
+
+    return false;
   };
 
   // Only our own server may change the identity. Checked on the final response, not the request:
@@ -115,9 +158,8 @@
     return sameOrigin(new URL(response.url || request.url));
   };
 
-  const observeFrom = async (request, response) => {
-    if (ownResponse(request, response)) await observeIdentity(response);
-  };
+  const observeFrom = async (request, response) =>
+    ownResponse(request, response) ? observeIdentity(response) : false;
 
   /* ------------------------------------------------------------------ *
    * Offline queue (IndexedDB "pwa" / "queue")
@@ -464,7 +506,8 @@
     const network = (async () => {
       const preloaded = await event.preloadResponse;
       const response = preloaded || (await fetch(request));
-      await observeFrom(request, response);
+      // A sign-in navigation: download the new user's warm-up pages in the background.
+      if (await observeFrom(request, response)) event.waitUntil(warmFromServer());
 
       if (response.status === 503) {
         await maintenance(response);
@@ -517,6 +560,88 @@
     return response;
   };
 
+  /* ------------------------------------------------------------------ *
+   * Warm-up (offline.warm, Pwa::warmUsing): pages downloaded ahead of time.
+   * Stored under the same rule as navigations: only with X-PWA-Cache: allow,
+   * only for the user who asked, never redirects.
+   * ------------------------------------------------------------------ */
+
+  let warming = Promise.resolve();
+  let lastWarm = { user: null, at: 0 };
+
+  const warmable = (path) => {
+    let url;
+    try { url = new URL(path, origin); } catch { return null; }
+    if (!sameOrigin(url) || url.pathname === workerPath || matches(neverCache, url.pathname)) return null;
+    url.hash = '';
+    return url.href;
+  };
+
+  const warmNow = async (urls, user, force) => {
+    if (self.navigator?.connection?.saveData) return { count: 0, skipped: 0, failed: 0 };
+    if (user !== undefined) {
+      if (!validUser(user)) return { count: 0, skipped: 0, failed: 0 };
+      await observeIdentity(new Response(null, { headers: { 'X-PWA-User': user } }));
+    }
+
+    const owner = await currentUserHash();
+    // The client and a sign-in navigation can both ask within moments of each other.
+    if (!force && lastWarm.user === owner && Date.now() - lastWarm.at < 30_000) return null;
+    lastWarm = { user: owner, at: Date.now() };
+
+    const list = [...new Set((Array.isArray(urls) ? urls : []).map(String).map(warmable).filter(Boolean))].slice(0, WARM_LIMIT);
+    await meta.set('warm', JSON.stringify({ user: owner, urls: list }));
+
+    const cache = await caches.open(`${PAGES_PREFIX}${owner}`);
+    const result = { count: 0, skipped: 0, failed: 0 };
+    const queue = [...list];
+
+    const next = async () => {
+      for (let url = queue.shift(); url; url = queue.shift()) {
+        if ((await currentUserHash()) !== owner) return; // signed out meanwhile
+        try {
+          const request = new Request(url, { credentials: 'same-origin', headers: { Accept: 'text/html', 'X-PWA-Warm': '1' } });
+          const response = await fetch(request);
+          await observeFrom(request, response);
+          const pageUser = response.headers.get('X-PWA-User');
+          if (!response.redirected && pageCacheable(response) && (!pageUser || pageUser === owner)
+            && (await currentUserHash()) === owner) {
+            await cache.put(url, response);
+            result.count++;
+          } else {
+            result.skipped++;
+          }
+        } catch {
+          result.failed++;
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: WARM_CONCURRENCY }, next));
+    await broadcast({ type: 'warmed', ...result });
+    return result;
+  };
+
+  /** One warm-up at a time; a later one waits for the running one. */
+  const warm = (urls, user, force = false) => {
+    const run = warming.then(() => warmNow(urls, user, force));
+    warming = run.catch(() => null);
+    return run;
+  };
+
+  // The worker asks the server itself after a sign-in navigation (the page that asked is gone).
+  const warmFromServer = async () => {
+    if (!C.warm || !C.sessionUrl) return;
+    try {
+      const response = await fetch(new Request(C.sessionUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } }));
+      if (!response.ok) return;
+      const data = await response.json();
+      if (Array.isArray(data.warm) && data.warm.length > 0) await warm(data.warm, data.user);
+    } catch (error) {
+      report('warm', error);
+    }
+  };
+
   const precached = (url) => url.pathname.startsWith(C.buildPrefix || '/build/') || (C.precache || []).includes(url.pathname);
 
   /* ------------------------------------------------------------------ *
@@ -549,7 +674,7 @@
 
       const keys = await caches.keys();
       await Promise.all(keys
-        .filter((k) => (k.startsWith('pwa-static-') && k !== STATIC) || LEGACY(k) || orphan(k))
+        .filter((k) => (k.startsWith(STATIC_PREFIX) && k !== STATIC) || LEGACY(k) || orphan(k))
         .map((k) => caches.delete(k)));
 
       // Pages reference assets of the old version: drop them after an update.
@@ -585,6 +710,10 @@
           event.waitUntil(observeIdentity(new Response(null, { headers: { 'X-PWA-User': data.user } })));
         }
         break;
+      case 'WARM':
+        // From the client (keep-alive, Pwa.warm()) with the list from /pwa/session.
+        event.waitUntil(warm(data.urls, data.user, data.force === true));
+        break;
       case 'GET_VERSION':
         if (event.ports[0]) event.ports[0].postMessage({ version: V });
         break;
@@ -594,6 +723,15 @@
 
   self.addEventListener('sync', (event) => {
     if (event.tag === SYNC_TAG) event.waitUntil(replayQueue());
+  });
+
+  // Periodic Background Sync (installed Chromium apps): refresh the last list for the same user.
+  self.addEventListener('periodicsync', (event) => {
+    if (event.tag !== WARM_TAG) return;
+    event.waitUntil((async () => {
+      const saved = JSON.parse((await meta.get('warm')) || 'null');
+      if (saved && saved.user === (await currentUserHash())) await warm(saved.urls, undefined, true);
+    })());
   });
 
   /* ------------------------------------------------------------------ *
@@ -654,6 +792,8 @@
   self.PwaWorker = Object.freeze({
     version: V,
     config: C,
+    /** Cache name namespace of this registration: '' or '@{scope-slug}-' for path tenants. */
+    namespace: NS,
     strategies,
     /**
      * Handles matching GET requests that are not navigations, before the cache rules.
@@ -667,6 +807,8 @@
     /** Cache name for your data: per user (purged on logout) unless { shared: true }. */
     cacheName: cacheNameFor,
     currentUser: currentUserHash,
+    /** Downloads pages for offline use (stored only with X-PWA-Cache: allow). */
+    warm: (urls) => warm(urls, undefined, true),
     broadcast,
   });
 })();

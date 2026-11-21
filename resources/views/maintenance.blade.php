@@ -1,8 +1,8 @@
 @php
     /*
-     | Šablona se při `php artisan down --render="pwa::maintenance"` PŘEDRENDERUJE:
-     | nemá request, session ani auth. Laravel předá jen $retryAfter (--retry).
-     | `pwa:down` nastaví před voláním `down` config pwa.maintenance.message / until.
+     | `php artisan down --render="pwa::maintenance"` PRE-RENDERS this template:
+     | there is no request, session or auth. Laravel passes only $retryAfter (--retry).
+     | `pwa:down` sets config pwa.maintenance.message / until before calling `down`.
      */
     $theme = config('pwa.theme', []);
     $accent = $theme['light'] ?? '#0d6efd';
@@ -22,8 +22,8 @@
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
 <title>{{ __('pwa::messages.maintenance_title') }} · {{ $appName }}</title>
-{{-- Vše inline: během údržby nejsou dostupné ani assety.
-     Šablona je předrenderovaná, nonce mít nemůže: pro CSP použijte Pwa::cspHashes(). --}}
+{{-- Everything inline: assets are unavailable during maintenance too.
+     The template is pre-rendered and cannot carry a nonce: use Pwa::cspHashes() for CSP. --}}
 <style>
 :root{
   --accent: {{ $accent }};
@@ -152,8 +152,8 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
 
 <script>
 (() => {
-  // Žádná data z PHP uvnitř skriptu: obsah je stejný při každém renderu,
-  // takže jde podepsat SHA-256 hashem pro CSP (Pwa::cspHashes()).
+  // No PHP data inside the script: the content is the same on every render,
+  // so it can be allowed by its SHA-256 hash in CSP (Pwa::cspHashes()).
   const $ = id => document.getElementById(id);
   const root = $('pwa-maintenance');
   const d = root.dataset;
