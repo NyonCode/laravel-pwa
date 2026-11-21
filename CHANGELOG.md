@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-21
+
 Upgrading from 0.3? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).
 
 ### Added
@@ -167,7 +169,8 @@ Upgrading from 0.1? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blo
   and the `vendor/bin/pwa-ai` installer.
 - Documentation in `docs/` (21 pages, ordered by `docs/nav.json`).
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/NyonCode/laravel-pwa/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/NyonCode/laravel-pwa/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/NyonCode/laravel-pwa/compare/v0.1.0...v0.1.1
