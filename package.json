@@ -15,9 +15,9 @@
     "docs:build": "vitepress build docs"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.1",
-    "eslint": "^9.39.5",
+    "eslint": "^10.15.0",
     "fake-indexeddb": "^6.2.8",
     "globals": "^17.14.0",
     "happy-dom": "^21.0.4",
