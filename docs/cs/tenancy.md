@@ -77,16 +77,18 @@ kterého klíč nejmenuje.
 - Odkaz na manifest dostane `?tenant={key}`; manifest pak má `id`, `scope`, `start_url` a `name`
   tenanta, takže se každý tenant instaluje jako samostatná aplikace. Vaše resolvery běží až po tomto
   a mohou změnit cokoli dalšího (ikony, barvy).
-- Worker pojmenuje cache podle svého scope: `pwa-@t-acme-pages-{user}`, `pwa-@t-acme-static-…`.
-  Worker pro `pwa.scope` si nechá prosté názvy (`pwa-pages-{user}`) a žádný worker nemaže cache
-  jiného workeru.
+- Worker pojmenuje cache podle svého scope, `pwa-@{slug}.{hash}-…`, například
+  `pwa-@t-acme.7e36a372-pages-{user}`. Hash přesné cesty scope drží podobné cesty (`/t/a-b/`,
+  `/t/a/b/`) od sebe. Worker pro `pwa.scope` si nechá prosté názvy (`pwa-pages-{user}`) a žádný
+  worker nemaže precache jiného workeru.
 - Stránky mimo všechny tenanty mají výchozí scope a manifest.
 
 Co zůstává společné pro celý origin:
 
 | Společné | Proč to nevadí |
 | --- | --- |
-| fronta offline akcí (IndexedDB `pwa`) | požadavky ve frontě mají absolutní URL; odeslat je může kterýkoli worker |
+| přihlášený uživatel | přihlášení nebo odhlášení, které uvidí jeden worker, smaže data uživatele u všech tenantů najednou a dá vědět ostatním workerům (`BroadcastChannel`) |
+| fronta offline akcí (IndexedDB `pwa`) | požadavky ve frontě mají absolutní URL téhož uživatele; odeslat je může kterýkoli worker a změna uživatele ji vyprázdní |
 | nouzové vypnutí | `pwa:disable` je nouzová brzda pro celý origin |
 | odhlášení | `Clear-Site-Data: "cache"` smaže cache všech tenantů |
 

@@ -268,10 +268,11 @@ for the manifest route) returning `new Tenancy\Tenant(key, scope, ?startUrl, ?na
 `#pwa-config` gets `scope`/`startUrl` of the tenant and `tenant` (the client registers the same
 `/sw.js` for that scope), the manifest link gets `?tenant={key}` and `Tenancy\TenantManifestResolver`
 (runs before all other resolvers) sets `id` = `scope` = tenant scope, `start_url`, `name`. The worker
-derives a cache namespace from its registration scope: `pwa-@{scope-slug}-static-…`, `-pages-`,
-`-rule-`, `-shared-`, `-meta`; the worker for `pwa.scope` keeps the plain names, and no worker
-touches another namespace. The offline queue (IndexedDB `pwa`) and the kill switch stay shared by
-the origin. Logout clears every tenant through `Clear-Site-Data: "cache"`.
+derives a cache namespace from its registration scope: `pwa-@{slug}.{fnv1a(scope path)}-static-…`,
+`-pages-`, `-rule-`, `-shared-`, `-meta`; the worker for `pwa.scope` keeps the plain names. The user
+identity is shared by the origin (`pwa-meta`, `BroadcastChannel('pwa-identity')`): a sign-in or
+logout seen by any worker purges the user caches of every namespace and the shared offline queue
+(IndexedDB `pwa`). The kill switch is origin-wide too.
 
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 

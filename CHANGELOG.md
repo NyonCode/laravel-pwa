@@ -21,8 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Path tenants on one domain: `pwa.tenancy.resolver` / `Pwa::resolveTenantsUsing()` with
   `Contracts\TenantResolver` and `Tenancy\Tenant`. Each tenant (`/t/acme/`) gets its own worker
   registration for its scope, its own manifest `id`, `scope`, `start_url` and name (through
-  `?tenant=` on the manifest link) and namespaced caches (`pwa-@t-acme-…`); no worker touches another
-  tenant's caches. Recipes for stancl/tenancy and spatie/laravel-multitenancy in the docs.
+  `?tenant=` on the manifest link) and namespaced caches (`pwa-@t-acme.{hash}-…`). The signed-in
+  user stays shared: a sign-in or logout under any tenant purges the user data of all of them. Recipes for stancl/tenancy and spatie/laravel-multitenancy in the docs.
 - `pwa:doctor` checks screenshots (a `wide` and a `narrow` one, file exists, `sizes` and `type`
   match the file) and reports iOS splash screens.
 

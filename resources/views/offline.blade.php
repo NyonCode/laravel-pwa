@@ -229,11 +229,14 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
 
   // Cached pages of this app (HTML navigations only, max. 6). Path tenants have their own
-  // worker and caches (pwa-@{scope}-pages-…): list only the ones of the controlling worker.
+  // worker and caches (pwa-@{slug}.{hash}-pages-…, same naming as the worker runtime): list only
+  // the ones of the controlling worker.
   const namespaceOf = (scope) => {
     const path = new URL(scope, location.origin).pathname;
-    return path === @json((string) config('pwa.scope', '/'))
-      ? '' : '@' + path.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 48) + '-';
+    if (path === @json((string) config('pwa.scope', '/'))) return '';
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < path.length; i++) hash = Math.imul(hash ^ path.charCodeAt(i), 0x01000193) >>> 0;
+    return '@' + path.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 32) + '.' + hash.toString(16).padStart(8, '0') + '-';
   };
   const listCached = async () => {
     if (!('caches' in window)) return;

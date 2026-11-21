@@ -18,13 +18,24 @@
   const V = C.version || 'dev';
 
   // Path tenants (TenantResolver) register this same script for their own scope, e.g. /t/acme/.
-  // Cache Storage is shared by the whole origin, so every cache name carries the tenant's
-  // namespace (pwa-@t-acme-…, '@' never occurs in the plain names) and a worker never touches another tenant's caches. The worker for
-  // the configured scope keeps the plain names.
+  // Cache Storage is shared by the whole origin, so the static and data caches of a tenant carry
+  // its namespace: "@" + a readable slug + "." + a hash of the exact scope path, e.g.
+  // pwa-@t-acme.1a2b3c4d-pages-… ('@' never occurs in the plain names; the hash keeps /t/a-b/ and
+  // /t/a/b/ apart). The worker for the configured scope keeps the plain names. The user identity
+  // and the offline queue stay shared by the origin: one sign-in purges every tenant's user data.
+  const fnv1a = (text) => {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193) >>> 0;
+    return hash.toString(16).padStart(8, '0');
+  };
   const scopePath = new URL(self.registration?.scope || '/', self.location.origin).pathname;
   const NS = !C.scope || scopePath === C.scope
     ? ''
-    : `@${scopePath.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 48)}-`;
+    : `@${scopePath.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 32)}.${fnv1a(scopePath)}-`;
+  // User data caches of every namespace on the origin: pwa-[@slug.hash-](pages|rule)-…
+  const USER_CACHE = /^pwa-(@[a-z0-9-]*\.[0-9a-f]{8}-)?(pages|rule)-/;
+  const META_CACHE = /^pwa-(@[a-z0-9-]*\.[0-9a-f]{8}-)?meta$/;
+  const SHARED_META = 'pwa-meta';
   const STATIC_PREFIX = `pwa-${NS}static-`;
   const STATIC = `${STATIC_PREFIX}${V}`;
   const META = `pwa-${NS}meta`;
@@ -60,18 +71,21 @@
     clients.forEach((client) => client.postMessage({ source: 'pwa', ...message }));
   };
 
-  const meta = {
+  const metaStore = (name) => ({
     async get(key) {
-      const res = await (await caches.open(META)).match(`/__pwa/${key}`);
+      const res = await (await caches.open(name)).match(`/__pwa/${key}`);
       return res ? res.text() : null;
     },
     async set(key, value) {
-      await (await caches.open(META)).put(`/__pwa/${key}`, new Response(String(value)));
+      await (await caches.open(name)).put(`/__pwa/${key}`, new Response(String(value)));
     },
     async delete(key) {
-      await (await caches.open(META)).delete(`/__pwa/${key}`);
+      await (await caches.open(name)).delete(`/__pwa/${key}`);
     },
-  };
+  });
+
+  const meta = metaStore(META);          // this registration: version, warm-up list
+  const sharedMeta = metaStore(SHARED_META); // the whole origin: current user
 
   const timeout = (ms) => new Promise((resolve) => setTimeout(() => resolve(null), ms));
 
@@ -81,28 +95,35 @@
 
   let currentUser = null;
 
+  // Workers of other path tenants learn about a sign-in at once, not on their next response.
+  const identityChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('pwa-identity') : null;
+  identityChannel?.addEventListener('message', (event) => {
+    if (validUser(event.data?.user)) currentUser = event.data.user;
+  });
+
   const currentUserHash = async () => {
-    if (currentUser === null) currentUser = (await meta.get('user')) || 'guest';
+    if (currentUser === null) currentUser = (await sharedMeta.get('user')) || 'guest';
     return currentUser;
   };
 
-  /** Per-user caches; with `keepUser`, all except that user's. */
+  /** Per-user caches of every namespace; with `keepUser`, all except that user's. */
   const userCaches = async (keepUser) => {
     const keys = await caches.keys();
-    return keys.filter((k) => (k.startsWith(PAGES_PREFIX) || k.startsWith(RULE_PREFIX))
-      && (keepUser === undefined || !k.endsWith(`-${keepUser}`)));
+    return keys.filter((k) => USER_CACHE.test(k) && (keepUser === undefined || !k.endsWith(`-${keepUser}`)));
   };
 
   const purgeUserData = async (keepUser) => {
-    const stale = await userCaches(keepUser);
-    await Promise.all(stale.map((k) => caches.delete(k)));
+    const keys = await caches.keys();
+    await Promise.all((await userCaches(keepUser)).map((k) => caches.delete(k)));
     await queueClear();
-    await meta.delete('warm'); // the warm-up list names the previous user's pages
+    // Warm-up lists name the previous user's pages, in every namespace.
+    await Promise.all(keys.filter((k) => META_CACHE.test(k)).map((k) => metaStore(k).delete('warm')));
   };
 
   const switchUser = async (user) => {
     currentUser = user;
-    await meta.set('user', user);
+    await sharedMeta.set('user', user);
+    identityChannel?.postMessage({ user });
   };
 
   // Valid identities: 'guest' or the 16-hex HMAC from Pwa::userHash().

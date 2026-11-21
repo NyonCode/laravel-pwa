@@ -162,8 +162,19 @@ export const createWorker = ({ config = {}, fetch: network = offline, registrati
     },
   };
 
+  // BroadcastChannel reaches only workers on the same simulated origin (same Cache Storage),
+  // and never keeps the test process alive.
+  caches.channelScope ??= Math.random().toString(36).slice(2);
+  class OriginChannel extends BroadcastChannel {
+    constructor(name) {
+      super(`${caches.channelScope}:${name}`);
+      this.unref?.();
+    }
+  }
+
   const context = vm.createContext({
     self,
+    BroadcastChannel: OriginChannel,
     caches,
     indexedDB: new IDBFactory(),
     IDBKeyRange,
