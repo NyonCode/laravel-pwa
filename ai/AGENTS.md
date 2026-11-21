@@ -152,7 +152,8 @@ stable). Keep the `@if($nonce) nonce=…` attributes.
 | images, fonts | stale-while-revalidate, max `cache.images.max_entries` | `pwa-images-{userHash}` |
 | GET matching `cache.api` (`*` wildcard) | network-first, cache fallback (also on 503) | `pwa-api-{userHash}` |
 | POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
-| `cache.never_cache`, other origins, `/sw.js` | untouched | — |
+| navigations to `cache.never_cache`, other origins, `/sw.js` | untouched | — |
+| fetch/XHR to `cache.never_cache` | passed to the network, never stored or queued; identity headers are read | — |
 
 Never cached: non-200, `Cache-Control: no-store`, 503, HTML without `X-PWA-Cache: allow`.
 503 navigations are shown as-is (maintenance screen), never replaced by the offline page.
@@ -160,7 +161,11 @@ User change (`X-PWA-User`) or logout (`X-PWA-Logout`) purges that user's pages/a
 queue. Version = hash of runtime config + precache list + `sw.import` contents + runtime file.
 New versions wait; the client asks the user, then sends `SKIP_WAITING`.
 
-Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `GET_VERSION` (with a port).
+Identity headers are read from every same-origin response (navigations, mutations, API, images,
+`never_cache` pass-through), so XHR logins/logouts of Inertia and Livewire are seen; responses of
+other origins never change the identity, and per-user caches only store their owner's responses.
+
+Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION` (with a port).
 Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503.
 
 ## Client `window.Pwa` (`resources/js/pwa.js`)

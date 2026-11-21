@@ -72,5 +72,8 @@ jobs:
       - name: JS syntax
         run: node --check resources/js/pwa.js && node --check resources/sw/runtime.js && node --check resources/sw/kill-switch.js
 
+      - name: Service worker tests
+        run: npm ci && npm run test:js
+
       - name: MCP server self-test
         run: node ai/mcp/server.mjs --self-test

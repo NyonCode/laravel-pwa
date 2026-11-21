@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-21
+
+### Bezpečnost
+- Service worker čte identitu uživatele (`X-PWA-User`, `X-PWA-Logout`) z každé odpovědi vlastní
+  domény, ne jen z navigací. Dřív po XHR odhlášení a přihlášení jiného uživatele (Inertia,
+  Livewire) na stejném zařízení zůstala data z `cache.api` předchozího uživatele čitelná.
+  - fetch/XHR na cesty z `cache.never_cache` (např. `/login`, `/logout`) jdou přes SW jen kvůli
+    identitě, dál se nic neukládá ani neřadí do fronty; mutace se čtou i s `offline.queue = false`,
+  - osobní cache přijme jen odpovědi svého uživatele,
+  - hlavičky identity z cizích domén (i po přesměrování) a neplatné hodnoty se ignorují,
+  - klient předá SW identitu z každého keep-alive (zpráva `IDENTITY`).
+
+### Opraveno
+- Zpráva `CLEAR_USER` nastaví i aktuálního uživatele v paměti SW, takže data stažená hned potom
+  se neuloží pod předchozího uživatele.
+
 ## [0.1.0] - 2026-11-21
 
 ### Přidáno

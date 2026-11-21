@@ -185,6 +185,8 @@ const keepAlive = async (force = false) => {
     if (!res.ok) return null;
     const data = await res.json();
     if (C.session.refreshCsrf) applyCsrf(data.csrf);
+    // The worker never sees /pwa/session: tell it who is signed in, so it purges another user's data.
+    if (data.user) navigator.serviceWorker?.controller?.postMessage({ type: 'IDENTITY', user: data.user });
     return data;
   } catch {
     return null;
