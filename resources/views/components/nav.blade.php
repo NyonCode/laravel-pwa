@@ -5,7 +5,7 @@
 --}}
 @props(['startUrl' => config('pwa.start_url', '/')])
 
-@php($nonce = \Illuminate\Support\Facades\Vite::cspNonce())
+@php($nonce = app(\NyonCode\LaravelPwa\Pwa::class)->cspNonce())
 @if (config('pwa.desktop_nav.enabled', true))
 <nav class="pwa-nav" aria-label="{{ __('pwa::messages.app_navigation') }}" data-start-url="{{ $startUrl }}" data-min-width="{{ (int) config('pwa.desktop_nav.min_width', 900) }}" hidden>
   <button type="button" class="pwa-nav__btn" data-pwa-nav="back" aria-label="{{ __('pwa::messages.back') }}" title="{{ __('pwa::messages.back') }} (Alt+←)">

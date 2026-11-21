@@ -265,6 +265,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Updates
+    |--------------------------------------------------------------------------
+    |
+    | A new service worker waits until the user accepts it. The built-in bar asks
+    | for that; it is skipped on pages with <x-pwa::update-toast/> (or any
+    | [data-pwa-update] element) and when 'bar' is false (your own UI listens
+    | to pwa:update-available and calls Pwa.applyUpdate()).
+    |
+    */
+
+    'updates' => [
+        'bar' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Telemetry (service worker errors)
     |--------------------------------------------------------------------------
     */

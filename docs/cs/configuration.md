@@ -144,13 +144,14 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `maintenance.retry` | int (s) | `60` | Výchozí `Retry-After` a interval kontrol (15–300 s). |
 | `maintenance.refresh` | ?int | `null` | Výchozí `--refresh` pro `pwa:down`. |
 
-## Instalace, telemetrie, adaptéry
+## Instalace, aktualizace, telemetrie, adaptéry
 
 | Klíč | Typ | Výchozí | Popis |
 | --- | --- | --- | --- |
 | `install.min_visits` | int | `2` | Od kolikáté návštěvy ukazovat `<x-pwa::install/>`. |
 | `install.dismiss_days` | int | `30` | Jak dlouho po odmítnutí výzvu neukazovat. |
 | `install.ios_hint` | bool | `true` | Nápověda „Sdílet → Přidat na plochu“ na iPhonu a iPadu. |
+| `updates.bar` | bool | `true` | Vestavěná lišta „nová verze“; vypněte pro vlastní UI (na stránkách s `<x-pwa::update-toast/>` se neukáže). |
 | `telemetry.log` | bool | `true` | Zapisovat `TelemetryReceived` do logu; vypněte, když události zpracováváte sami ([Události](events.md)). |
 | `telemetry.enabled` | bool | `true` | Posílat chyby service workeru na `/pwa/telemetry`. |
 | `telemetry.channel` | ?string | `null` | Log kanál; neexistující kanál = výchozí log. |

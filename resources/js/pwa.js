@@ -88,6 +88,8 @@ const t = (key, fallback) => (C.i18n && C.i18n[key]) || fallback;
 
 let registration = null;
 let acceptedUpdate = false;
+let waitingWorker = null;
+let updateDismissed = false;
 
 const unregisterAll = async () => {
   if (!('serviceWorker' in navigator)) return;
@@ -99,12 +101,31 @@ const unregisterAll = async () => {
   }
 };
 
+/** Activates the waiting worker; the page reloads once it controls the page. */
+const applyUpdate = () => {
+  const worker = waitingWorker || registration?.waiting;
+  if (!worker) return false;
+  acceptedUpdate = true;
+  worker.postMessage({ type: 'SKIP_WAITING' });
+  return true;
+};
+
+// Pages with their own update UI (<x-pwa::update-toast/>, [data-pwa-update]) or updates.bar = false
+// do not get the built-in bar.
+const ownUpdateUi = () => C.updates?.bar === false || !!document.querySelector('[data-pwa-update]');
+
+const updateUpdateUi = () => {
+  const visible = !!waitingWorker && !updateDismissed;
+  document.querySelectorAll('[data-pwa-update]').forEach((el) => { el.hidden = !visible; });
+};
+
 const offerUpdate = (worker) => {
+  waitingWorker = worker;
+  updateDismissed = false;
   emit('update-available', { worker });
-  showBar(t('update', 'A new version is available.'), {
-    label: t('reload', 'Reload'),
-    run: () => { acceptedUpdate = true; worker.postMessage({ type: 'SKIP_WAITING' }); },
-  });
+  updateUpdateUi();
+  if (ownUpdateUi()) return;
+  showBar(t('update', 'A new version is available.'), { label: t('reload', 'Reload'), run: applyUpdate });
 };
 
 const registerServiceWorker = async () => {
@@ -443,6 +464,27 @@ const syncPush = async (session) => {
   }
 };
 
+// [data-pwa-push] (<x-pwa::push-toggle/>): data-pwa-push-state carries the state, the matching
+// [data-pwa-push-label] is shown, the toggle is disabled when the browser cannot subscribe.
+const updatePushUi = async () => {
+  const elements = document.querySelectorAll('[data-pwa-push]');
+  if (elements.length === 0) return;
+  const state = C.push ? await pushState() : 'unsupported';
+  elements.forEach((el) => {
+    el.hidden = state === 'unsupported';
+    el.setAttribute('data-pwa-push-state', state);
+    el.querySelectorAll('[data-pwa-push-label]').forEach((label) => {
+      label.hidden = label.getAttribute('data-pwa-push-label') !== state;
+    });
+    el.querySelectorAll('[data-pwa-push-toggle]').forEach((button) => {
+      button.disabled = state === 'denied' || state === 'install-required';
+      button.setAttribute('aria-pressed', String(state === 'subscribed'));
+    });
+  });
+};
+
+const togglePush = async () => ((await pushState()) === 'subscribed' ? unsubscribe() : subscribe());
+
 /* ---------------------------------------------------------------------- *
  * Installation
  * ---------------------------------------------------------------------- */
@@ -456,13 +498,25 @@ const installEligible = () => {
   return store.get('visits', 0) >= (C.install?.minVisits || 1);
 };
 
+const canPrompt = () => !!deferredPrompt || 'install' in navigator;
+
+const iosHintVisible = () => installEligible() && isIos() && !!C.install?.iosHint;
+
+/** Can this browser install the app right now: through a prompt, or (iPhone, iPad) through the Share menu? */
+const canInstall = () => installEligible() && (canPrompt() || (isIos() && !!C.install?.iosHint));
+
+let lastInstallable = null;
+
 const updateInstallUi = () => {
-  const eligible = installEligible();
-  const canPrompt = !!deferredPrompt || 'install' in navigator;
-  document.querySelectorAll('[data-pwa-install]').forEach((el) => { el.hidden = !(eligible && canPrompt); });
-  document.querySelectorAll('[data-pwa-ios-hint]').forEach((el) => {
-    el.hidden = !(eligible && isIos() && C.install?.iosHint);
-  });
+  const prompt = installEligible() && canPrompt();
+  const ios = iosHintVisible();
+  document.querySelectorAll('[data-pwa-install]').forEach((el) => { el.hidden = !prompt; });
+  document.querySelectorAll('[data-pwa-ios-hint]').forEach((el) => { el.hidden = !ios; });
+  const state = `${prompt}:${ios}`;
+  if (state !== lastInstallable) {
+    lastInstallable = state;
+    if (prompt || ios) emit('installable', { prompt, ios });
+  }
 };
 
 const install = async () => {
@@ -496,11 +550,24 @@ window.addEventListener('appinstalled', () => {
 });
 
 document.addEventListener('click', (event) => {
-  const trigger = event.target.closest?.('[data-pwa-install]');
-  if (trigger) { event.preventDefault(); install(); }
-  const dismiss = event.target.closest?.('[data-pwa-install-dismiss]');
-  if (dismiss) { store.set('install-dismissed', Date.now()); updateInstallUi(); }
+  const on = (selector) => event.target.closest?.(selector);
+  if (on('[data-pwa-install]')) { event.preventDefault(); install(); }
+  if (on('[data-pwa-install-dismiss]')) { store.set('install-dismissed', Date.now()); updateInstallUi(); }
+  if (on('[data-pwa-update-apply]')) { event.preventDefault(); applyUpdate(); }
+  if (on('[data-pwa-update-dismiss]')) { updateDismissed = true; updateUpdateUi(); }
+  const toggle = on('[data-pwa-push-toggle]');
+  if (toggle && !toggle.disabled) { event.preventDefault(); togglePush().catch(() => {}).finally(updatePushUi); }
 });
+
+/** Re-reads the [data-pwa-*] elements: after Livewire/Inertia navigation or a framework render. */
+const refreshUi = () => {
+  updateInstallUi();
+  updateUpdateUi();
+  updatePushUi().catch(() => {});
+};
+
+document.addEventListener('livewire:navigated', refreshUi);
+document.addEventListener('inertia:navigate', () => setTimeout(refreshUi, 0));
 
 /* ---------------------------------------------------------------------- *
  * Adapters: Livewire 3 and Inertia
@@ -546,7 +613,7 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn'));
 
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resume(); });
-window.addEventListener('pageshow', (event) => { if (event.persisted) resume(); });
+window.addEventListener('pageshow', (event) => { refreshUi(); if (event.persisted) resume(); });
 
 const boot = async () => {
   store.set('visits', store.get('visits', 0) + 1);
@@ -556,8 +623,10 @@ const boot = async () => {
   livewireAdapter();
   inertiaAdapter();
   updateInstallUi();
+  if (C.push) listeners.set('push', [...(listeners.get('push') || []), () => { updatePushUi().catch(() => {}); }]);
 
   try { await registerServiceWorker(); } catch (e) { console.warn('[pwa]', e); }
+  updatePushUi().catch(() => {});
 
   if (C.warm?.enabled && navigator.serviceWorker?.controller && warmDue(store.get('warm', {}).user)) keepAlive(true);
   else if (C.push && Date.now() - (store.get('push')?.at || Infinity) >= PUSH_SYNC) keepAlive(true);
@@ -574,7 +643,11 @@ window.Pwa = {
   isInstalled,
   isIos,
   install,
+  canInstall,
   update: () => registration?.update(),
+  updateAvailable: () => !!waitingWorker,
+  applyUpdate,
+  refreshUi,
   keepAlive: () => keepAlive(true),
   warm,
   on(name, fn) { listeners.set(name, [...(listeners.get(name) || []), fn]); return () => listeners.set(name, (listeners.get(name) || []).filter((f) => f !== fn)); },
@@ -585,6 +658,7 @@ window.Pwa = {
     subscribe,
     unsubscribe,
     subscription: currentSubscription,
+    toggle: togglePush,
   },
   badge: {
     set: (count) => navigator.setAppBadge?.(count).catch(() => {}),

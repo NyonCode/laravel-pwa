@@ -63,6 +63,9 @@ button.addEventListener('click', async () => {
 Pwa.on('push', ({ state }) => (button.hidden = state === 'subscribed'))
 ```
 
+Or drop in [`<x-pwa::push-toggle/>`](components.md#x-pwapush-toggle): one button that does the same,
+with texts for the blocked and the iPhone cases.
+
 | `Pwa.push` | Returns | Description |
 | --- | --- | --- |
 | `supported()` | bool | push enabled on the server and in this browser |
@@ -70,6 +73,7 @@ Pwa.on('push', ({ state }) => (button.hidden = state === 'subscribed'))
 | `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unsupported` |
 | `subscribe()` | `Promise<PushSubscription\|null>` | asks for permission, subscribes, stores the subscription on the server |
 | `unsubscribe()` | `Promise<bool>` | removes it on the server and in the browser |
+| `toggle()` | Promise | `unsubscribe()` when subscribed, otherwise `subscribe()` |
 | `subscription()` | `Promise<PushSubscription\|null>` | the browser's current subscription |
 
 The client keeps the subscription in step on its own:
