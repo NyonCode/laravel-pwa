@@ -10,6 +10,8 @@ use NyonCode\LaravelPwa\Http\Middleware\PwaWebMiddleware;
 /**
  * Marks the request after logout; PwaWebMiddleware then sends the service worker
  * X-PWA-Logout, which clears this user's cache and queue.
+ *
+ * @internal
  */
 class MarkLogout
 {

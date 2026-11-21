@@ -13,6 +13,9 @@ use NyonCode\LaravelPwa\Push\WebPush;
 use NyonCode\LaravelPwa\Pwa;
 use NyonCode\LaravelPwa\Support\Value;
 
+/**
+ * @internal
+ */
 class PushSubscriptionController
 {
     /** Session key with the endpoint hashes subscribed in this session (removed on logout). */

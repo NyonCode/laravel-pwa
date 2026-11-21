@@ -14,6 +14,8 @@ use NyonCode\LaravelPwa\Pwa;
  *
  * No session middleware: no cookies, the responses are the same for everyone
  * (except the adaptive manifest, which sends Vary).
+ *
+ * @internal
  */
 class AssetController
 {

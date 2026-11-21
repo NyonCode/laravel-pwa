@@ -9,6 +9,8 @@ use RuntimeException;
 /**
  * VAPID keys (RFC 8292): a P-256 key pair, both halves base64url encoded as browsers expect
  * them (public key uncompressed, 65 bytes; private key 32 bytes).
+ *
+ * @internal
  */
 final class Vapid
 {

@@ -15,6 +15,8 @@ use RuntimeException;
 
 /**
  * Delivers through minishlink/web-push (^10 or ^11): encryption (aes128gcm, aesgcm) and VAPID.
+ *
+ * @internal
  */
 class MinishlinkTransport implements PushTransport
 {

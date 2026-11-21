@@ -135,7 +135,10 @@ npm run test:e2e
 
 GitHub Actions: `tests.yml` (Pest na PHP 8.2–8.5 × Laravel 12/13 × lowest/stable a pokrytí),
 `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml` (ESLint a unit testy
-na Node 20/22/24), `e2e.yml` (Playwright) a `release.yml` (tag `v*` vytvoří release z `CHANGELOG.md`).
+na Node 20/22/24), `e2e.yml` (Playwright), `mutation.yml` (týdně a na vyžádání: mutační testy Pest pro
+push, manifest, service worker a HTTP vrstvu) a `release.yml` (tag `v*` vytvoří release z `CHANGELOG.md`).
+`tests/ArchTest.php` hlídá hranice API: kontrakty jsou rozhraní, události jsou `final`, zdroj je striktně
+typovaný a třídy mimo veřejné API jsou `@internal`.
 
 ### Struktura
 

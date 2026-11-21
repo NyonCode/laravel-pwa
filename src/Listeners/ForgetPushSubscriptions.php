@@ -14,6 +14,8 @@ use NyonCode\LaravelPwa\Support\Value;
  * Logout removes the subscriptions made in this session: the next person on the device does
  * not receive the previous user's notifications. The client also drops the subscription in
  * the browser (pwa:logout).
+ *
+ * @internal
  */
 class ForgetPushSubscriptions
 {

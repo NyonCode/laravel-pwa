@@ -8,6 +8,9 @@ use Illuminate\Console\Command;
 use NyonCode\LaravelPwa\Pwa;
 use Symfony\Component\Console\Attribute\AsCommand;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:enable', description: 'Deactivate the service worker kill switch')]
 class EnableCommand extends Command
 {

@@ -22,6 +22,9 @@ use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:doctor', description: 'Check the PWA setup (manifest, icons, service worker, maintenance, session)')]
 class DoctorCommand extends Command
 {

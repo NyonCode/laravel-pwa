@@ -9,6 +9,9 @@ use Illuminate\Support\Carbon;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:down', description: 'Put the application into maintenance mode with the PWA screen (wraps artisan down)')]
 class DownCommand extends Command
 {

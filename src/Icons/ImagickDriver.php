@@ -8,6 +8,9 @@ use Imagick;
 use ImagickPixel;
 use InvalidArgumentException;
 
+/**
+ * @internal
+ */
 class ImagickDriver implements ImageDriver
 {
     /** @var array<string, Imagick> */

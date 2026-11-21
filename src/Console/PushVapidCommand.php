@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\File;
 use NyonCode\LaravelPwa\Push\Vapid;
 use Symfony\Component\Console\Attribute\AsCommand;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:push:vapid', description: 'Generate the VAPID key pair for web push and write it to .env')]
 class PushVapidCommand extends Command
 {

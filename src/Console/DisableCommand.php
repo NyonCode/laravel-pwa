@@ -9,6 +9,9 @@ use NyonCode\LaravelPwa\Pwa;
 use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 
+/**
+ * @internal
+ */
 #[AsCommand(name: 'pwa:disable', description: 'Disable the service worker on every device (kill switch)')]
 class DisableCommand extends Command
 {

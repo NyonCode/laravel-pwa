@@ -12,6 +12,9 @@ use NyonCode\LaravelPwa\Events\TelemetryReceived;
 use NyonCode\LaravelPwa\Pwa;
 use NyonCode\LaravelPwa\Support\Value;
 
+/**
+ * @internal
+ */
 class SessionController
 {
     /**

@@ -137,8 +137,10 @@ npm run test:e2e
 
 GitHub Actions: `tests.yml` (Pest on PHP 8.2–8.5 × Laravel 12/13 × lowest/stable, plus coverage),
 `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml` (ESLint and unit
-tests on Node 20/22/24), `e2e.yml` (Playwright) and `release.yml` (a `v*` tag creates a release
-from `CHANGELOG.md`).
+tests on Node 20/22/24), `e2e.yml` (Playwright), `mutation.yml` (weekly and on demand: Pest mutation
+testing of the push, manifest, service worker and HTTP code) and `release.yml` (a `v*` tag creates a
+release from `CHANGELOG.md`). `tests/ArchTest.php` keeps the API boundaries: contracts are interfaces,
+events are final, the source is strictly typed and classes outside the public API are `@internal`.
 
 ### Structure
 

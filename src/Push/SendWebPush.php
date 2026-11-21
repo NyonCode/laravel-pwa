@@ -13,6 +13,8 @@ use Illuminate\Queue\SerializesModels;
 /**
  * One chunk of WebPush::queue(): sends the message to each notifiable's devices.
  * Eloquent notifiables travel as their ids and are loaded again when the job runs.
+ *
+ * @internal
  */
 class SendWebPush implements ShouldQueue
 {

@@ -14,6 +14,8 @@ use NyonCode\LaravelPwa\Contracts\ManifestResolver;
  *
  * Registered automatically when `pwa.locales` is not empty. The manifest route has no session,
  * so without the parameter every user would get the default locale.
+ *
+ * @internal
  */
 final class LocaleResolver implements ManifestParameters, ManifestResolver
 {

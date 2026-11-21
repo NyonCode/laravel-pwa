@@ -78,13 +78,20 @@ devices that did not subscribe.
 
 CI: `tests.yml` (Pest on PHP 8.2–8.5 × Laravel 12/13 × lowest/stable, Laravel 13 skipped on 8.2,
 plus coverage), `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml`
-(ESLint + unit tests on Node 20/22/24, docs check), `e2e.yml` (Playwright), `release.yml` (a `v*` tag creates the
-GitHub release from the matching `CHANGELOG.md` section).
+(ESLint + unit tests on Node 20/22/24, docs check), `e2e.yml` (Playwright), `mutation.yml` (weekly
+and manual Pest mutation testing), `release.yml` (a `v*` tag creates the GitHub release from the
+matching `CHANGELOG.md` section).
 
 `tests/Feature/AiTest.php` fails when a command, config section or `window.Pwa` member is not
 mentioned in `ai/AGENTS.md`, so update that file whenever you add one.
 
 ## Conventions
+
+- **Semantic Versioning from 1.0.** The public API is listed in `docs/en/versioning.md`; never break
+  it outside a major release. New config keys need defaults that keep the old behaviour. Classes
+  outside the public API carry `@internal` (`tests/ArchTest.php` enforces it for controllers,
+  requests, listeners, console commands, `Support` and the listed helpers); events stay `final`.
+  Changelog: one `## [Unreleased]` section, grouped by area.
 
 - Web push is an **opt-in module** (`pwa.push.enabled = false` by default; `minishlink/web-push`
   is only a `suggest`). Its migration is published, never loaded. It keeps the per-user rule: logout

@@ -70,7 +70,7 @@ prvním použití (`/build/*`).
    Jednotlivě, takže chybějící soubor instalaci nezablokuje (chyba jde do telemetrie).
 2. **waiting**: nová verze čeká, dokud běží stará. Klient ukáže lištu „Je k dispozici nová verze“.
 3. **activate** (po potvrzení `SKIP_WAITING`): smaže staré `pwa-static-*`, cache pravidel, která už
-   neexistují, cache verzí 0.1.x (`pwa-api-*`, `pwa-images*`), při změně verze i uložené stránky
+   neexistují, cache verzí před 1.0 (`pwa-api-*`, `pwa-images*`), při změně verze i uložené stránky
    (odkazují na staré assety), zapne Navigation Preload, převezme klienty.
 4. Klient po `controllerchange` stránku znovu načte, jen pokud aktualizaci potvrdil uživatel.
 
