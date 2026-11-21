@@ -70,23 +70,46 @@
     await queueClear();
   };
 
+  // Valid identities: 'guest' or the 16-hex HMAC from Pwa::userHash().
+  const validUser = (user) => user === 'guest' || /^[a-f0-9]{16}$/.test(user || '');
+
+  const switchUser = async (user) => {
+    currentUser = user;
+    await meta.set('user', user);
+  };
+
   const observeIdentity = async (response) => {
     const logout = response.headers.get('X-PWA-Logout') === '1';
     const user = response.headers.get('X-PWA-User');
 
     if (logout) {
       await purgeUserData();
-      currentUser = 'guest';
-      await meta.set('user', 'guest');
+      await switchUser('guest');
       await broadcast({ type: 'logout' });
       return;
     }
 
-    if (user && user !== (await currentUserHash())) {
+    if (validUser(user) && user !== (await currentUserHash())) {
       await purgeUserData(user);
-      currentUser = user;
-      await meta.set('user', user);
+      await switchUser(user);
     }
+  };
+
+  // Only our own server may change the identity. Checked on the final response, not the request:
+  // a same-origin request can be redirected elsewhere, and a CORS response may expose the headers.
+  const ownResponse = (request, response) => {
+    if (['cors', 'opaque', 'opaqueredirect', 'error'].includes(response.type)) return false;
+    return sameOrigin(new URL(response.url || request.url));
+  };
+
+  const observeFrom = async (request, response) => {
+    if (ownResponse(request, response)) await observeIdentity(response);
+  };
+
+  // A per-user cache only takes responses of that user (the identity may have changed meanwhile).
+  const ownedBy = (response, user) => {
+    const owner = response.headers.get('X-PWA-User');
+    return !owner || owner === user;
   };
 
   /* ------------------------------------------------------------------ *
@@ -263,7 +286,13 @@
         event.waitUntil(replayQueue());
         break;
       case 'CLEAR_USER':
-        event.waitUntil(purgeUserData().then(() => meta.set('user', 'guest')));
+        event.waitUntil(purgeUserData().then(() => switchUser('guest')));
+        break;
+      case 'IDENTITY':
+        // From the client's keep-alive (/pwa/session is in never_cache).
+        if (validUser(data.user)) {
+          event.waitUntil(observeIdentity(new Response(null, { headers: { 'X-PWA-User': data.user } })));
+        }
         break;
       case 'GET_VERSION':
         event.ports[0] && event.ports[0].postMessage({ version: V });
@@ -305,7 +334,7 @@
     const network = (async () => {
       const preloaded = await event.preloadResponse;
       const response = preloaded || (await fetch(request));
-      await observeIdentity(response);
+      await observeFrom(request, response);
 
       if (response.status === 503) {
         await broadcast({ type: 'maintenance', retryAfter: response.headers.get('Retry-After') });
@@ -353,12 +382,13 @@
     await Promise.all(keys.slice(0, Math.max(0, keys.length - maxEntries)).map((k) => cache.delete(k)));
   };
 
-  const staleWhileRevalidate = async (event, cacheName, maxEntries) => {
+  const staleWhileRevalidate = async (event, cacheName, maxEntries, user) => {
     const { request } = event;
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
     const network = fetch(request).then(async (response) => {
-      if (cacheable(response)) {
+      await observeFrom(request, response);
+      if (cacheable(response) && ownedBy(response, user)) {
         await cache.put(request, response.clone());
         await trim(cacheName, maxEntries);
       }
@@ -372,14 +402,16 @@
   };
 
   const networkFirstApi = async (request) => {
-    const cacheName = `${API_PREFIX}${await currentUserHash()}`;
+    const user = await currentUserHash();
+    const cacheName = `${API_PREFIX}${user}`;
     try {
       const response = await fetch(request);
+      await observeFrom(request, response);
       if (response.status === 503) {
         await broadcast({ type: 'maintenance', retryAfter: response.headers.get('Retry-After') });
         return (await caches.match(request, { cacheName })) || response;
       }
-      if (cacheable(response)) {
+      if (cacheable(response) && ownedBy(response, user)) {
         const copy = response.clone();
         caches.open(cacheName).then((c) => c.put(request, copy));
       }
@@ -391,10 +423,18 @@
     }
   };
 
+  // Requests the worker never stores or queues, but whose identity headers it must see:
+  // XHR logins and logouts (Inertia, Livewire) hit never_cache paths like /login and /logout.
+  const passThrough = async (request) => {
+    const response = await fetch(request);
+    await observeFrom(request, response);
+    return response;
+  };
+
   const handleMutation = async (request) => {
     const copy = request.clone();
     try {
-      return await fetch(request);
+      return await passThrough(request);
     } catch (error) {
       await queuePush(copy);
       await broadcast({ type: 'offline' });
@@ -409,11 +449,17 @@
     const { request } = event;
     const url = new URL(request.url);
 
-    if (!sameOrigin(url) || url.pathname === '/sw.js' || matches(neverCache, url.pathname)) return;
+    if (!sameOrigin(url) || url.pathname === '/sw.js') return;
+
+    if (matches(neverCache, url.pathname)) {
+      if (request.mode !== 'navigate') event.respondWith(passThrough(request));
+      return;
+    }
 
     if (request.method !== 'GET') {
-      if (C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && request.mode !== 'navigate') {
-        event.respondWith(handleMutation(request));
+      if (request.mode !== 'navigate') {
+        const queueable = C.queue && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+        event.respondWith(queueable ? handleMutation(request) : passThrough(request));
       }
       return;
     }
@@ -429,7 +475,7 @@
     }
 
     if (['image', 'font'].includes(request.destination)) {
-      event.respondWith(currentUserHash().then((user) => staleWhileRevalidate(event, `${IMAGES_PREFIX}${user}`, (C.images || {}).max_entries || 120)));
+      event.respondWith(currentUserHash().then((user) => staleWhileRevalidate(event, `${IMAGES_PREFIX}${user}`, (C.images || {}).max_entries || 120, user)));
       return;
     }
 

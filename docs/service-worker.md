@@ -54,7 +54,8 @@ importovaných souborů a souboru `runtime.js`. Precache obsahuje hashované ná
 | obrázky, fonty | stale-while-revalidate, limit `cache.images.max_entries` | `pwa-images-{userHash}` |
 | GET z `cache.api` | síť, při chybě nebo 503 cache | `pwa-api-{user}` |
 | POST/PUT/PATCH/DELETE | síť; při výpadku fronta a `202` | IndexedDB `pwa` / `queue` |
-| `cache.never_cache`, cizí domény, `/sw.js` | SW nezasahuje | – |
+| navigace na `cache.never_cache`, cizí domény, `/sw.js` | SW nezasahuje | – |
+| fetch/XHR na `cache.never_cache` | rovnou na síť, nic neukládá ani neřadí do fronty; jen přečte hlavičky identity | – |
 
 Co se nikdy neukládá: odpovědi jiné než 200, `Cache-Control: no-store`, odpovědi 503, HTML bez
 `X-PWA-Cache: allow`.
@@ -64,7 +65,7 @@ Co se nikdy neukládá: odpovědi jiné než 200, `Cache-Control: no-store`, odp
 | Hlavička | Posílá | Účinek |
 | --- | --- | --- |
 | `X-PWA-Cache: allow` | middleware `pwa.cache` | HTML smí do cache |
-| `X-PWA-User: {hash}` | `PwaWebMiddleware` (skupina `web`) | změna uživatele smaže cache předchozího |
+| `X-PWA-User: {hash}` | `PwaWebMiddleware` (skupina `web`) | změna uživatele smaže cache předchozího; SW ji čte z každé odpovědi vlastní domény (navigace, mutace, API, obrázky, `never_cache`), takže zachytí i XHR přihlášení v Inertii a Livewire |
 | `X-PWA-Logout: 1` | po události `Logout` | smaže cache a frontu, pošle `logout` klientům |
 | `Retry-After` | údržba | předá se v události `maintenance` |
 
@@ -77,6 +78,7 @@ Klient → SW (`navigator.serviceWorker.controller.postMessage`):
 | `{type: 'SKIP_WAITING'}` | aktivovat čekající verzi |
 | `{type: 'REPLAY_QUEUE'}` | odeslat frontu |
 | `{type: 'CLEAR_USER'}` | smazat cache a frontu uživatele |
+| `{type: 'IDENTITY', user}` | identita z keep-alive (`/pwa/session`); jiný uživatel = smazat data předchozího |
 | `{type: 'GET_VERSION'}` + `MessagePort` | vrátí `{version}` (`window.Pwa.version()`) |
 
 SW → klient (`{source: 'pwa', type}`): `activated`, `offline`, `maintenance`, `logout`, `queued`,
