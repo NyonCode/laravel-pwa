@@ -1,0 +1,48 @@
+{
+    "id": "/laravel-pwa/demo/",
+    "name": "Laravel PWA demo",
+    "short_name": "PWA demo",
+    "description": "A static demo of nyoncode/laravel-pwa: install, offline and updates.",
+    "lang": "en",
+    "dir": "ltr",
+    "start_url": "/laravel-pwa/demo/",
+    "scope": "/laravel-pwa/demo/",
+    "display": "standalone",
+    "display_override": [
+        "minimal-ui"
+    ],
+    "theme_color": "#4f46e5",
+    "background_color": "#f8fafc",
+    "icons": [
+        {
+            "src": "/laravel-pwa/demo/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/laravel-pwa/demo/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/laravel-pwa/demo/icons/maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/laravel-pwa/demo/icons/monochrome-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "monochrome"
+        }
+    ],
+    "launch_handler": {
+        "client_mode": [
+            "navigate-existing",
+            "auto"
+        ]
+    }
+}

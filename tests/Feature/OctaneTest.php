@@ -23,7 +23,7 @@ it('keeps no request state in its singletons', function (): void {
         array_filter((new ReflectionClass(app($class)))->getProperties(), static fn (ReflectionProperty $property): bool => ! $property->isStatic()),
     )), $singletons);
 
-    Pwa::manifest()->resolveUsing(fn (Request $request, ManifestBuilder $manifest) => $manifest->name('Tenant '.$request->query('t')));
+    Pwa::manifest()->resolveUsing(fn (Request $request, ManifestBuilder $manifest): ManifestBuilder => $manifest->name('Tenant '.$request->query('t')));
     $this->get('/manifest.webmanifest?t=a')->assertJsonPath('name', 'Tenant a');
     $this->actingAs(octaneUser(1))->getJson('/pwa/session');
     $this->actingAs(octaneUser(2))->getJson('/pwa/session');
@@ -50,7 +50,7 @@ it('answers each request for its own user', function (): void {
 });
 
 it('builds the manifest of each request on a fresh copy', function (): void {
-    Pwa::manifest()->resolveUsing(fn (Request $request, ManifestBuilder $manifest) => $request->query('brand') ? $manifest->name('Brand')->themeColor('#ff0000') : null);
+    Pwa::manifest()->resolveUsing(fn (Request $request, ManifestBuilder $manifest): ?ManifestBuilder => $request->query('brand') ? $manifest->name('Brand')->themeColor('#ff0000') : null);
 
     $this->get('/manifest.webmanifest?brand=1')->assertJsonPath('name', 'Brand');
     $plain = $this->get('/manifest.webmanifest')->json();
