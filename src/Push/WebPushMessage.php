@@ -92,6 +92,17 @@ class WebPushMessage
         return $this;
     }
 
+    /**
+     * Your identifier of this message (e.g. a campaign or notification id); reported back with
+     * pwa.push.analytics in PushDisplayed, PushClicked and PushDismissed.
+     */
+    public function id(string $id): static
+    {
+        $this->data['id'] = $id;
+
+        return $this;
+    }
+
     /** Replaces an earlier notification with the same tag; renotify plays the sound again. */
     public function tag(string $tag, bool $renotify = false): static
     {

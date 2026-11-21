@@ -135,6 +135,7 @@ WebPush::send($user->pushSubscriptions()->latest()->first(), $message); // jedno
 | `requireInteraction()`, `silent()`, `lang()`, `dir()`, `timestamp()` | jako v `showNotification()` |
 | `appBadge($n)` | číslo na ikoně aplikace, `0` ho smaže |
 | `data([...])` | další data pro váš kód v `sw.extend` |
+| `id($id)` | váš identifikátor zprávy, vrátí ho [statistika](#statistika) |
 | `ttl()`, `urgency()`, `topic()` | doručení: výchozí `pwa.push.ttl` (28 dní), `pwa.push.urgency` |
 | `declarative()` | [Declarative Web Push](#declarative-web-push) |
 | `public()` | smí se ukázat komukoli na zařízení (viz [Sdílená zařízení](#sdílená-zařízení)) |
@@ -153,6 +154,42 @@ Podrobnosti nechte na stránce, kterou notifikace otevře.
 `WebPush::send()` i kanál vracejí seznam `Push\PushReport` (`endpoint`, `success`, `status`,
 `reason`). Odběry, u kterých prohlížeč ohlásil `expirationTime`, odstraní
 `php artisan model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`.
+
+Každé odeslání navíc vyšle `PushSent` se zprávou, výsledky a příjemcem; `delivered()`, `expired()` a
+`failed()` je spočítají.
+
+## Odesílání mnoha uživatelům
+
+`WebPush::queue()` odesílá na pozadí: jeden job `Push\SendWebPush` na každou dávku příjemců. Dotaz
+prochází přes `chunkById()`, takže zvládne libovolný počet uživatelů; Eloquent příjemci cestují v jobu
+jen jako id.
+
+```php
+WebPush::queue(User::query()->where('wants_news', true), WebPushMessage::create('Jarní výprodej')->url('/sale')->id('sale-2027'));
+```
+
+| Config | Výchozí | |
+| --- | --- | --- |
+| `push.queue.chunk` | `100` | příjemců v jednom jobu |
+| `push.queue.connection`, `push.queue.queue` | `null` | kde joby běží |
+| `push.batch_size` | `1000` | požadavků na push služby najednou v rámci jednoho jobu |
+
+Každý příjemce dostane obsah s vlastním hashem uživatele ([sdílená zařízení](#sdílená-zařízení)).
+Zpráva se zkontroluje (titulek, velikost) dřív, než se cokoli zařadí do fronty. U Laravel notifikací
+dělá totéž pro každého uživatele `Notification::send($users, new OrderShipped($order))` s `ShouldQueue`.
+
+## Statistika
+
+S `push.analytics = true` worker hlásí každou zobrazenou notifikaci, každé kliknutí (i s akcí) a každé
+zavření na `POST /pwa/push/events`, bez cookies. Balíček vyšle `PushDisplayed`, `PushClicked` a
+`PushDismissed` s `id()` zprávy, jejím `tag` a user agentem a nikdy neví, o kterého uživatele šlo.
+
+```php
+Event::listen(PushClicked::class, fn (PushClicked $event) => Metrics::increment("push.click.{$event->id}"));
+```
+
+Doručené (`PushSent`) mínus zobrazené ukazují, kolik zpráv prohlížeč přijal a nezobrazil (vzácné:
+Safari vyžaduje notifikaci ke každému push), kliknutí ku zobrazeným dávají míru prokliku.
 
 ## Sdílená zařízení
 
@@ -219,10 +256,15 @@ WebPush::assertSentTo($user, fn (WebPushMessage $message) => $message->getTitle(
 WebPush::assertNotSentTo($otherUser);
 WebPush::assertSentCount(1);
 WebPush::assertNothingSent();
+
+WebPush::queue(User::query(), $message);
+WebPush::assertQueued(fn (WebPushMessage $message) => $message->getTitle() === 'Jarní výprodej', $user);
+WebPush::assertNothingQueued();
 ```
 
-Fake sestaví každou zprávu (titulek, velikost obsahu), ale nic neodešle. `Notification::fake()`
-funguje jako obvykle, když vás zajímá jen to, že se notifikace vyslala.
+Fake sestaví každou zprávu (titulek, velikost obsahu), ale nic neodešle; `queue()` místo vyslání jobů
+zaznamená příjemce. `Notification::fake()` funguje jako obvykle, když vás zajímá jen to, že se
+notifikace vyslala.
 
 ## Vlastní push systém
 

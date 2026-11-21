@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 use NyonCode\LaravelPwa\Http\Controllers\AssetController;
+use NyonCode\LaravelPwa\Http\Controllers\PushEventController;
 use NyonCode\LaravelPwa\Http\Controllers\PushSubscriptionController;
 use NyonCode\LaravelPwa\Http\Controllers\SessionController;
 
@@ -15,6 +16,11 @@ Route::get('manifest.webmanifest', [AssetController::class, 'manifest'])->name('
 Route::get(ltrim((string) config('pwa.sw.url', '/sw.js'), '/'), [AssetController::class, 'serviceWorker'])->name('pwa.sw');
 Route::get($prefix.'/client.js', [AssetController::class, 'client'])->name('pwa.client');
 Route::get($prefix.'/ping', [AssetController::class, 'ping'])->name('pwa.ping');
+
+// Notification statistics from the worker (pwa.push.analytics), sent without cookies.
+if (filter_var(config('pwa.push.enabled', false), FILTER_VALIDATE_BOOL) && filter_var(config('pwa.push.analytics', false), FILTER_VALIDATE_BOOL)) {
+    Route::post($prefix.'/push/events', PushEventController::class)->middleware('throttle:60,1')->name('pwa.push.events');
+}
 
 Route::middleware('web')->group(function () use ($prefix): void {
     Route::get($prefix.'/session', [SessionController::class, 'session'])->name('pwa.session');

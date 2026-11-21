@@ -214,3 +214,39 @@ describe('subscription renewal', () => {
     assert.ok(!worker.requests.some((r) => r.method === 'POST'));
   });
 });
+
+describe('push analytics (pwa.push.analytics)', () => {
+  const events = (worker) => worker.requests
+    .filter((request) => new URL(request.url).pathname === '/pwa/push/events')
+    .map((request) => request);
+
+  it('reports shown, click and close without cookies', async () => {
+    const worker = createWorker({ config: { push: push({ events: '/pwa/push/events' }) }, fetch: () => new Response(null, { status: 202 }) });
+    await signedIn(worker);
+
+    await worker.push(message({ options: { ...message().options, data: { url: '/orders/1001', actions: {}, id: 'campaign-7' } } }));
+    const [shown] = worker.notifications;
+    await worker.click(shown, 'track');
+    await worker.close(shown);
+
+    const sent = events(worker);
+    assert.equal(sent.length, 3);
+    assert.ok(sent.every((request) => request.credentials === 'omit'));
+    const bodies = await Promise.all(sent.map((request) => request.clone().json()));
+    assert.deepEqual(bodies.map((body) => body.events[0]), [
+      { type: 'shown', id: 'campaign-7', tag: 'order-1001', action: null },
+      { type: 'click', id: 'campaign-7', tag: 'order-1001', action: 'track' },
+      { type: 'close', id: 'campaign-7', tag: 'order-1001', action: null },
+    ]);
+  });
+
+  it('sends nothing when analytics is off', async () => {
+    const worker = createWorker({ config: { push: push() }, fetch: () => new Response(null, { status: 202 }) });
+    await signedIn(worker);
+
+    await worker.push(message());
+    await worker.click(worker.notifications[0]);
+
+    assert.equal(events(worker).length, 0);
+  });
+});

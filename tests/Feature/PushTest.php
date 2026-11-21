@@ -416,3 +416,8 @@ describe('doctor', function (): void {
             ->assertSuccessful();
     });
 });
+
+it('has no analytics route unless pwa.push.analytics is on', function (): void {
+    $this->postJson('/pwa/push/events', ['events' => [['type' => 'shown']]])->assertNotFound();
+    expect(app(ServiceWorkerBuilder::class)->runtimeConfig()['push']['events'])->toBeNull();
+});

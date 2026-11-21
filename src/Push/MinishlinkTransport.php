@@ -55,7 +55,7 @@ class MinishlinkTransport implements PushTransport
 
         $reports = [];
 
-        foreach ($client->flush() as $report) {
+        foreach ($client->flush(max(1, config()->integer('pwa.push.batch_size', 1000))) as $report) {
             /** @var MessageSentReport $report */
             $reports[$report->getEndpoint()] = new PushReport(
                 endpoint: $report->getEndpoint(),

@@ -203,6 +203,7 @@ class ServiceWorkerBuilder
         return [
             'key' => config('pwa.push.vapid.public_key'),
             'url' => $prefix.'/push/subscriptions',
+            'events' => config()->boolean('pwa.push.analytics', false) ? $prefix.'/push/events' : null,
             'name' => Value::string(config('pwa.short_name')) ?: Value::string(config('pwa.name'), 'Laravel'),
             'icon' => config('pwa.push.icon') ?? $existing($icons.'/icon-192.png'),
             'badge' => config('pwa.push.badge') ?? $existing($icons.'/monochrome-512.png'),

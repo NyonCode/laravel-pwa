@@ -63,8 +63,14 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
 - Shared devices: the worker shows a neutral notification when someone else is signed in.
 - Worker handlers for `push`, `notificationclick` and `pushsubscriptionchange`
   (`pwa.push.handle_in_worker`).
+- `WebPush::queue()` sends to any number of recipients in background jobs (`push.queue.chunk`,
+  `chunkById()` for queries, Eloquent recipients serialized as ids); `push.batch_size` for the push
+  library. Every send dispatches `PushSent` with the delivery reports.
+- Optional statistics (`push.analytics`): the worker reports shown, clicked and closed notifications
+  without cookies; `PushDisplayed`, `PushClicked` and `PushDismissed` carry `WebPushMessage::id()`,
+  the tag and the action.
 - `WebPush::fake()` with `assertSentTo()`, `assertNotSentTo()`, `assertSent()`, `assertSentCount()`,
-  `assertNothingSent()`.
+  `assertNothingSent()`, `assertQueued()` and `assertNothingQueued()`.
 
 ### Blade components and browser client
 - `<x-pwa::head/>`, `<x-pwa::nav/>` (Back and Reload on desktop), `<x-pwa::install/>` (install button
@@ -81,7 +87,8 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
 - Commands `pwa:install`, `pwa:build`, `pwa:clear`, `pwa:icons`, `pwa:down`, `pwa:disable`,
   `pwa:enable`, `pwa:doctor` and `pwa:push:vapid`; `php artisan about` shows the PWA state.
 - Events `ManifestResolving`, `ServiceWorkerBuilt`, `KillSwitchActivated`, `KillSwitchDeactivated`,
-  `TelemetryReceived`, `PushSubscribed`, `PushUnsubscribed`, `PushSubscriptionExpired`, `PushFailed`.
+  `TelemetryReceived`, `PushSubscribed`, `PushUnsubscribed`, `PushSubscriptionExpired`, `PushFailed`,
+  `PushSent`, `PushDisplayed`, `PushClicked`, `PushDismissed`.
 - Testing helpers: the `InteractsWithPwa` trait and the assertions `assertPwaCacheable()`,
   `assertNotPwaCacheable()`, `assertPwaLogout()`, `assertPwaUser()` and `assertValidManifest()`.
 
