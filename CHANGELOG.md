@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-21
+
 The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
 
 ### Manifest
@@ -103,4 +105,5 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
   client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/commits/main
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/NyonCode/laravel-pwa/releases/tag/v1.0.0
