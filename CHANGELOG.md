@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [0.2.0] - 2026-11-21
 
-Upgrading from 0.1? See [UPGRADE.md](UPGRADE.md).
+Upgrading from 0.1? See [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md).
 
 ### Added
 - Cache rules: `pwa.cache.rules` and the fluent `Pwa::serviceWorker()->cache()` with the strategies
