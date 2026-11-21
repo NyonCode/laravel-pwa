@@ -35,18 +35,21 @@ Pwa::manifest()
     ->windowControlsOverlay()
     ->tabbed(['home_tab' => ['scope_patterns' => [['pathname' => '/']]]])
     ->launchHandler(['navigate-existing', 'auto'])
-    ->set('categories', ['business', 'productivity']);
+    ->screenshot('/pwa/screenshots/desktop.png', '1280x800', 'wide', 'Dashboard')
+    ->category('business', 'productivity');
 ```
 
 | Method | Result in the manifest | Where it works |
 | --- | --- | --- |
-| `shortcut(name, url, icon?, description?)` | adds to `shortcuts` | Android, Chromium desktop |
+| `shortcut(name, url, icon?, description?, iconSizes = '96x96')` | adds to `shortcuts` | Android, Chromium desktop |
 | `shareTarget(action, method, accept, filesField)` | `share_target` (GET, POST, `multipart/form-data` with files) | Android, ChromeOS, Windows |
 | `fileHandler(action, accept, name?)` | adds to `file_handlers` | Chromium desktop |
 | `protocolHandler(protocol, url)` | adds to `protocol_handlers` | Chromium desktop |
 | `windowControlsOverlay()` | `window-controls-overlay` at the start of `display_override` | Chromium desktop |
 | `tabbed(tabStrip)` | `tabbed` in `display_override`, optionally `tab_strip` | Chromium desktop |
 | `launchHandler(clientMode)` | `launch_handler.client_mode` | Chromium desktop |
+| `screenshot(src, sizes, formFactor?, label?, type = 'image/png')` | adds to `screenshots` | Chromium install dialog |
+| `category(...categories)` | adds to `categories` | store listings |
 | `set(key, value)` | any member | – |
 | `toArray(request?)`, `toJson(request?)` | the result | – |
 | `icons()` | list of existing icons | – |
@@ -62,7 +65,28 @@ Route::post('/share', ShareController::class)
     ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
 ```
 
-Fields: `title`, `text`, `url`, and the files in `files`.
+Fields: `title`, `text`, `url`, and the files in `files`. The share arrives as a POST navigation, which
+the worker leaves to the network (only fetch/XHR mutations go to the [offline queue](offline.md)), so
+sharing needs a connection. Redirect after the POST, so a reload does not share twice:
+
+```php
+class ShareController
+{
+    public function __invoke(Request $request): RedirectResponse
+    {
+        $note = $request->user()->notes()->create($request->only('title', 'text', 'url'));
+
+        foreach ($request->file('files', []) as $file) {
+            $note->addAttachment($file);
+        }
+
+        return to_route('notes.show', $note); // 303 after the POST
+    }
+}
+```
+
+`pwa:doctor` and `assertValidManifest()` warn when `action` is outside the scope, or when files are
+shared without `POST` and `multipart/form-data`.
 
 ### File handlers
 
@@ -169,7 +193,20 @@ Chrome on Android and desktop shows a richer install dialog with screenshots. Ad
 ```
 
 Chrome ignores a screenshot whose `sizes` or `type` don't match the file. `pwa:doctor` opens every
-local screenshot and compares them.
+local screenshot and compares them. `Pwa::manifest()->screenshot()` adds more in code.
+
+## Checks
+
+`pwa:doctor`, `ManifestValidator` and the `assertValidManifest()` test helper check the OS
+integration members, which browsers otherwise drop without a word:
+
+| Member | Checked |
+| --- | --- |
+| `shortcuts` | a `name`, a `url` inside the scope, at most 10 entries |
+| `share_target` | `action` inside the scope, `GET` or `POST`, files only with `POST` + `multipart/form-data`, every file field has a `name` and `accept` |
+| `file_handlers` | `action` inside the scope, `accept` maps MIME types to extensions with a dot |
+| `protocol_handlers` | `web+name` or a safelisted scheme (`mailto`, `tel` …), a `url` inside the scope containing `%s` |
+| `launch_handler` | `client_mode` is `navigate-existing`, `navigate-new`, `focus-existing` or `auto` |
 
 ## Localization
 

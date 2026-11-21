@@ -146,3 +146,19 @@ it('lists only icons that exist, including maskable and SVG', function (): void 
         ->and($icons->firstWhere('purpose', 'maskable')['sizes'])->toBe('512x512')
         ->and($icons->last()['type'])->toBe('image/svg+xml');
 });
+
+it('adds screenshots, categories and shortcut icon sizes through the builder', function (): void {
+    config()->set('pwa.categories', ['business']);
+
+    $manifest = Pwa::manifest()
+        ->screenshot('/shots/wide.png', '1280x720', 'wide', 'Dashboard')
+        ->category('productivity', 'business')
+        ->shortcut('Orders', '/orders', '/icons/orders.png', iconSizes: '192x192')
+        ->toArray();
+
+    expect($manifest['screenshots'])->toBe([['src' => '/shots/wide.png', 'sizes' => '1280x720', 'type' => 'image/png', 'form_factor' => 'wide', 'label' => 'Dashboard']])
+        ->and($manifest['categories'])->toBe(['business', 'productivity'])
+        ->and($manifest['shortcuts'][0]['icons'])->toBe([['src' => '/icons/orders.png', 'sizes' => '192x192']]);
+
+    Pwa::manifest()->flush();
+});

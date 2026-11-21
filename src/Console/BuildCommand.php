@@ -31,12 +31,21 @@ class BuildCommand extends Command
             $this->components->warn('Vite manifest not found or without entries: the precache holds only the offline page. Run npm run build first.');
         }
 
+        $kilobytes = (int) ceil($builder->precacheBytes() / 1024);
+
         $this->components->info(sprintf(
-            'Service worker %s built (%d files precached) → %s',
+            'Service worker %s built (%d files precached, %d KB) → %s',
             $version,
             count($builder->precache()),
+            $kilobytes,
             str_replace(base_path().'/', '', $builder->compiledPath()),
         ));
+
+        $limit = config()->integer('pwa.sw.precache_warn_kb', 5120);
+
+        if ($limit > 0 && $kilobytes > $limit) {
+            $this->components->warn("The precache is {$kilobytes} KB (pwa.sw.precache_warn_kb = {$limit}): every visitor downloads it on install. Exclude large files with pwa.sw.precache_exclude or use precache_vite = 'entries'.");
+        }
 
         return self::SUCCESS;
     }

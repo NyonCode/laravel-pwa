@@ -12,7 +12,11 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
 - Dynamic web app manifest with the display strategies `override`, `adaptive` and `fixed`, built from
   `config/pwa.php` and the fluent `Pwa::manifest()` API (`name()`, `shortName()`, `id()`,
   `startUrl()`, `scope()`, `themeColor()`, `icon()`, `locale()`, `shortcut()`, `shareTarget()`,
-  `fileHandler()`, `protocolHandler()`, `launchHandler()`, `windowControlsOverlay()`, `tabbed()`).
+  `fileHandler()`, `protocolHandler()`, `launchHandler()`, `windowControlsOverlay()`, `tabbed()`,
+  `screenshot()`, `category()`).
+- `ManifestValidator`, `pwa:doctor` and `assertValidManifest()` check installability and the OS
+  integration members (shortcuts, share target, file and protocol handlers, launch handler), which
+  browsers drop silently when they are invalid.
 - Per-request manifest resolvers (`Pwa::manifest()->resolveUsing()`, `pwa.manifest.resolvers`,
   `Contracts\ManifestResolver`) with manifest link parameters (`Contracts\ManifestParameters`). They
   run on a copy of the builder, so nothing leaks between requests under Octane.
@@ -22,8 +26,10 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   or Imagick), and iOS startup images for every current iPhone and iPad screen with `--splash`.
 
 ### Service worker
-- Precache of the offline page, the browser client and the Vite build entries; the worker version
-  follows the configuration, the imported scripts and the build.
+- Precache of the offline page, the browser client and the Vite build (`sw.precache_vite`: entries
+  with their static imports, CSS and assets by default; `entries`, `all` or `false`), with
+  `sw.precache_exclude` patterns and a size warning (`sw.precache_warn_kb`) in `pwa:build` and
+  `pwa:doctor`. The worker version follows the configuration, the imported scripts and the build.
 - HTML pages are cached only with the server's consent (`pwa.cache` middleware, `X-PWA-Cache: allow`)
   and always per user. A sign-in, a logout or another user's response purges the previous user's data,
   including identity changes from XHR requests of Inertia and Livewire.

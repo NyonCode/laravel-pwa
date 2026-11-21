@@ -34,6 +34,12 @@ class ManifestBuilder
     /** @var list<array<string, string>> */
     protected array $protocolHandlers = [];
 
+    /** @var list<array<string, string>> */
+    protected array $screenshots = [];
+
+    /** @var list<string> */
+    protected array $categories = [];
+
     /** @var list<string> */
     protected array $displayOverride = [];
 
@@ -146,14 +152,42 @@ class ManifestBuilder
         return $this;
     }
 
-    public function shortcut(string $name, string $url, ?string $icon = null, ?string $description = null): static
+    public function shortcut(string $name, string $url, ?string $icon = null, ?string $description = null, string $iconSizes = '96x96'): static
     {
         $this->shortcuts[] = array_filter([
             'name' => $name,
             'url' => $url,
             'description' => $description,
-            'icons' => ! in_array($icon, [null, '', '0'], true) ? [['src' => $icon, 'sizes' => '96x96']] : null,
+            'icons' => ! in_array($icon, [null, '', '0'], true) ? [['src' => $icon, 'sizes' => $iconSizes]] : null,
         ]);
+
+        return $this;
+    }
+
+    /**
+     * A screenshot for the richer install dialog (Chromium): one `wide` (desktop) and one `narrow` (phone).
+     *
+     * @param  'wide'|'narrow'|null  $formFactor
+     */
+    public function screenshot(string $src, string $sizes, ?string $formFactor = null, ?string $label = null, string $type = 'image/png'): static
+    {
+        $this->screenshots[] = array_filter([
+            'src' => $src,
+            'sizes' => $sizes,
+            'type' => $type,
+            'form_factor' => $formFactor,
+            'label' => $label,
+        ], static fn (?string $value): bool => $value !== null && $value !== '');
+
+        return $this;
+    }
+
+    /**
+     * Store categories, e.g. category('business', 'productivity').
+     */
+    public function category(string ...$categories): static
+    {
+        $this->categories = array_values(array_unique([...$this->categories, ...$categories]));
 
         return $this;
     }
@@ -335,9 +369,9 @@ class ManifestBuilder
             'orientation' => config('pwa.orientation'),
             'theme_color' => config()->string('pwa.theme.light', '#ffffff'),
             'background_color' => config()->string('pwa.theme.background', '#ffffff'),
-            'categories' => config('pwa.categories') ?: null,
+            'categories' => array_values(array_unique([...$this->stringList('pwa.categories'), ...$this->categories])) ?: null,
             'icons' => $this->customIcons !== [] ? $this->customIcons : $this->icons(),
-            'screenshots' => config('pwa.screenshots') ?: null,
+            'screenshots' => array_values([...(array) config('pwa.screenshots', []), ...$this->screenshots]) ?: null,
             'shortcuts' => array_values([...(array) config('pwa.shortcuts', []), ...$this->shortcuts]) ?: null,
             'share_target' => config('pwa.share_target'),
             'file_handlers' => array_values([...(array) config('pwa.file_handlers', []), ...$this->fileHandlers]) ?: null,
@@ -398,11 +432,19 @@ class ManifestBuilder
     }
 
     /**
+     * @return list<string>
+     */
+    protected function stringList(string $key): array
+    {
+        return array_values(array_filter((array) config($key, []), is_string(...)));
+    }
+
+    /**
      * For tests and Octane: drops fluent settings and resolvers.
      */
     public function flush(): void
     {
-        $this->overrides = $this->shortcuts = $this->fileHandlers = $this->protocolHandlers = $this->displayOverride = $this->customIcons = $this->resolvers = $this->vary = [];
+        $this->overrides = $this->shortcuts = $this->fileHandlers = $this->protocolHandlers = $this->screenshots = $this->categories = $this->displayOverride = $this->customIcons = $this->resolvers = $this->vary = [];
         $this->locale = null;
         $this->private = false;
     }
@@ -417,6 +459,8 @@ class ManifestBuilder
             'shortcuts' => $this->shortcuts,
             'fileHandlers' => $this->fileHandlers,
             'protocolHandlers' => $this->protocolHandlers,
+            'screenshots' => $this->screenshots,
+            'categories' => $this->categories,
             'displayOverride' => $this->displayOverride,
             'customIcons' => $this->customIcons,
         ];

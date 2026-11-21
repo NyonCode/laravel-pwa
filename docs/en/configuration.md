@@ -98,6 +98,9 @@ You can translate `name`, `short_name` and `description` in
 | `sw.extend` | list | `[]` | Scripts loaded **after** the runtime; they get `self.PwaWorker` (custom routes and strategies). See [Service worker](service-worker.md#swextend). |
 | `sw.vite_manifest` | string | `build/manifest.json` | Vite manifest in `public/` used for precaching. |
 | `sw.build_directory` | string | `build` | Vite asset prefix (cache-first). |
+| `sw.precache_vite` | string\|false | `imports` | What to precache from Vite: `imports`, `entries`, `all`, `false` ([Service worker](service-worker.md#what-is-precached)). |
+| `sw.precache_exclude` | list | `[]` | Build files to leave out of the precache (`Str::is` patterns relative to the build directory). |
+| `sw.precache_warn_kb` | int | `5120` | `pwa:build` and `pwa:doctor` warn above this precache size; `0` turns it off. |
 | `sw.compiled_path` | string | `bootstrap/cache/pwa` | Where `pwa:build` stores the built service worker. |
 | `sw.kill_switch_store` | ?string | `null` | Cache store for `pwa:disable`; with multiple servers, use a shared one (Redis, database). |
 
