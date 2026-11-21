@@ -12,7 +12,13 @@
 offline without ever showing one user another user's data, keep installed apps signed in, show a
 real maintenance screen, and switch the service worker off on every device with one command.
 
-[Documentation](https://nyoncode.github.io/laravel-pwa/) · [Čeština](README.cs.md) · [Changelog](CHANGELOG.md) · [Upgrade guide](UPGRADE.md)
+[Documentation](https://nyoncode.github.io/laravel-pwa/) · [Live demo](https://nyoncode.github.io/laravel-pwa/demo/) · [Čeština](README.cs.md) · [Changelog](CHANGELOG.md) · [Upgrade guide](UPGRADE.md)
+
+| Update toast | Offline: cached page | Offline: never opened | iPhone install |
+| --- | --- | --- | --- |
+| ![A new version is available, with Later and Update](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/update-toast.png) | ![A page opened before, served from the cache with the offline bar](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/offline-cached.png) | ![The offline screen with Try again](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/offline.png) | ![Share, then Add to Home Screen](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/ios-install.png) |
+
+Screenshots from the [live demo](https://nyoncode.github.io/laravel-pwa/demo/), a static copy of an app with the package installed.
 
 ## Quick start
 
@@ -126,7 +132,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | | [Offline](docs/en/offline.md) | [Push notifications](docs/en/push.md) | [Troubleshooting](docs/en/troubleshooting.md) |
 | | [Persistent login](docs/en/session.md) | [AI agents](docs/en/ai.md) | [Testing](docs/en/testing.md) |
 | | [Maintenance](docs/en/maintenance.md) | | [Versioning](docs/en/versioning.md) |
-| | [Kill switch](docs/en/kill-switch.md) | | |
+| | [Kill switch](docs/en/kill-switch.md) | [Recipes: starter kits, Fortify, Filament](docs/en/recipes.md) | |
 
 The documentation is also available in [Czech](docs/cs/index.md).
 

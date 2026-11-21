@@ -10,6 +10,9 @@ app at one address. On desktop it runs in its own window with Back and Reload bu
 tablets it runs full screen. It works without a connection, survives maintenance mode, and the
 installed app stays signed in.
 
+Try it in the [live demo](https://nyoncode.github.io/laravel-pwa/demo/): install it, go offline and accept
+an update.
+
 It supports Laravel 12 and 13 and PHP 8.2+. It is built on
 [`nyoncode/laravel-package-toolkit`](https://github.com/NyonCode/laravel-package-toolkit).
 

@@ -10,7 +10,13 @@
 připojení a nikdy neukáže jednomu uživateli data jiného, nainstalovaná zůstane přihlášená, má
 skutečnou obrazovku údržby a service worker jde jedním příkazem vypnout na všech zařízeních.
 
-[Dokumentace](https://nyoncode.github.io/laravel-pwa/cs/) · [English](README.md) · [Changelog](CHANGELOG.md) · [Upgrade](UPGRADE.md)
+[Dokumentace](https://nyoncode.github.io/laravel-pwa/cs/) · [Živé demo](https://nyoncode.github.io/laravel-pwa/demo/) · [English](README.md) · [Changelog](CHANGELOG.md) · [Upgrade](UPGRADE.md)
+
+| Toast aktualizace | Offline: uložená stránka | Offline: neotevřená stránka | Instalace na iPhonu |
+| --- | --- | --- | --- |
+| ![Je k dispozici nová verze, s tlačítky Později a Aktualizovat](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/update-toast.png) | ![Dříve otevřená stránka z cache s lištou offline](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/offline-cached.png) | ![Offline obrazovka s tlačítkem Zkusit znovu](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/offline.png) | ![Sdílet a pak Přidat na plochu](https://raw.githubusercontent.com/NyonCode/laravel-pwa/main/.github/media/ios-install.png) |
+
+Snímky z [živého dema](https://nyoncode.github.io/laravel-pwa/demo/) (anglicky), statické kopie aplikace s nainstalovaným balíčkem.
 
 ## Rychlý start
 
@@ -121,7 +127,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | | [Offline](docs/cs/offline.md) | [Push notifikace](docs/cs/push.md) | [Řešení problémů](docs/cs/troubleshooting.md) |
 | | [Trvalé přihlášení](docs/cs/session.md) | [AI agenti](docs/cs/ai.md) | [Testování](docs/cs/testing.md) |
 | | [Údržba](docs/cs/maintenance.md) | | [Verzování](docs/cs/versioning.md) |
-| | [Nouzové vypnutí](docs/cs/kill-switch.md) | | |
+| | [Nouzové vypnutí](docs/cs/kill-switch.md) | [Recepty: startovací sady, Fortify, Filament](docs/cs/recipes.md) | |
 
 ## Podpora verzí
 

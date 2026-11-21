@@ -14,5 +14,4 @@ composer.lock
 /coverage
 docs/.vitepress/cache
 docs/.vitepress/dist
-
 docs/public/demo
