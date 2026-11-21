@@ -83,7 +83,7 @@ composer check           # Pint, Rector, PHPStan (level max), Pest, MCP self-tes
 composer test:coverage   # Pest with coverage (pcov), fails below 90%
 npm run test:js          # service worker and client unit tests (node:test)
 npm run lint:js          # ESLint
-npm run test:e2e         # Playwright (Chromium + Firefox) against the workbench
+npm run test:e2e         # Playwright (Chromium, Firefox, WebKit, iPhone) against the workbench
 ```
 
 A single test: `vendor/bin/pest --filter="name"` or `node --test tests/js/sw/runtime.test.mjs`.
@@ -114,11 +114,22 @@ install.
 `tests/e2e/pwa.spec.mjs` (`@playwright/test`) starts the workbench itself and checks: service
 worker registration, precaching, caching of allowed pages only, the offline screen, the offline
 queue and its replay, keep-alive, maintenance mode (503, the cache stays), and `pwa:disable` and
-`pwa:enable`. The offline tests (`@offline`) run only in Chromium, because Playwright in Firefox
-does not throttle service worker requests.
+`pwa:enable`. `update.spec.mjs` deploys a new worker and accepts it in `<x-pwa::update-toast/>`,
+`push.spec.mjs` delivers a push to the real worker, `ios.spec.mjs` checks the iPhone install steps.
+
+| Project | Runs |
+| --- | --- |
+| `chromium` | everything except `@ios`; push only here (CDP) |
+| `firefox` | everything except `@offline` (Playwright's offline mode skips worker requests) and `@ios` |
+| `webkit` | everything except `@ios` (Desktop Safari engine) |
+| `iphone` | only `@ios`: iPhone Safari outside the Home Screen app |
+
+Playwright's WebKit build exposes the push API, but `pushManager.getSubscription()` there blocks the
+next navigation. The client calls the push API only on devices that subscribed, and the iPhone
+project removes `PushManager`, as Safari does outside the Home Screen app.
 
 ```bash
-npx playwright install chromium firefox
+npx playwright install chromium firefox webkit
 npm run test:e2e
 ```
 

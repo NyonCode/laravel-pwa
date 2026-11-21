@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   playwright:
-    name: Playwright (Chromium, Firefox)
+    name: Playwright (Chromium, Firefox, WebKit, iPhone)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -35,7 +35,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npx playwright install --with-deps chromium firefox
+      - run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Browser tests against the workbench
         run: npm run test:e2e

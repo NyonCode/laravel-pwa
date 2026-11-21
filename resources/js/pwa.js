@@ -385,7 +385,8 @@ const saveSubscription = async (subscription) => {
 const pushState = async () => {
   if (!pushSupported()) return C.push && isIos() && !isInstalled() ? 'install-required' : 'unsupported';
   if (pushPermission() === 'denied') return 'denied';
-  return (await currentSubscription()) && store.get('push') ? 'subscribed' : 'unsubscribed';
+  // Only a device that subscribed through this app can be subscribed: skip the push API otherwise.
+  return store.get('push') && (await currentSubscription()) ? 'subscribed' : 'unsubscribed';
 };
 
 /** Asks for permission and subscribes. Call it from a click: browsers refuse the prompt otherwise. */
