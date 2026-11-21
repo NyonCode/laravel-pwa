@@ -336,6 +336,29 @@ describe('identity outside navigations (Inertia, Livewire)', () => {
     assert.equal(await worker.self.PwaWorker.currentUser(), ALICE);
   });
 
+  it('ignores identity headers of a same-origin request redirected to another origin', async () => {
+    const worker = createWorker({ config: apiRules });
+    await signIn(worker);
+
+    const redirected = (type) => {
+      const response = json({}, { 'X-PWA-Logout': '1', 'X-PWA-User': BOB });
+      Object.defineProperty(response, 'url', { value: 'https://evil.example.com/landing' });
+      Object.defineProperty(response, 'redirected', { value: true });
+      Object.defineProperty(response, 'type', { value: type });
+      return response;
+    };
+
+    for (const type of ['cors', 'basic']) {
+      worker.network(() => redirected(type));
+      await worker.fetchEvent('/api/out');
+      await post(worker, '/items');
+      await post(worker, '/logout');
+    }
+
+    assert.equal(await worker.self.PwaWorker.currentUser(), ALICE);
+    assert.ok(!worker.messages.some((m) => m.type === 'logout'));
+  });
+
   it('passes never_cache requests through without storing or queueing them', async () => {
     const worker = createWorker();
 

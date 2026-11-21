@@ -108,9 +108,15 @@
     }
   };
 
-  // Only our own server may change the identity (a foreign CORS response could expose the headers).
+  // Only our own server may change the identity. Checked on the final response, not the request:
+  // a same-origin request can be redirected elsewhere, and a CORS response may expose the headers.
+  const ownResponse = (request, response) => {
+    if (['cors', 'opaque', 'opaqueredirect', 'error'].includes(response.type)) return false;
+    return sameOrigin(new URL(response.url || request.url));
+  };
+
   const observeFrom = async (request, response) => {
-    if (sameOrigin(new URL(request.url))) await observeIdentity(response);
+    if (ownResponse(request, response)) await observeIdentity(response);
   };
 
   /* ------------------------------------------------------------------ *
@@ -458,7 +464,7 @@
     const network = (async () => {
       const preloaded = await event.preloadResponse;
       const response = preloaded || (await fetch(request));
-      await observeIdentity(response);
+      await observeFrom(request, response);
 
       if (response.status === 503) {
         await maintenance(response);
@@ -493,7 +499,7 @@
     try {
       const response = await fetch(request);
       // XHR logins and logouts (Inertia, Livewire) never navigate: read the identity here too.
-      await observeIdentity(response);
+      await observeFrom(request, response);
       return response;
     } catch {
       await queuePush(copy);
@@ -507,7 +513,7 @@
 
   const passThrough = async (request) => {
     const response = await fetch(request);
-    await observeIdentity(response);
+    await observeFrom(request, response);
     return response;
   };
 
