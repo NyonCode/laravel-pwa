@@ -49,7 +49,8 @@ jobs:
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 
       - name: Pest
-        run: vendor/bin/pest --ci --parallel
+        # Serial: tests share the testbench skeleton (public/build, bootstrap/cache/pwa).
+        run: vendor/bin/pest --ci
 
   coverage:
     name: Coverage

@@ -47,7 +47,7 @@ Code comments, docs and `composer.json` are in Czech; `AGENTS.md` and `ai/` are 
 
 ```bash
 composer check             # Pint --test, Rector --dry-run, PHPStan, Pest, MCP self-test
-composer test              # Pest + Testbench (CI: vendor/bin/pest --ci --parallel)
+composer test              # Pest + Testbench (CI: vendor/bin/pest --ci; serial, tests share testbench paths)
 vendor/bin/pest tests/Feature/ManifestTest.php      # one file
 vendor/bin/pest --filter="serves a valid manifest"  # one test
 composer test:coverage     # pcov, fails below 90 %
