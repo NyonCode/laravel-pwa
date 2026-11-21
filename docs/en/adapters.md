@@ -1,6 +1,6 @@
 ---
 title: Livewire and Inertia
-description: How the client handles network failures, the queue, maintenance mode, 419s and returning to the app in Livewire 3 and Inertia.
+description: How the client handles network failures, the queue, maintenance mode, 419s and returning to the app in Livewire 3 and 4 and Inertia.
 ---
 
 # Livewire and Inertia
@@ -9,20 +9,24 @@ Livewire and Inertia both load data through `fetch`/XHR, not navigation. So the 
 show them the offline screen or the maintenance screen, and their own error dialogs would display raw
 HTML. The package client includes two small adapters.
 
-| Situation | Livewire 3 | Inertia |
+| Situation | Livewire 3 and 4 | Inertia |
 | --- | --- | --- |
 | network failure | "You are offline" banner, default dialog suppressed | banner, `inertia:exception` suppressed |
-| queued action (202) | – (Livewire paths are in `never_cache`) | banner, `pwa:queue` |
+| queued action (202) | – (Livewire requests are never queued) | banner, `pwa:queue` |
 | 503 maintenance mode | `location.reload()` → maintenance screen | same |
 | 419 CSRF | new token, `pwa:csrf-refreshed`, "Page expired" dialog suppressed | new token; automatic retry only via `fetch` and `window.axios` |
 | returning to the app | `pwa:resume` | `pwa:resume`, plus `router.reload()` with `adapters.reload_on_resume` |
 
-## Livewire 3
+## Livewire
 
-The adapter turns on at `livewire:init` and uses `Livewire.hook('request', ({ fail }) => …)`.
-`/livewire/*` is in `cache.never_cache`: the service worker only passes Livewire requests through to the
-network (reading the user identity from them), and never caches or queues them (component state might
-no longer match when a request is sent late).
+The adapter turns on at `livewire:init`. In Livewire 4 it uses `Livewire.interceptRequest()`
+(`onError` for 419 and 503, `onFailure` for the network); in Livewire 3, `Livewire.hook('request')`.
+After a 419 the client also updates the `data-csrf` attribute of the Livewire script tag.
+
+The service worker passes Livewire requests through to the network (reading the user identity from
+them) and never caches or queues them: component state might no longer match when a request is sent
+late. It recognises them by the `X-Livewire` header, so this also holds for the Livewire 4 address
+`/livewire-{hash}/update`; `cache.never_cache` lists both `/livewire/*` and `/livewire-*`.
 
 Offline state in templates: the built-in `wire:offline` keeps working.
 

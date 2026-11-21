@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+- Livewire 4: the service worker could queue a Livewire update while offline and replay it later with
+  a stale snapshot, because Livewire 4 posts to `/livewire-{hash}/update`, which the default
+  `never_cache` (`/livewire/*`) did not cover. Requests with the `X-Livewire` header are now never
+  queued, and `never_cache` also lists `/livewire-*`.
+- Livewire 4: the adapter uses `Livewire.interceptRequest()` instead of the deprecated
+  `Livewire.hook('request')` (Livewire 3 keeps the hook).
+- After a 419, the refreshed CSRF token also goes to the `data-csrf` attribute, which Livewire reads
+  when the page has no `csrf-token` meta tag.
+
 ## [1.0.0] - 2026-11-21
 
 The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.

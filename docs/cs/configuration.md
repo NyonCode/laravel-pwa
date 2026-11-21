@@ -159,7 +159,7 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `telemetry.enabled` | bool | `true` | Posílat chyby service workeru na `/pwa/telemetry`. |
 | `telemetry.channel` | ?string | `null` | Log kanál; neexistující kanál = výchozí log. |
 | `telemetry.max_events` | int | `20` | Max. událostí v jednom požadavku. |
-| `adapters.livewire` | bool | `true` | Adaptér pro Livewire 3. |
+| `adapters.livewire` | bool | `true` | Adaptér pro Livewire 3 a 4. |
 | `adapters.inertia` | bool | `true` | Adaptér pro Inertia. |
 | `adapters.reload_on_resume` | bool | `false` | Inertia `reload()` po návratu do aplikace. |
 

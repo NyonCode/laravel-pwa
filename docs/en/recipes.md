@@ -48,7 +48,7 @@ buttons in React or Vue components, use the `usePwa` hook from [Blade components
 ### Livewire
 
 Put `<x-pwa::head/>` in the shared `<head>` (in the Livewire kit, `resources/views/partials/head.blade.php`).
-The login is a Livewire component, so its form posts to `/livewire/update`, not to a login route:
+The login is a Livewire component, so its form posts to Livewire's update endpoint, not to a login route:
 set the default of `remember` instead of using the `pwa.remember` middleware.
 
 ```php
@@ -104,7 +104,7 @@ return $panel
 ```
 
 `pwa.cache` lets the worker keep copies of the panel pages for each user; actions and table updates
-go to `/livewire/update`, which is never cached, so they need a connection. To keep the installed
+go to Livewire's update endpoint, which is never cached or queued, so they need a connection. To keep the installed
 panel signed in, tick "remember me" by default in a custom login page (`->login(Login::class)`), in
 the same way as the Livewire recipe: fill the form's `remember` field with
 `Pwa::isStandaloneClient()` after the parent's `mount()`.

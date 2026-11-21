@@ -40,7 +40,7 @@ Breeze / Jetstream: `LoginRequest` čte `$this->boolean('remember')`, takže sta
 Inertia (`useForm({ remember: false })`) posílá `false` vždy: výchozí hodnotu nastavte podle
 klienta, např. `remember: window.Pwa?.isInstalled() ?? false`.
 Fortify: přidejte middleware do `config/fortify.php` (`'middleware' => ['web', 'pwa.remember']`).
-Přihlášení přes Livewire jde na `/livewire/update`: nastavte `remember` v komponentě ([Recepty](recipes.md#livewire)).
+Přihlášení přes Livewire jde na endpoint Livewire: nastavte `remember` v komponentě ([Recepty](recipes.md#livewire)).
 
 Vypnutí: `session.standalone_remember = false`.
 

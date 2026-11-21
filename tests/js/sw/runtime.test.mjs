@@ -269,6 +269,16 @@ describe('offline queue', () => {
     assert.equal(worker.messages.filter((m) => m.type === 'queue').at(-1).count, 1);
   });
 
+  it('never queues a Livewire update, also at the Livewire 4 address', async () => {
+    const worker = createWorker({ config: { neverCache: ['/livewire/*'] } }); // an older never_cache list
+
+    await assert.rejects(
+      worker.fetchEvent('/livewire-3f9a2c1b/update', { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', 'X-Livewire': '1' } }),
+      /Failed to fetch/,
+    );
+    assert.ok(!worker.messages.some((m) => m.type === 'queued'));
+  });
+
   it('does not queue when the queue is disabled', async () => {
     const worker = createWorker({ config: { queue: false } });
 
