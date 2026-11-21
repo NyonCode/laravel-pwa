@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\File;
 
 it('reports problems and fails in ci mode', function (): void {
     $this->artisan('pwa:doctor')
-        ->expectsOutputToContain('Ikona 192×192')
+        ->expectsOutputToContain('Icon 192×192')
         ->assertSuccessful();
 
     $this->artisan('pwa:doctor', ['--ci' => true])->assertFailed();
@@ -24,7 +24,7 @@ it('passes the icon checks once icons exist', function (): void {
 it('flags a static public/sw.js that would survive the kill switch', function (): void {
     File::put(public_path('sw.js'), '// static');
 
-    $this->artisan('pwa:doctor')->expectsOutputToContain('public/sw.js neexistuje');
+    $this->artisan('pwa:doctor')->expectsOutputToContain('public/sw.js does not exist');
 
     File::delete(public_path('sw.js'));
 });
@@ -33,7 +33,7 @@ it('flags a built worker that no longer matches the config', function (): void {
     $this->artisan('pwa:build')->assertSuccessful();
     config(['pwa.cache.navigation_timeout' => 9]);
 
-    $this->artisan('pwa:doctor')->expectsOutputToContain('Sestavený SW je aktuální')->assertSuccessful();
+    $this->artisan('pwa:doctor')->expectsOutputToContain('Built service worker is up to date')->assertSuccessful();
     $this->artisan('pwa:doctor', ['--ci' => true])->assertFailed();
 });
 
@@ -42,9 +42,9 @@ it('checks sw.import files', function (): void {
     config(['pwa.sw.import' => ['/push-sw.js', '/missing.js', 'https://cdn.example.com/x.js']]);
 
     $this->artisan('pwa:doctor')
-        ->expectsOutputToContain('sw.import /push-sw.js existuje')
-        ->expectsOutputToContain('sw.import /missing.js existuje')
-        ->expectsOutputToContain('je z jiné domény')
+        ->expectsOutputToContain('sw.import /push-sw.js exists')
+        ->expectsOutputToContain('sw.import /missing.js exists')
+        ->expectsOutputToContain('is on another domain')
         ->assertSuccessful();
 
     File::delete(public_path('push-sw.js'));

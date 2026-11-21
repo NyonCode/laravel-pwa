@@ -8,8 +8,8 @@ use Illuminate\Auth\Events\Logout;
 use NyonCode\LaravelPwa\Http\Middleware\PwaWebMiddleware;
 
 /**
- * Po odhlášení označí požadavek; PwaWebMiddleware pak service workeru
- * pošle X-PWA-Logout a ten smaže cache a frontu tohoto uživatele.
+ * Marks the request after logout; PwaWebMiddleware then sends the service worker
+ * X-PWA-Logout, which clears this user's cache and queue.
  */
 class MarkLogout
 {

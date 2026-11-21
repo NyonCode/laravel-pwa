@@ -33,6 +33,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - GitHub Actions for Pest (PHP 8.2–8.5 × Laravel 12/13 × lowest/stable), coverage (minimum 90 %),
   PHPStan, Pint, Rector, `composer audit`, ESLint, JS unit tests, e2e tests and releases from this file.
 - `composer check`, `composer test:coverage`, `composer rector`; contributor guide and issue templates.
+- English documentation in `docs/en` (now the primary language) with the full Czech translation in
+  `docs/cs`, an English README (`README.cs.md` in Czech) and `npm run docs:check`, which CI runs to
+  keep both languages in step (pages, heading outline, code blocks, links and anchors).
 
 ### Fixed
 - The manifest is built in the page's locale: with `pwa.locales` set, `<x-pwa::head/>` links
@@ -59,6 +62,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   removes the 0.1 caches on activation. See UPGRADE.md.
 - Invalid cache configuration fails `pwa:build` with a message naming the entry.
 - PHPStan level raised from 6 to 8.
+- Documentation moved from `docs/` to `docs/en` and `docs/cs`; the MCP server serves the English pages.
+- Artisan output, command descriptions, exception messages and code comments are in English.
+- English `composer.json` description and keywords, plus `support` links.
 
 ## [0.1.0] - 2026-11-21
 

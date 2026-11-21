@@ -57,26 +57,36 @@ it('speaks MCP over stdio', function (): void {
         ->and($api['result']['content'][0]['text'])->toContain('Pwa::cspHashes(string $view');
 })->skip(fn (): bool => nodeBinary() === null, 'node is not installed');
 
-it('lists every documentation page that exists, with front matter', function (): void {
+it('lists every documentation page in every language, with front matter', function (): void {
     $nav = json_decode(File::get(packagePath('docs/nav.json')), true);
-    $pages = collect($nav)->flatMap(fn (array $section) => $section['pages']);
+    $pages = collect($nav['sections'])->flatMap(fn (array $section) => $section['pages']);
 
-    expect($pages)->not->toBeEmpty();
+    expect($pages)->not->toBeEmpty()
+        ->and(array_keys($nav['languages']))->toBe(['en', 'cs'])
+        ->and($nav['default'])->toBe('en');
 
-    foreach ($pages as $page) {
-        $file = packagePath('docs/'.$page);
-        expect(File::exists($file))->toBeTrue("docs/{$page} is listed in nav.json but missing");
+    foreach (array_keys($nav['languages']) as $language) {
+        foreach ($pages as $page) {
+            $file = packagePath("docs/{$language}/{$page}");
+            expect(File::exists($file))->toBeTrue("docs/{$language}/{$page} is listed in nav.json but missing");
 
-        $source = File::get($file);
-        expect($source)->toMatch('/^---\n.*title: .+\n.*description: .+\n.*---/sU', "docs/{$page} needs title and description");
+            expect(File::get($file))->toMatch('/^---\n.*title: .+\n.*description: .+\n.*---/sU', "docs/{$language}/{$page} needs title and description");
+        }
+
+        $onDisk = collect(File::files(packagePath("docs/{$language}")))
+            ->map(fn ($file) => $file->getFilename())
+            ->filter(fn (string $name): bool => str_ends_with($name, '.md'));
+
+        expect($onDisk->diff($pages)->values()->all())->toBe([], "every docs/{$language}/*.md must be listed in nav.json");
     }
-
-    $onDisk = collect(File::files(packagePath('docs')))
-        ->map(fn ($file) => $file->getFilename())
-        ->filter(fn (string $name): bool => str_ends_with($name, '.md'));
-
-    expect($onDisk->diff($pages)->values()->all())->toBe([], 'every docs/*.md must be listed in nav.json');
 });
+
+it('passes the documentation check (parity, links, anchors)', function (): void {
+    $process = new Process([nodeBinary(), packagePath('scripts/docs-check.mjs')], timeout: 20);
+    $process->run();
+
+    expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput());
+})->skip(fn (): bool => nodeBinary() === null, 'node is not installed');
 
 it('keeps the agent guide in step with the code', function (): void {
     $guide = File::get(packagePath('ai/AGENTS.md'));

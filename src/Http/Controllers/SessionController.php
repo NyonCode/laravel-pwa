@@ -14,8 +14,8 @@ use NyonCode\LaravelPwa\Pwa;
 class SessionController
 {
     /**
-     * Keep-alive: projde web middleware, takže prodlouží session. Vrací čerstvý
-     * CSRF token pro formuláře a fetch po návratu z pozadí.
+     * Keep-alive: runs through the web middleware, so it extends the session. Returns a fresh
+     * CSRF token for forms and fetch after returning from the background.
      */
     public function session(Request $request, Pwa $pwa): JsonResponse
     {
@@ -37,7 +37,7 @@ class SessionController
     }
 
     /**
-     * Chyby ze service workeru a klienta. Bez osobních údajů, jen technická data.
+     * Errors from the service worker and the client. No personal data, only technical details.
      */
     public function telemetry(Request $request): JsonResponse
     {

@@ -61,12 +61,12 @@ class PwaServiceProvider extends PackageServiceProvider
                 ->publishConfig()
                 ->afterInstallation(function (InstallCommand $command): void {
                     $command->newLine();
-                    $command->line('  Další kroky:');
-                    $command->line('  1. Do <head> layoutu vložte <x-pwa::head/> (a případně <x-pwa::nav/>, <x-pwa::install/>).');
-                    $command->line('  2. Ikony: php artisan pwa:icons resources/pwa/icon.png');
-                    $command->line('  3. Na login routu přidejte middleware pwa.remember, na offline stránky pwa.cache.');
-                    $command->line('  4. Do deploy skriptu za `npm run build` přidejte `php artisan pwa:build`.');
-                    $command->line('  5. Zkontrolujte vše: php artisan pwa:doctor');
+                    $command->line('  Next steps:');
+                    $command->line('  1. Add <x-pwa::head/> to the <head> of your layout (optionally also <x-pwa::nav/> and <x-pwa::install/>).');
+                    $command->line('  2. Icons: php artisan pwa:icons resources/pwa/icon.png');
+                    $command->line('  3. Add the pwa.remember middleware to your login route and pwa.cache to the pages that should work offline.');
+                    $command->line('  4. Add `php artisan pwa:build` to your deploy script after `npm run build`.');
+                    $command->line('  5. Check everything: php artisan pwa:doctor');
                 }));
     }
 

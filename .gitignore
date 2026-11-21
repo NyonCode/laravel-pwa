@@ -12,3 +12,5 @@ composer.lock
 /playwright-report
 /blob-report
 /coverage
+docs/.vitepress/cache
+docs/.vitepress/dist

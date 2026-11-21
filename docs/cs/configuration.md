@@ -64,7 +64,7 @@ Texty `name`, `short_name` a `description` jdou přeložit v
 | `theme.background` | hex | `#ffffff` | `background_color` (splash na Androidu), pozadí maskable a iOS ikony. |
 | `icons.source` | ?string | `null` | Výchozí zdroj pro `pwa:icons`. |
 | `icons.path` | string | `pwa/icons` | Složka ikon v `public/`. |
-| `icons.sizes` | list<int> | `[192, 512]` | Velikosti `icon-{size}.png`. |
+| `icons.sizes` | `list<int>` | `[192, 512]` | Velikosti `icon-{size}.png`. |
 | `icons.maskable_padding` | float | `0.1` | Okraj maskable ikony (bezpečná zóna je 80 %). |
 | `screenshots` | list | `[]` | Screenshoty pro bohatší instalační dialog (`src`, `sizes`, `type`, `form_factor`). |
 

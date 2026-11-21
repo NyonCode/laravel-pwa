@@ -2,8 +2,8 @@
 /**
  * MCP server for nyoncode/laravel-pwa.
  *
- * Answers questions about the package from the *installed* copy — the docs in
- * `docs/`, the agent guide in `ai/AGENTS.md`, signatures and docblocks parsed
+ * Answers questions about the package from the *installed* copy — the English
+ * docs in `docs/en/`, the agent guide in `ai/AGENTS.md`, signatures and docblocks parsed
  * out of `src/`, the keys of `config/pwa.php`, the artisan command signatures
  * and the browser client in `resources/js/pwa.js`. An agent asking
  * `describe_config` gets the default as it exists in the release it is coding
@@ -26,7 +26,8 @@ import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.resolve(here, '..', '..')
-const docsDir = path.join(packageRoot, 'docs')
+const navFile = path.join(packageRoot, 'docs', 'nav.json')
+const docsDir = path.join(packageRoot, 'docs', 'en')
 const srcDir = path.join(packageRoot, 'src')
 const guideFile = path.join(packageRoot, 'ai', 'AGENTS.md')
 const configFile = path.join(packageRoot, 'config', 'pwa.php')
@@ -75,12 +76,12 @@ function parseFrontMatter(source) {
  * The published pages, in navigation order.
  *
  * `docs/nav.json` is the table of contents; a page missing from it is not
- * served. If it cannot be read, every `.md` in `docs/` is served instead.
+ * served. If it cannot be read, every `.md` in `docs/en/` is served instead.
  */
 function publishedPages() {
   try {
-    const nav = JSON.parse(fs.readFileSync(path.join(docsDir, 'nav.json'), 'utf8'))
-    const files = nav.flatMap((section) => section.pages ?? [])
+    const nav = JSON.parse(fs.readFileSync(navFile, 'utf8'))
+    const files = (nav.sections ?? []).flatMap((section) => section.pages ?? [])
 
     return files.length > 0 ? files : null
   } catch {

@@ -1,6 +1,6 @@
 {
     "name": "nyoncode/laravel-pwa",
-    "description": "Progressive Web App pro Laravel: manifest, service worker, offline, údržba a trvalé přihlášení",
+    "description": "Production-grade PWA for Laravel: offline-first service worker with per-user caches and cache rules, persistent login, maintenance screen, kill switch and per-tenant manifests.",
     "type": "library",
     "keywords": [
         "laravel",
@@ -8,12 +8,26 @@
         "progressive-web-app",
         "service-worker",
         "offline",
+        "offline-first",
         "manifest",
-        "nyoncode",
-        "mcp",
-        "ai"
+        "web-app-manifest",
+        "installable",
+        "cache",
+        "livewire",
+        "inertia",
+        "ios",
+        "multi-tenant",
+        "maintenance-mode",
+        "mcp"
     ],
     "license": "MIT",
+    "homepage": "https://github.com/NyonCode/laravel-pwa",
+    "support": {
+        "issues": "https://github.com/NyonCode/laravel-pwa/issues",
+        "source": "https://github.com/NyonCode/laravel-pwa",
+        "docs": "https://nyoncode.github.io/laravel-pwa/",
+        "security": "https://github.com/NyonCode/laravel-pwa/security/policy"
+    },
     "authors": [
         {
             "name": "Ondřej Nyklíček",
@@ -79,10 +93,9 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "homepage": "https://github.com/NyonCode/laravel-pwa",
     "suggest": {
-        "ext-gd": "Generování ikon příkazem pwa:icons",
-        "ext-imagick": "Generování ikon ze SVG příkazem pwa:icons"
+        "ext-gd": "Required to generate icons from PNG with pwa:icons",
+        "ext-imagick": "Required to generate icons from SVG with pwa:icons"
     },
     "bin": [
         "bin/pwa-ai"

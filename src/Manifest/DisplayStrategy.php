@@ -7,17 +7,17 @@ namespace NyonCode\LaravelPwa\Manifest;
 use Illuminate\Http\Request;
 
 /**
- * Rozhoduje, jaký režim zobrazení dostane manifest.
+ * Decides which display mode the manifest gets.
  */
 enum DisplayStrategy: string
 {
-    /** display + display_override, bez detekce zařízení (výchozí). */
+    /** display + display_override, no device detection (default). */
     case Override = 'override';
 
-    /** Server rozhodne podle platformy (Sec-CH-UA-Platform / User-Agent). */
+    /** The server decides by platform (Sec-CH-UA-Platform / User-Agent). */
     case Adaptive = 'adaptive';
 
-    /** Jen display. */
+    /** Only display. */
     case Fixed = 'fixed';
 
     public static function fromConfig(): self
@@ -46,8 +46,8 @@ enum DisplayStrategy: string
     }
 
     /**
-     * Desktop = Windows, macOS, Linux, ChromeOS. Safari se hlásí vždy jako Mac
-     * (iPad také), proto bez Client Hints rozhoduje jen Windows / Linux / CrOS.
+     * Desktop = Windows, macOS, Linux, ChromeOS. Safari always reports itself as a Mac
+     * (the iPad too), so without Client Hints only Windows / Linux / CrOS are detected.
      */
     public static function isDesktop(Request $request): bool
     {

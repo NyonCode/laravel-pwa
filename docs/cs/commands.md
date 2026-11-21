@@ -46,7 +46,7 @@ Sestaví service worker do `{sw.compiled_path}/sw.js` z configu a Vite manifestu
 `npm run build`. Je napojený na `php artisan optimize`.
 
 ```
-  INFO  Service worker 1a2b3c4d5e6f sestaven (14 souborů v precache) → bootstrap/cache/pwa/sw.js.
+  INFO  Service worker 1a2b3c4d5e6f built (14 files precached) → bootstrap/cache/pwa/sw.js.
 ```
 
 Bez Vite manifestu varuje (precache pak obsahuje jen offline stránku). Neplatný Vite manifest = 1.

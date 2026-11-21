@@ -1,9 +1,9 @@
 /*
- * nyoncode/laravel-pwa — klient (načítá <x-pwa::head/>).
+ * nyoncode/laravel-pwa — browser client (loaded by <x-pwa::head/>).
  *
- * Registrace a aktualizace service workeru, instalace, keep-alive session
- * a CSRF, lišty offline/údržba a adaptéry pro Livewire a Inertia.
- * Veřejné API: window.Pwa.
+ * Service worker registration and updates, installation, session and CSRF
+ * keep-alive, offline/maintenance bars and adapters for Livewire and Inertia.
+ * Public API: window.Pwa.
  */
 const configEl = document.getElementById('pwa-config');
 const C = configEl ? JSON.parse(configEl.textContent || '{}') : {};
@@ -19,12 +19,12 @@ const store = {
     try { const v = localStorage.getItem(`pwa:${key}`); return v === null ? fallback : JSON.parse(v); } catch { return fallback; }
   },
   set(key, value) {
-    try { localStorage.setItem(`pwa:${key}`, JSON.stringify(value)); } catch { /* soukromý režim */ }
+    try { localStorage.setItem(`pwa:${key}`, JSON.stringify(value)); } catch { /* private mode */ }
   },
 };
 
 /* ---------------------------------------------------------------------- *
- * Režim zobrazení
+ * Display mode
  * ---------------------------------------------------------------------- */
 
 const MODES = ['window-controls-overlay', 'tabbed', 'fullscreen', 'standalone', 'minimal-ui'];
@@ -39,13 +39,13 @@ const isInstalled = () => displayMode() !== 'browser';
 const isIos = () =>
   /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1);
 
-// Nápověda pro server (RememberStandalone, PwaWebMiddleware).
+// A hint for the server (RememberStandalone, PwaWebMiddleware).
 const rememberMode = () => {
   document.cookie = `pwa_display=${displayMode()}; path=/; max-age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
 };
 
 /* ---------------------------------------------------------------------- *
- * Lišta (offline, údržba, aktualizace, fronta)
+ * Status bar (offline, maintenance, update, queue)
  * ---------------------------------------------------------------------- */
 
 let bar = null;
@@ -100,8 +100,8 @@ const unregisterAll = async () => {
 
 const offerUpdate = (worker) => {
   emit('update-available', { worker });
-  showBar(t('update', 'Je k dispozici nová verze.'), {
-    label: t('reload', 'Načíst'),
+  showBar(t('update', 'A new version is available.'), {
+    label: t('reload', 'Reload'),
     run: () => { acceptedUpdate = true; worker.postMessage({ type: 'SKIP_WAITING' }); },
   });
 };
@@ -134,11 +134,11 @@ const registerServiceWorker = async () => {
     if (data.source !== 'pwa') return;
     switch (data.type) {
       case 'maintenance':
-        showBar(t('maintenance', 'Probíhá údržba. Zkuste to za chvíli.'), null, 'warn');
+        showBar(t('maintenance', 'Maintenance in progress. Please try again shortly.'), null, 'warn');
         emit('maintenance', data);
         break;
       case 'offline':
-        showBar(t('offline', 'Jste offline. Změny se odešlou po připojení.'), null, 'warn');
+        showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn');
         emit('offline', data);
         break;
       case 'logout':
@@ -214,7 +214,7 @@ const installFetchRetry = () => {
   };
 };
 
-// Cílová adresa požadavku axios (stejně jako buildFullPath v axios): token jen na vlastní origin.
+// The axios request URL (like axios' buildFullPath): the token only goes to our own origin.
 const sameOriginAxios = (config) => {
   const url = String(config.url || '');
   const absolute = /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url);
@@ -226,7 +226,7 @@ const sameOriginAxios = (config) => {
   }
 };
 
-// axios z window (Laravel bootstrap.js): po 419 jednou zopakovat s novým tokenem.
+// axios from window (Laravel bootstrap.js): after a 419, retry once with a fresh token.
 const installAxiosRetry = () => {
   const axios = window.axios;
   if (!C.session?.refreshCsrf || !axios?.interceptors?.response) return;
@@ -310,7 +310,7 @@ document.addEventListener('click', (event) => {
 });
 
 /* ---------------------------------------------------------------------- *
- * Adaptéry: Livewire 3 a Inertia
+ * Adapters: Livewire 3 and Inertia
  * ---------------------------------------------------------------------- */
 
 const livewireAdapter = () => {
@@ -333,7 +333,7 @@ const inertiaAdapter = () => {
     const status = response?.status;
     const headers = response?.headers || {};
     const queued = headers['x-pwa-queued'] || (typeof headers.get === 'function' && headers.get('x-pwa-queued'));
-    if (queued) { event.preventDefault(); emit('queue', {}); showBar(t('offline', 'Jste offline. Změny se odešlou po připojení.'), null, 'warn'); }
+    if (queued) { event.preventDefault(); emit('queue', {}); showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn'); }
     else if (status === 503) { event.preventDefault(); location.reload(); }
   });
   document.addEventListener('inertia:exception', (event) => {

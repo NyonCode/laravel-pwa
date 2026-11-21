@@ -10,15 +10,15 @@ use NyonCode\LaravelPwa\Pwa;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Na přihlašovací routě: v nainstalované aplikaci zapne „zapamatovat mě“.
+ * On the login route: turns on "remember me" in the installed app.
  *
  *     Route::post('/login', ...)->middleware('pwa.remember');
  *
- * Laravel pak nastaví HttpOnly remember cookie ze serveru, kterou ITP na iOS
- * nemaže po 7 dnech (na rozdíl od úložiště zapsaného skriptem).
+ * Laravel then sets an HttpOnly remember cookie from the server, which ITP on iOS
+ * does not delete after 7 days (unlike storage written by a script).
  *
- * Rozhoduje jen signál klienta (hlavička / cookie), ne ?source=pwa ani session,
- * které se dají podstrčit odkazem. Pole odeslané výslovně jako false se nepřepisuje.
+ * Only the client signal (header / cookie) decides, not ?source=pwa or the session,
+ * which a link can plant. A field explicitly sent as false is not overwritten.
  */
 class RememberStandalone
 {

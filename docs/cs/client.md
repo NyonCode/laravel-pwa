@@ -25,10 +25,10 @@ description: window.Pwa – API, události pwa:*, lišty, instalace, badge a jak
 | `displayMode()` | string | `window-controls-overlay`, `tabbed`, `fullscreen`, `standalone`, `minimal-ui`, `browser` |
 | `isInstalled()` | bool | `displayMode() !== 'browser'` (na iOS i `navigator.standalone`) |
 | `isIos()` | bool | iPhone, iPod, iPad (i iPad hlásící se jako Mac) |
-| `install()` | Promise<string> | `accepted`, `dismissed`, `unavailable`; použije `navigator.install()` nebo uloženou výzvu |
+| `install()` | `Promise<string>` | `accepted`, `dismissed`, `unavailable`; použije `navigator.install()` nebo uloženou výzvu |
 | `update()` | Promise | ručně zkontroluje novou verzi SW |
-| `keepAlive()` | Promise<object\|null> | zavolá `/pwa/session` hned |
-| `version()` | Promise<string\|null> | verze aktivního SW |
+| `keepAlive()` | `Promise<object\|null>` | zavolá `/pwa/session` hned |
+| `version()` | `Promise<string\|null>` | verze aktivního SW |
 | `on(event, fn)` | function | posluchač bez prefixu `pwa:`; vrací funkci pro odhlášení |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
 | `badge.clear()` | Promise | |

@@ -101,7 +101,7 @@ describe('pwa:build', function (): void {
 describe('pwa:disable', function (): void {
     it('can be cancelled', function (): void {
         $this->artisan('pwa:disable')
-            ->expectsConfirmation('Opravdu vypnout service worker? Zařízení smažou cache a SW odregistrují při další návštěvě.', 'no')
+            ->expectsConfirmation('Are you sure you want to disable the service worker? Devices will clear the cache and unregister the SW on their next visit.', 'no')
             ->assertFailed();
 
         expect(app(Pwa::class)->killed())->toBeFalse();

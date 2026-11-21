@@ -1,6 +1,6 @@
 ---
 title: Blade komponenty
-description: <x-pwa::head/>, <x-pwa::nav/> a <x-pwa::install/> – co vykreslují, atributy a úpravy vzhledu.
+description: "<x-pwa::head/>, <x-pwa::nav/> a <x-pwa::install/> – co vykreslují, atributy a úpravy vzhledu."
 ---
 
 # Blade komponenty

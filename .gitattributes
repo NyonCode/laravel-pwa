@@ -18,3 +18,5 @@
 /playwright.config.mjs export-ignore
 /rector.php         export-ignore
 /CONTRIBUTING.md    export-ignore
+/scripts            export-ignore
+/docs/.vitepress    export-ignore

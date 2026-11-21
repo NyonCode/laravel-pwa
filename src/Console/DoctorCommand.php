@@ -14,12 +14,12 @@ use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
-#[AsCommand(name: 'pwa:doctor', description: 'Zkontroluje nastavení PWA (manifest, ikony, service worker, údržba, session)')]
+#[AsCommand(name: 'pwa:doctor', description: 'Check the PWA setup (manifest, icons, service worker, maintenance, session)')]
 class DoctorCommand extends Command
 {
-    protected $signature = 'pwa:doctor {--ci : Vrátit chybový kód při chybách (do deploy skriptu)}';
+    protected $signature = 'pwa:doctor {--ci : Return a failure exit code on errors (for deploy scripts)}';
 
-    protected $description = 'Zkontroluje nastavení PWA (manifest, ikony, service worker, údržba, session)';
+    protected $description = 'Check the PWA setup (manifest, icons, service worker, maintenance, session)';
 
     /** @var list<array{level: string, message: string}> */
     protected array $results = [];
@@ -35,8 +35,8 @@ class DoctorCommand extends Command
         foreach ($this->results as $result) {
             match ($result['level']) {
                 'ok' => $this->components->twoColumnDetail($result['message'], '<fg=green;options=bold>OK</>'),
-                'warn' => $this->components->twoColumnDetail($result['message'], '<fg=yellow;options=bold>VAROVÁNÍ</>'),
-                default => $this->components->twoColumnDetail($result['message'], '<fg=red;options=bold>CHYBA</>'),
+                'warn' => $this->components->twoColumnDetail($result['message'], '<fg=yellow;options=bold>WARN</>'),
+                default => $this->components->twoColumnDetail($result['message'], '<fg=red;options=bold>ERROR</>'),
             };
         }
 
@@ -45,8 +45,8 @@ class DoctorCommand extends Command
 
         $this->newLine();
         $errors > 0
-            ? $this->components->error("Chyby: {$errors}, varování: {$warnings}")
-            : $this->components->info("Bez chyb, varování: {$warnings}");
+            ? $this->components->error("Errors: {$errors}, warnings: {$warnings}")
+            : $this->components->info("No errors, warnings: {$warnings}");
 
         return $errors > 0 && $this->option('ci') ? self::FAILURE : self::SUCCESS;
     }
@@ -55,8 +55,8 @@ class DoctorCommand extends Command
     {
         $url = (string) config('app.url');
         $this->add(str_starts_with($url, 'https://') || app()->isLocal() ? 'ok' : 'error', "HTTPS (APP_URL = {$url})");
-        $this->add(config('pwa.enabled') ? 'ok' : 'warn', 'Service worker zapnutý v configu (pwa.enabled)');
-        $this->add($pwa->killed() ? 'error' : 'ok', 'Nouzové vypnutí neaktivní (pwa:enable)');
+        $this->add(config('pwa.enabled') ? 'ok' : 'warn', 'Service worker enabled in config (pwa.enabled)');
+        $this->add($pwa->killed() ? 'error' : 'ok', 'Kill switch inactive (pwa:enable)');
     }
 
     protected function checkManifest(Pwa $pwa): void
@@ -73,16 +73,16 @@ class DoctorCommand extends Command
         $this->add(($manifest['name'] ?? '') !== '' ? 'ok' : 'error', 'Manifest: name');
 
         $sizes = array_column($manifest['icons'] ?? [], 'sizes');
-        $this->add(in_array('192x192', $sizes, true) ? 'ok' : 'error', 'Ikona 192×192 (php artisan pwa:icons)');
-        $this->add(in_array('512x512', $sizes, true) ? 'ok' : 'error', 'Ikona 512×512 (php artisan pwa:icons)');
-        $this->add(in_array('maskable', array_column($manifest['icons'] ?? [], 'purpose'), true) ? 'ok' : 'warn', 'Maskable ikona pro Android');
+        $this->add(in_array('192x192', $sizes, true) ? 'ok' : 'error', 'Icon 192×192 (php artisan pwa:icons)');
+        $this->add(in_array('512x512', $sizes, true) ? 'ok' : 'error', 'Icon 512×512 (php artisan pwa:icons)');
+        $this->add(in_array('maskable', array_column($manifest['icons'] ?? [], 'purpose'), true) ? 'ok' : 'warn', 'Maskable icon for Android');
 
         $iconPath = trim((string) config('pwa.icons.path', 'pwa/icons'), '/');
-        $this->add(File::exists(public_path($iconPath.'/apple-touch-icon.png')) ? 'ok' : 'warn', 'apple-touch-icon pro iPhone a iPad');
+        $this->add(File::exists(public_path($iconPath.'/apple-touch-icon.png')) ? 'ok' : 'warn', 'apple-touch-icon for iPhone and iPad');
 
         $scope = (string) ($manifest['scope'] ?? '/');
         $start = (string) parse_url((string) ($manifest['start_url'] ?? '/'), PHP_URL_PATH);
-        $this->add(str_starts_with($start ?: '/', $scope) ? 'ok' : 'error', 'start_url leží uvnitř scope');
+        $this->add(str_starts_with($start ?: '/', $scope) ? 'ok' : 'error', 'start_url inside scope');
     }
 
     protected function checkServiceWorker(ServiceWorkerBuilder $builder): void
@@ -90,12 +90,12 @@ class DoctorCommand extends Command
         $swPath = ltrim((string) config('pwa.sw.url', '/sw.js'), '/');
         $this->add(
             File::exists(public_path($swPath)) ? 'error' : 'ok',
-            "public/{$swPath} neexistuje (jinak ho webserver vrací i po pwa:disable)",
+            "public/{$swPath} does not exist (otherwise the web server serves it even after pwa:disable)",
         );
 
         $this->add(
             File::exists(public_path((string) config('pwa.sw.vite_manifest', 'build/manifest.json'))) ? 'ok' : 'warn',
-            'Vite manifest pro precache (npm run build)',
+            'Vite manifest for precache (npm run build)',
         );
 
         if (! $this->checkCacheRules($builder)) {
@@ -103,22 +103,22 @@ class DoctorCommand extends Command
         }
 
         if (! $builder->isCompiled()) {
-            $this->add('warn', 'Service worker sestavený (php artisan pwa:build)');
+            $this->add('warn', 'Service worker built (php artisan pwa:build)');
         } else {
             $fresh = (string) ($builder->runtimeConfig()['version'] ?? '');
             $built = $builder->versionOf((string) File::get($builder->compiledPath()));
-            $this->add($fresh === $built ? 'ok' : 'error', "Sestavený SW je aktuální ({$built})");
+            $this->add($fresh === $built ? 'ok' : 'error', "Built service worker is up to date ({$built})");
         }
 
         foreach (['sw.import' => $builder->imports(), 'sw.extend' => $builder->extensions()] as $key => $scripts) {
             foreach ($scripts as $script) {
                 if (parse_url($script, PHP_URL_HOST) !== null) {
-                    $this->add('warn', "{$key} {$script} je z jiné domény");
+                    $this->add('warn', "{$key} {$script} is on another domain");
 
                     continue;
                 }
 
-                $this->add(File::exists(public_path(ltrim($script, '/'))) ? 'ok' : 'error', "{$key} {$script} existuje");
+                $this->add(File::exists(public_path(ltrim($script, '/'))) ? 'ok' : 'error', "{$key} {$script} exists");
             }
         }
     }
@@ -174,24 +174,24 @@ class DoctorCommand extends Command
 
         $this->add(
             $missing === [] ? 'ok' : 'warn',
-            $missing === [] ? 'Výjimky z údržby' : 'Výjimky z údržby chybí: '.implode(', ', $missing).' (bootstrap/app.php)',
+            $missing === [] ? 'Maintenance mode exceptions' : 'Maintenance mode exceptions missing: '.implode(', ', $missing).' (bootstrap/app.php)',
         );
     }
 
     protected function checkSession(): void
     {
-        $this->add(config('session.driver') === 'array' ? 'error' : 'ok', 'Session driver ukládá data ('.config('session.driver').')');
+        $this->add(config('session.driver') === 'array' ? 'error' : 'ok', 'Session driver persists data ('.config('session.driver').')');
 
         $hasRemember = collect(RouteFacade::getRoutes()->getRoutes())
             ->contains(fn (Route $route): bool => in_array('pwa.remember', $route->gatherMiddleware(), true));
-        $this->add($hasRemember ? 'ok' : 'warn', 'Middleware pwa.remember na přihlašovací routě');
+        $this->add($hasRemember ? 'ok' : 'warn', 'pwa.remember middleware on the login route');
 
         $hasCache = collect(RouteFacade::getRoutes()->getRoutes())
             ->contains(fn (Route $route): bool => in_array('pwa.cache', $route->gatherMiddleware(), true));
-        $this->add($hasCache ? 'ok' : 'warn', 'Některé stránky povolené pro offline (middleware pwa.cache)');
+        $this->add($hasCache ? 'ok' : 'warn', 'Some pages available offline (pwa.cache middleware)');
 
         $store = config('pwa.sw.kill_switch_store') ?? config('cache.default');
-        $this->add(in_array($store, ['file', 'array'], true) ? 'warn' : 'ok', "Úložiště nouzového vypnutí sdílené mezi servery ({$store})");
+        $this->add(in_array($store, ['file', 'array'], true) ? 'warn' : 'ok', "Kill switch store shared between servers ({$store})");
     }
 
     protected function add(string $level, string $message): void

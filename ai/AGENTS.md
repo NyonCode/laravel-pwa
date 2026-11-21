@@ -345,7 +345,7 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
     push subscriptions. The package sends only `"cache"` on purpose.
 11. **Session driver `array`/`cookie` or no shared cache store on multiple servers** → logouts,
     kill switch not seen by all servers.
-12. **Expecting push from this package** → there is none; see `docs/push.md`.
+12. **Expecting push from this package** → there is none; see `docs/en/push.md`.
 13. **Inertia `useForm({ remember: false })` on login** → the explicit `false` wins over `pwa.remember`,
     so the installed app is not remembered. Default it to `window.Pwa?.isInstalled() ?? false`.
 14. **`shared: true` on personal data** → the worker refuses `Cache-Control: private` and signed-in
@@ -373,4 +373,4 @@ Env: `PWA_ENABLED` (default: true unless `APP_ENV=local`), `PWA_NAME`, `PWA_SHOR
 
 MCP tools: `search_docs`, `list_docs`, `get_doc`, `list_api`, `describe_api`, `describe_config`,
 `list_commands`, `describe_client`. Self-test: `node vendor/nyoncode/laravel-pwa/ai/mcp/server.mjs --self-test`.
-Human documentation (Czech): `vendor/nyoncode/laravel-pwa/docs/`.
+Human documentation: `vendor/nyoncode/laravel-pwa/docs/en/` (English) and `docs/cs/` (Czech).

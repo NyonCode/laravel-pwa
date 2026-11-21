@@ -22,7 +22,7 @@ DevTools → Application → Manifest ukáže přesný důvod.
 
 ## Uživatelé vidí starou verzi
 
-1. `php artisan pwa:build` proběhl po `npm run build`? `pwa:doctor` hlásí „Sestavený SW je aktuální“.
+1. `php artisan pwa:build` proběhl po `npm run build`? `pwa:doctor` hlásí „Built service worker is up to date“.
 2. CDN necachuje `/sw.js`?
 3. Nová verze čeká, dokud uživatel neklikne „Načíst“ nebo nezavře všechna okna aplikace.
 4. V nouzi: `php artisan pwa:disable`, nasadit opravu, `php artisan pwa:enable`.

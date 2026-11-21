@@ -12,21 +12,21 @@ use ImagickPixel;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
-#[AsCommand(name: 'pwa:icons', description: 'Vygeneruje ikony PWA (any, maskable, apple-touch-icon) z jednoho obrázku')]
+#[AsCommand(name: 'pwa:icons', description: 'Generate the PWA icons (any, maskable, apple-touch-icon) from a single image')]
 class IconsCommand extends Command
 {
     protected $signature = 'pwa:icons
-        {source? : Zdrojový obrázek (PNG nebo SVG, ideálně 1024×1024)}
-        {--background= : Barva pozadí pro maskable a iOS ikonu (výchozí theme.background)}';
+        {source? : The source image (PNG or SVG, ideally 1024×1024)}
+        {--background= : Background color for the maskable and iOS icons (defaults to theme.background)}';
 
-    protected $description = 'Vygeneruje ikony PWA (any, maskable, apple-touch-icon) z jednoho obrázku';
+    protected $description = 'Generate the PWA icons (any, maskable, apple-touch-icon) from a single image';
 
     public function handle(): int
     {
         $source = (string) ($this->argument('source') ?? config('pwa.icons.source') ?? '');
 
         if ($source === '' || ! File::exists($source)) {
-            $this->components->error('Zdrojový obrázek nenalezen. Použití: php artisan pwa:icons resources/pwa/icon.png');
+            $this->components->error('Source image not found. Usage: php artisan pwa:icons resources/pwa/icon.png');
 
             return self::FAILURE;
         }
@@ -48,13 +48,13 @@ class IconsCommand extends Command
         $isSvg = strtolower(pathinfo($source, PATHINFO_EXTENSION)) === 'svg';
 
         if ($isSvg && ! extension_loaded('imagick')) {
-            $this->components->error('SVG vyžaduje rozšíření imagick. Použijte PNG nebo nainstalujte imagick.');
+            $this->components->error('SVG requires the imagick extension. Use a PNG or install imagick.');
 
             return self::FAILURE;
         }
 
         if (! extension_loaded('imagick') && ! extension_loaded('gd')) {
-            $this->components->error('Generování ikon vyžaduje rozšíření gd nebo imagick.');
+            $this->components->error('Generating icons requires the gd or imagick extension.');
 
             return self::FAILURE;
         }
@@ -66,7 +66,7 @@ class IconsCommand extends Command
         }
 
         $jobs['maskable-512.png'] = [512, $padding, $background];
-        $jobs['apple-touch-icon.png'] = [180, 0.08, $background]; // iOS neumí průhlednost
+        $jobs['apple-touch-icon.png'] = [180, 0.08, $background]; // iOS does not support transparency
         $jobs['favicon-32.png'] = [32, 0.0, null];
 
         try {
@@ -84,12 +84,12 @@ class IconsCommand extends Command
                 $this->components->twoColumnDetail('icon.svg', 'any');
             }
         } catch (Throwable $e) {
-            $this->components->error('Generování selhalo: '.$e->getMessage());
+            $this->components->error('Icon generation failed: '.$e->getMessage());
 
             return self::FAILURE;
         }
 
-        $this->components->info('Ikony uloženy do '.str_replace(base_path().'/', '', $target));
+        $this->components->info('Icons saved to '.str_replace(base_path().'/', '', $target));
 
         return self::SUCCESS;
     }
@@ -116,7 +116,7 @@ class IconsCommand extends Command
         $src = imagecreatefromstring((string) File::get($source));
 
         if (! $src instanceof GdImage) {
-            throw new \RuntimeException('Obrázek nejde načíst.');
+            throw new \RuntimeException('Unable to read the image.');
         }
 
         if ($size < 1) {

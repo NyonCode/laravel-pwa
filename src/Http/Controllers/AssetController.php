@@ -10,10 +10,10 @@ use NyonCode\LaravelPwa\Manifest\DisplayStrategy;
 use NyonCode\LaravelPwa\Pwa;
 
 /**
- * Manifest, service worker a klientský skript.
+ * Manifest, service worker and client script.
  *
- * Bez session middleware: žádné cookies, odpovědi jsou pro všechny stejné
- * (kromě adaptivního manifestu, který posílá Vary).
+ * No session middleware: no cookies, the responses are the same for everyone
+ * (except the adaptive manifest, which sends Vary).
  */
 class AssetController
 {
@@ -56,7 +56,7 @@ class AssetController
     {
         $builder = $pwa->serviceWorker();
 
-        // Nouzové vypnutí i lokální vypnutí: SW, který se sám odstraní.
+        // Kill switch or disabled locally: a SW that removes itself.
         $script = $pwa->enabled() ? $builder->contents() : $builder->killSwitch();
 
         return $this->conditional($request, $script, [
