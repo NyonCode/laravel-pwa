@@ -85,6 +85,11 @@ matching `CHANGELOG.md` section).
 `tests/Feature/AiTest.php` fails when a command, config section or `window.Pwa` member is not
 mentioned in `ai/AGENTS.md`, so update that file whenever you add one.
 
+Demo and media: `php scripts/demo-build.php` renders the static demo into `docs/public/demo`
+(gitignored; `docs.yml` builds it before VitePress) with the package configured for the scope
+`/laravel-pwa/demo/`; `scripts/demo/shim.js` stands in for the `X-PWA-Cache` header that GitHub Pages
+cannot send. `node scripts/media.mjs` takes the README screenshots from it into `.github/media`.
+
 ## Conventions
 
 - **Semantic Versioning from 1.0.** The public API is listed in `docs/en/versioning.md`; never break

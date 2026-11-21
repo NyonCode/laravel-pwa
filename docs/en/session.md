@@ -41,7 +41,8 @@ remember cookie from the server. Browsers keep cookies for 400 days at most.
 Breeze / Jetstream: `LoginRequest` reads `$this->boolean('remember')`, so the middleware is all you need.
 Inertia (`useForm({ remember: false })`) always sends `false`: set the default based on the client,
 for example `remember: window.Pwa?.isInstalled() ?? false`.
-Fortify: add the middleware to the `login.store` route (a custom route or `Fortify::ignoreRoutes()`).
+Fortify: add the middleware to `config/fortify.php` (`'middleware' => ['web', 'pwa.remember']`).
+Livewire logins post to `/livewire/update`: set `remember` in the component ([Recipes](recipes.md#livewire)).
 
 To turn it off: `session.standalone_remember = false`.
 

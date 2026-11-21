@@ -77,8 +77,9 @@ Route::middleware(['auth', 'pwa.cache'])->group(function () {
 });
 ```
 
-S Breeze, Jetstream nebo Fortify přidejte `pwa.remember` na jejich login routu (u Fortify přes
-`Fortify::authenticateThrough()` nebo vlastní routu). Viz [Trvalé přihlášení](session.md).
+Pro startovací sady, Jetstream a Fortify viz [Recepty](recipes.md): Fortify přijme middleware
+v `config/fortify.php`, přihlášení přes Livewire nastaví `remember` v komponentě. Viz také
+[Trvalé přihlášení](session.md).
 
 ## 5. Výjimky z údržby
 

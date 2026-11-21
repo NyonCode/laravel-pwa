@@ -9,6 +9,9 @@ description: Co balíček nyoncode/laravel-pwa dělá, z čeho se skládá a kde
 na jedné adrese, která na desktopu běží v okně s tlačítky Zpět a Obnovit, na telefonu a tabletu na
 celou obrazovku, funguje bez připojení, přežije údržbu a nainstalovaná zůstane přihlášená.
 
+Vyzkoušejte si ho v [živém demu](https://nyoncode.github.io/laravel-pwa/demo/): nainstalujte ho, přepněte
+se do offline režimu a přijměte aktualizaci.
+
 Podporuje Laravel 12 a 13 a PHP 8.2+. Postavený je na
 [`nyoncode/laravel-package-toolkit`](https://github.com/NyonCode/laravel-package-toolkit).
 

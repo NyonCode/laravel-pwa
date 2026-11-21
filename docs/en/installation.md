@@ -77,8 +77,9 @@ Route::middleware(['auth', 'pwa.cache'])->group(function () {
 });
 ```
 
-With Breeze, Jetstream or Fortify, add `pwa.remember` to their login route (for Fortify, via
-`Fortify::authenticateThrough()` or your own route). See [Persistent login](session.md).
+With the starter kits, Jetstream or Fortify, see [Recipes](recipes.md): Fortify takes the middleware
+in `config/fortify.php`, Livewire logins set `remember` in the component. See also
+[Persistent login](session.md).
 
 ## 5. Maintenance mode exceptions
 
