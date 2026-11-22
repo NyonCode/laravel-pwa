@@ -19,7 +19,7 @@
     },
     {
       "title": { "en": "Operations", "cs": "Provoz" },
-      "pages": ["commands.md", "deployment.md", "security.md", "versioning.md", "platforms.md", "troubleshooting.md"]
+      "pages": ["commands.md", "deployment.md", "security.md", "versioning.md", "roadmap.md", "platforms.md", "troubleshooting.md"]
     },
     {
       "title": { "en": "Development", "cs": "Vývoj" },

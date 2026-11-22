@@ -145,7 +145,8 @@ The documentation is also available in [Czech](docs/cs/index.md).
 
 The package follows [Semantic Versioning](docs/en/versioning.md): minor releases never break the
 public API. Laravel 11 and older are end of life and not supported. Every release is tested against
-the lowest and the latest dependencies on every supported PHP and Laravel version.
+the lowest and the latest dependencies on every supported PHP and Laravel version. What comes next is in
+the [roadmap](docs/en/roadmap.md).
 
 ## AI agents and MCP
 
