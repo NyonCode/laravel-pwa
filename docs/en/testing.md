@@ -133,11 +133,29 @@ npx playwright install chromium firefox webkit
 npm run test:e2e
 ```
 
+### Starter kits
+
+`scripts/starter-kit.sh <livewire|react|vue> [12|13]` creates a fresh Laravel starter kit, installs the
+package from this checkout and applies the documented setup (`tests/starter-kits/setup.php`: head
+component, `pwa.cache` on the dashboard, maintenance exceptions, push with `HasPushSubscriptions`, icons).
+Then it runs `pwa:doctor --ci` and `tests/starter-kits/smoke.spec.mjs` in Chromium against `php artisan
+serve`: manifest and worker, sign-in and keep-alive, the dashboard offline and the offline screen, a form
+sent offline (queued and replayed in Inertia, "not sent" in Livewire) and cleanup on logout.
+
+```bash
+npm run test:kits -- react 13
+```
+
+The kits bring their own configs and frontend stacks, which the workbench cannot: the 500 from
+`/pwa/session` fixed in 1.0.2 showed up only there. The app is created outside the checkout
+(`$TMPDIR/laravel-pwa-kits`); a setup step that no longer changes its file fails, so a reshaped kit is
+noticed.
+
 ### CI
 
 GitHub Actions: `tests.yml` (Pest on PHP 8.2–8.5 × Laravel 12/13 × lowest/stable, plus coverage),
 `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml` (ESLint and unit
-tests on Node 20/22/24), `e2e.yml` (Playwright), `mutation.yml` (weekly and on demand: Pest mutation
+tests on Node 20/22/24), `e2e.yml` (Playwright), `starter-kits.yml` (the smoke test in the Livewire, React and Vue kits on Laravel 12 and 13; weekly too), `mutation.yml` (weekly and on demand: Pest mutation
 testing of the push, manifest, service worker and HTTP code) and `release.yml` (a `v*` tag creates a
 release from `CHANGELOG.md`). `tests/ArchTest.php` keeps the API boundaries: contracts are interfaces,
 events are final, the source is strictly typed and classes outside the public API are `@internal`.

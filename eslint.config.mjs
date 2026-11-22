@@ -18,7 +18,7 @@ export default [
     languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { ...globals.node } },
   },
   {
-    files: ['tests/e2e/**/*.mjs', 'scripts/media.mjs'],
+    files: ['tests/e2e/**/*.mjs', 'tests/starter-kits/**/*.mjs', 'scripts/media.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
