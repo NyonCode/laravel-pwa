@@ -1,0 +1,88 @@
+name: starter kits
+
+# The package inside fresh Laravel starter kits (Livewire, React, Vue) on Laravel 12 and 13, set up
+# as the documentation says, then pwa:doctor --ci and a Playwright smoke test. It catches what the
+# workbench cannot: the kits' own configs, layouts, login flows and frontend stacks.
+# Locally: scripts/starter-kit.sh <livewire|react|vue> [12|13]
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'resources/**'
+      - 'routes/**'
+      - 'config/**'
+      - 'lang/**'
+      - 'database/**'
+      - 'composer.json'
+      - 'scripts/starter-kit.sh'
+      - 'tests/starter-kits/**'
+      - '.github/workflows/starter-kits.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'resources/**'
+      - 'routes/**'
+      - 'config/**'
+      - 'lang/**'
+      - 'database/**'
+      - 'composer.json'
+      - 'scripts/starter-kit.sh'
+      - 'tests/starter-kits/**'
+      - '.github/workflows/starter-kits.yml'
+  # The kits change upstream without a change here.
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kit:
+    name: ${{ matrix.kit }} · Laravel ${{ matrix.laravel }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        kit: [livewire, react, vue]
+        laravel: ['12', '13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: gd, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Starter kit, setup, doctor and smoke test
+        run: scripts/starter-kit.sh ${{ matrix.kit }} ${{ matrix.laravel }} "$RUNNER_TEMP/kit"
+
+      - name: Upload traces and logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: starter-kit-${{ matrix.kit }}-${{ matrix.laravel }}
+          path: |
+            test-results/starter-kits
+            ${{ runner.temp }}/kit/storage/logs
+          retention-days: 7
+          if-no-files-found: ignore

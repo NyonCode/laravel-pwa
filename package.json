@@ -9,6 +9,7 @@
   "scripts": {
     "test:js": "node --test --test-reporter=spec tests/js/*/*.test.mjs",
     "test:e2e": "playwright test",
+    "test:kits": "bash scripts/starter-kit.sh",
     "lint:js": "eslint .",
     "docs:check": "node scripts/docs-check.mjs",
     "docs:dev": "vitepress dev docs",

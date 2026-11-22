@@ -21,6 +21,7 @@ npx playwright install chromium firefox   # only for the browser tests
 | `npm run test:js` | Service worker and client unit tests (`node:test`) |
 | `npm run lint:js` | ESLint |
 | `npm run test:e2e` | Playwright against the workbench app (starts `testbench serve`) |
+| `npm run test:kits -- react 13` | A fresh starter kit (`livewire`, `react`, `vue`; Laravel 12 or 13) with the package, `pwa:doctor --ci` and a smoke test |
 | `npm run docs:check` | Both languages have the same pages and outline; links and anchors resolve |
 | `npm run docs:dev` | Documentation site with live reload (VitePress) |
 

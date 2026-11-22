@@ -60,6 +60,7 @@ npm run test:js            # node:test: tests/js/sw (runtime.js) and tests/js/cl
 node --test tests/js/sw/runtime.test.mjs            # one JS file
 npm run lint:js            # ESLint
 npm run test:e2e           # Playwright (Chromium, Firefox, WebKit, iPhone) against the workbench, starts testbench serve
+npm run test:kits -- react 13  # a starter kit with the package, pwa:doctor --ci and a smoke test (scripts/starter-kit.sh)
 npm run docs:check         # docs/en ↔ docs/cs parity, links, anchors (scripts/docs-check.mjs)
 vendor/bin/testbench serve --port=8123              # workbench demo app
 php anvil list             # package generators (make:command, make:controller, …)

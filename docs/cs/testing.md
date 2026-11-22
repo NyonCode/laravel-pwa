@@ -131,11 +131,28 @@ npx playwright install chromium firefox webkit
 npm run test:e2e
 ```
 
+### Starter kity
+
+`scripts/starter-kit.sh <livewire|react|vue> [12|13]` vytvoří čerstvý Laravel starter kit, nainstaluje
+balíček z tohoto checkoutu a provede nastavení podle dokumentace (`tests/starter-kits/setup.php`: head
+komponenta, `pwa.cache` na dashboardu, výjimky údržby, push s `HasPushSubscriptions`, ikony). Pak spustí
+`pwa:doctor --ci` a `tests/starter-kits/smoke.spec.mjs` v Chromiu proti `php artisan serve`: manifest
+a worker, přihlášení a keep-alive, dashboard offline a offline obrazovku, formulář odeslaný offline (v Inertia
+ve frontě a odeslaný po připojení, v Livewire „neodesláno“) a úklid po odhlášení.
+
+```bash
+npm run test:kits -- react 13
+```
+
+Kity mají vlastní konfiguraci a frontend, které workbench nemá: chyba 500 z `/pwa/session` opravená
+v 1.0.2 se ukázala jen tam. Aplikace vzniká mimo checkout (`$TMPDIR/laravel-pwa-kits`); krok nastavení,
+který už nezmění svůj soubor, selže, takže změněný kit nezůstane bez povšimnutí.
+
 ### CI
 
 GitHub Actions: `tests.yml` (Pest na PHP 8.2–8.5 × Laravel 12/13 × lowest/stable a pokrytí),
 `static.yml` (PHPStan, Pint, Rector, `composer audit`, MCP self-test), `js.yml` (ESLint a unit testy
-na Node 20/22/24), `e2e.yml` (Playwright), `mutation.yml` (týdně a na vyžádání: mutační testy Pest pro
+na Node 20/22/24), `e2e.yml` (Playwright), `starter-kits.yml` (smoke test v kitech Livewire, React a Vue na Laravel 12 a 13; také týdně), `mutation.yml` (týdně a na vyžádání: mutační testy Pest pro
 push, manifest, service worker a HTTP vrstvu) a `release.yml` (tag `v*` vytvoří release z `CHANGELOG.md`).
 `tests/ArchTest.php` hlídá hranice API: kontrakty jsou rozhraní, události jsou `final`, zdroj je striktně
 typovaný a třídy mimo veřejné API jsou `@internal`.
