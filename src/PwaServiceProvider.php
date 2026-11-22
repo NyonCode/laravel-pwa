@@ -19,6 +19,7 @@ use NyonCode\LaravelPwa\Console\DoctorCommand;
 use NyonCode\LaravelPwa\Console\DownCommand;
 use NyonCode\LaravelPwa\Console\EnableCommand;
 use NyonCode\LaravelPwa\Console\IconsCommand;
+use NyonCode\LaravelPwa\Console\PushPruneCommand;
 use NyonCode\LaravelPwa\Console\PushVapidCommand;
 use NyonCode\LaravelPwa\Contracts\PushTransport;
 use NyonCode\LaravelPwa\Events\TelemetryReceived;
@@ -68,6 +69,7 @@ class PwaServiceProvider extends PackageServiceProvider
                 DoctorCommand::class,
                 IconsCommand::class,
                 PushVapidCommand::class,
+                PushPruneCommand::class,
             ])
             ->hasOptimizeCommands(optimize: 'pwa:build', clear: 'pwa:clear', key: 'pwa')
             ->hasInstallCommand(fn (InstallCommand $command): InstallCommand => $command

@@ -322,6 +322,9 @@ return [
         'table' => 'pwa_push_subscriptions',
         'middleware' => ['auth'],       // subscription routes, after the web group
         'max_subscriptions' => 10,      // devices per owner; the least recently used goes first
+        // pwa:push:prune (and model:prune) deletes subscriptions past their expiration time and those
+        // unused for this many days: no delivery and no visit (the client confirms once a day). null = expired only.
+        'prune_after_days' => 90,
         // The server only sends to these push services (no requests to arbitrary hosts). null = any.
         'endpoints' => [
             'fcm.googleapis.com',

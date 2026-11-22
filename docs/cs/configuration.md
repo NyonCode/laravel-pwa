@@ -176,6 +176,7 @@ Viz [Push notifikace](push.md).
 | `push.table` | string | `pwa_push_subscriptions` | Tabulka publikované migrace. |
 | `push.middleware` | list | `['auth']` | Middleware rout pro odběry (po `web`, omezeno na 20/min). |
 | `push.max_subscriptions` | int | `10` | Zařízení na vlastníka; nejdéle nepoužité se odebere první. |
+| `push.prune_after_days` | ?int | `90` | `pwa:push:prune` smaže i odběry nepoužité tak dlouho; `null` = jen vypršené. |
 | `push.endpoints` | ?list | FCM, Mozilla, Windows, Apple | Hosty push služeb, které server přijme a na které posílá (zástupný znak `*`); `null` = jakýkoli https host. |
 | `push.ttl` | int (s) | `2419200` | Jak dlouho push služba drží nedoručenou zprávu (28 dní). |
 | `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |

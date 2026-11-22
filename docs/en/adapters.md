@@ -52,6 +52,10 @@ refreshes the token, and the user repeats the action.
 Forms submitted with `useForm` are XHR, so during a network failure they are saved to the queue and sent
 once the connection is back. Because they may be sent late, send your own UUID with records you create.
 
+Offline, a link to a page with `pwa.cache` is answered from the cache, so the visit succeeds; only a page
+that was never stored ends in `inertia:exception` and the banner. See
+[Pages available offline](offline.md#inertia).
+
 ## Disabling them
 
 ```php

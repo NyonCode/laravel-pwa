@@ -14,6 +14,7 @@ description: Reference for the pwa:* Artisan commands, covering options, output,
 | `pwa:down` | maintenance mode |
 | `pwa:disable` / `pwa:enable` | kill switch for the service worker |
 | `pwa:push:vapid` | once, before enabling [push notifications](push.md) |
+| `pwa:push:prune` | daily from the scheduler, with push enabled |
 
 ## pwa:install
 
@@ -122,6 +123,16 @@ Generates a P-256 key pair (OpenSSL, no extra package) and writes `PWA_VAPID_PUB
 `PWA_VAPID_PRIVATE_KEY` to `.env`. Existing keys are kept and the command returns 1; `--force`
 replaces them (every subscription stops working until the browser resubscribes). `--show` prints the
 keys for a secrets manager and writes nothing. See [Push notifications](push.md).
+
+## pwa:push:prune
+
+```bash
+php artisan pwa:push:prune [--days=] [--pretend]
+```
+
+Deletes push subscriptions past their expiration time and those unused (no delivery, no visit) for
+`push.prune_after_days` days. `--days` overrides the setting (`0` = expired only), `--pretend` only counts.
+Schedule it daily; see [Pruning old subscriptions](push.md#pruning-old-subscriptions).
 
 ## php artisan about
 

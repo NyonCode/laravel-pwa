@@ -119,6 +119,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | `pwa:down` | `artisan down` with the PWA maintenance screen |
 | `pwa:disable` / `pwa:enable` | Kill switch for the service worker on every device |
 | `pwa:push:vapid` | Generates the VAPID keys for web push |
+| `pwa:push:prune` | Deletes expired and long-unused push subscriptions (schedule it daily) |
 | `pwa:doctor` | Checks HTTPS, icons, build, cache rules, maintenance exceptions, session |
 
 ## Documentation

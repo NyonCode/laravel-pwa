@@ -327,8 +327,7 @@ only, else the scope opens), `action(id, title, ?url, ?icon)`, `tag(tag, renotif
 per-user check), `public()` (no recipient hash). Payload max 4078 bytes (throws). Results: list of
 `Push\PushReport {endpoint, success, status, reason, expired()}`; 2xx touches `last_used_at`, 404/410
 deletes + `PushSubscriptionExpired`, other failures `PushFailed`. Transport: `Contracts\PushTransport`
-(default `Push\MinishlinkTransport`). Prune: `model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`
-(past `expires_at`).
+(default `Push\MinishlinkTransport`). Prune: `pwa:push:prune` daily (past `expires_at`, or unused for `push.prune_after_days`).
 
 Safety rules: endpoints must be `https` on `push.endpoints` hosts (FCM, Mozilla, Windows, Apple;
 checked on subscribe and on send, no port, no credentials); the same endpoint subscribed by another
@@ -378,7 +377,7 @@ to `meta[name=csrf-token]`, `input[name=_token]`, axios defaults and `livewireSc
 
 Adapters: Livewire 3 and 4 (v4 `Livewire.interceptRequest()` onError/onFailure, v3
 `Livewire.hook('request')` fail: 503 → reload, 419 → refresh token incl. `[data-csrf]`, offline → bar;
-the worker never queues requests with `X-Livewire`, so `/livewire-{hash}/update` is safe too) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia:exception` offline).
+the worker never queues requests with `X-Livewire`, so `/livewire-{hash}/update` is safe too) and Inertia (`inertia:invalid` 503 → reload, queued 202 → bar; `inertia:exception` offline). Inertia visits (GET with `X-Inertia`, not partial) go network-first through the worker: with `pwa.cache` consent the JSON is stored per user under `{url}?__pwa=inertia`; offline the worker answers from it, or from the `data-page` object of the stored HTML of that URL, so links to stored pages work offline.
 
 ## Events (`NyonCode\LaravelPwa\Events`, Laravel `Dispatchable`)
 
@@ -427,6 +426,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | `pwa:down {--message=} {--until=} {--retry=} {--refresh=} {--secret=} {--with-secret}` | `artisan down --render=pwa::maintenance` |
 | `pwa:disable {--force}` / `pwa:enable` | kill switch: `/sw.js` serves a worker that deletes `pwa-*` caches and unregisters |
 | `pwa:push:vapid {--show} {--force}` | P-256 VAPID keys via OpenSSL into `.env`; refuses to replace existing keys without `--force` (new keys invalidate all subscriptions) |
+| `pwa:push:prune {--days=} {--pretend}` | deletes subscriptions past `expires_at` and unused (no delivery, no daily client confirmation) for `push.prune_after_days` (90, null = expired only); schedule daily; same as `model:prune` on the MassPrunable model |
 
 ## Config `config/pwa.php` (top-level keys)
 
@@ -438,7 +438,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 `cache.{navigation_timeout,rules,api,images,never_cache}`, `offline.{enabled,route,precache,queue}`, `offline.warm.{urls,max,interval}`, `tenancy.resolver`,
 `session.{standalone_remember,keepalive_minutes,refresh_csrf,remember_field}`,
 `maintenance.{message,until,retry,refresh}`, `install.{min_visits,dismiss_days,ios_hint}`, `updates.bar`,
-`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,endpoints,ttl,urgency,icon,badge,handle_in_worker,queue.{chunk,connection,queue},batch_size,analytics}`,
+`telemetry.{enabled,log,channel,max_events}`, `push.{enabled,vapid.{subject,public_key,private_key},model,table,middleware,max_subscriptions,prune_after_days,endpoints,ttl,urgency,icon,badge,handle_in_worker,queue.{chunk,connection,queue},batch_size,analytics}`,
 `adapters.{livewire,inertia,reload_on_resume}`,
 `route_prefix`. Use the MCP tool `describe_config` for defaults and comments.
 

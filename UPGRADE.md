@@ -12,6 +12,17 @@ updates within 1.x never break the public API. On every update:
 
 The service worker migrates its caches itself when the new version activates.
 
+## From 1.0 to 1.1
+
+Nothing to change. To use the new pieces:
+
+- **Pruning push subscriptions:** schedule `php artisan pwa:push:prune` daily. To also delete
+  subscriptions unused for 90 days (not only expired ones), add `'prune_after_days' => 90` to the `push`
+  section of a published `config/pwa.php`; without the key, `pwa:push:prune` and `model:prune` delete
+  expired subscriptions only, as before.
+- **Inertia offline navigation** needs nothing: after `pwa:build`, links to pages with `pwa.cache` work
+  offline.
+
 ## From a pre-release (0.x) to 1.0
 
 Versions before 1.0 are no longer available. If an app still runs one, update the constraint to

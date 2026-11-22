@@ -119,6 +119,22 @@ test('Inertia: a form sent offline is queued and sent once the connection is bac
   expect(problems).toEqual([]);
 });
 
+test('Inertia: a link to a stored page works offline', async ({ page, context }) => {
+  test.skip(!INERTIA, 'Inertia kits only');
+  const problems = watch(page);
+  await login(page); // the dashboard is stored as HTML
+  await controlled(page);
+  await page.goto('/settings/profile');
+
+  await context.setOffline(true);
+  await page.locator('a[href$="/dashboard"]').first().click();
+  // An Inertia visit (XHR), not a navigation: the worker answers it from the stored page.
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveTitle(/Dashboard/);
+  await context.setOffline(false);
+  expect(problems).toEqual([]);
+});
+
 test('Livewire: an action sent offline is not queued and the banner says so', async ({ page, context }) => {
   test.skip(INERTIA, 'Livewire kit only');
   const problems = watch(page);

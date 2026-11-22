@@ -152,8 +152,26 @@ Podrobnosti nechte na stránce, kterou notifikace otevře.
 | cokoli jiného (413, 429, 5xx, síť) | odběr ponechá, vyšle `PushFailed` |
 
 `WebPush::send()` i kanál vracejí seznam `Push\PushReport` (`endpoint`, `success`, `status`,
-`reason`). Odběry, u kterých prohlížeč ohlásil `expirationTime`, odstraní
-`php artisan model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`.
+`reason`).
+
+## Úklid starých odběrů
+
+Prohlížeč, který je odinstalovaný, resetovaný nebo prostě opuštěný, se nikdy neodhlásí: jeho odběr
+zůstane, dokud odeslání nedostane 404 nebo 410. `pwa:push:prune` smaže odběry po `expirationTime`, který
+prohlížeč ohlásil, a odběry nepoužité `push.prune_after_days` dní (90; config publikovaný před 1.1 klíč nemá a maže jen vypršené, viz [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md)). „Použitý“ znamená úspěšné doručení
+nebo návštěvu aplikace, která odběr jednou denně potvrdí, takže aktivní zařízení se nikdy nesmažou.
+
+```php
+// routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('pwa:push:prune')->daily();
+```
+
+`--pretend` jen spočítá a nic nesmaže, `--days=30` přepíše nastavení, `prune_after_days => null` maže
+jen odběry po vypršení. Model je `MassPrunable`, takže totéž udělá
+`php artisan model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`; řádky se mažou po dávkách
+bez událostí modelu (Laravel vyšle `ModelsPruned`).
 
 Každé odeslání navíc vyšle `PushSent` se zprávou, výsledky a příjemcem; `delivered()`, `expired()` a
 `failed()` je spočítají.

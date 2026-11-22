@@ -537,6 +537,83 @@
     }
   };
 
+  /* ------------------------------------------------------------------ *
+   * Inertia visits: XHR GETs with X-Inertia that answer the page object as JSON. Same consent
+   * (pwa.cache) and per-user storage as pages; offline they come from the stored JSON, or from
+   * the page object inside the stored HTML of that URL (first load, warm-up).
+   * ------------------------------------------------------------------ */
+
+  // A full visit: partial reloads answer only some props and are never stored or served from the cache.
+  const inertiaVisit = (request) => request.headers.get('x-inertia') === 'true'
+    && !request.headers.has('x-inertia-partial-data') && !request.headers.has('x-inertia-partial-except');
+
+  // Stored next to the HTML of the same URL, under a key of its own.
+  const inertiaKey = (url) => {
+    const key = new URL(url);
+    key.searchParams.set('__pwa', 'inertia');
+    return key.href;
+  };
+
+  const unescapeHtml = (text) => text.replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
+  /** The page object of an Inertia root view: <div data-page="{…}"> or <script data-page type="application/json">. */
+  const inertiaPageFrom = (html) => {
+    const script = html.match(/<script\b(?=[^>]*\bdata-page\b)(?=[^>]*application\/json)[^>]*>([\s\S]*?)<\/script>/i);
+    const attribute = script ? null : html.match(/\sdata-page="([^"]*)"/);
+    const json = script ? script[1] : attribute && unescapeHtml(attribute[1]);
+    if (!json) return null;
+    try {
+      const page = JSON.parse(json);
+      return page && typeof page.component === 'string' ? json : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const cachedInertiaPage = async (url, pages) => {
+    const stored = await caches.match(inertiaKey(url), { cacheName: pages });
+    if (stored) return stored;
+
+    const html = await caches.match(url, { cacheName: pages });
+    const json = html && inertiaPageFrom(await html.text());
+    return json
+      ? new Response(json, { status: 200, headers: { 'Content-Type': 'application/json', 'X-Inertia': 'true', Vary: 'X-Inertia' } })
+      : null;
+  };
+
+  const handleInertiaVisit = async (event) => {
+    const { request } = event;
+    const pages = `${PAGES_PREFIX}${await currentUserHash()}`;
+
+    const network = (async () => {
+      const response = await fetch(request);
+      await observeFrom(request, response);
+
+      if (response.status === 503) {
+        await maintenance(response);
+        return response;
+      }
+
+      if (pageCacheable(response) && response.headers.get('X-Inertia') === 'true') {
+        const copy = response.clone();
+        event.waitUntil(caches.open(`${PAGES_PREFIX}${await currentUserHash()}`).then((c) => c.put(inertiaKey(request.url), copy)));
+      }
+
+      return response;
+    })();
+
+    try {
+      const winner = await Promise.race([network, timeout(C.navigationTimeout || 3000)]);
+      if (winner) return winner;
+      return (await cachedInertiaPage(request.url, pages)) || (await network);
+    } catch {
+      const cached = await cachedInertiaPage(request.url, pages);
+      if (cached) return cached;
+      await broadcast({ type: 'offline' });
+      return Response.error();
+    }
+  };
+
   const handleMutation = async (request) => {
     const copy = request.clone();
     try {
@@ -772,6 +849,11 @@
 
     if (local && request.mode === 'navigate') {
       event.respondWith(handleNavigation(event));
+      return;
+    }
+
+    if (local && inertiaVisit(request)) {
+      event.respondWith(handleInertiaVisit(event));
       return;
     }
 

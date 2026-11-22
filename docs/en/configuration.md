@@ -176,6 +176,7 @@ See [Push notifications](push.md).
 | `push.table` | string | `pwa_push_subscriptions` | Table of the published migration. |
 | `push.middleware` | list | `['auth']` | Middleware of the subscription routes (after `web`, throttled to 20/min). |
 | `push.max_subscriptions` | int | `10` | Devices per owner; the least recently used is removed first. |
+| `push.prune_after_days` | ?int | `90` | `pwa:push:prune` also deletes subscriptions unused this long; `null` = expired only. |
 | `push.endpoints` | ?list | FCM, Mozilla, Windows, Apple | Push service hosts the server accepts and sends to (`*` wildcard); `null` = any https host. |
 | `push.ttl` | int (s) | `2419200` | How long the push service keeps an undelivered message (28 days). |
 | `push.urgency` | string | `normal` | `very-low`, `low`, `normal`, `high`. |
