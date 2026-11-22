@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+- The keep-alive endpoint (`/pwa/session`) answered 500 in apps whose `config/session.php` reads
+  `'lifetime' => env('SESSION_LIFETIME', 120)` without an `(int)` cast (the Livewire starter kit), because
+  `config()->integer()` rejects the string from `.env`. Integer and boolean settings, the package's own
+  included, now accept env() strings such as `"120"` or `"false"`.
+- "Later" on the update toast held only until the next page load, so in a multi-page app the toast came
+  back on every page while the same version waited. The choice now holds for the tab (sessionStorage
+  `pwa:update-dismissed`); a newer version or a new tab shows the toast again.
+- Livewire: an action clicked while offline showed "Changes will be sent once connected", but Livewire
+  updates are never queued, so nothing was sent. The banner now says the change was not sent
+  (`offline_not_sent`). With `offline.queue` off, the general offline banner no longer promises to send
+  changes either (`offline_bar_no_queue`).
+- Demo: "Simulate a new version" no longer offers the update a second time after it was applied, and
+  the demo pages link a favicon.
+
 ## [1.0.1] - 2026-11-21
 
 ### Fixed

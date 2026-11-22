@@ -90,7 +90,7 @@ code the same thing.
 | --- | --- | --- |
 | slot | translated "A new version is available." | text |
 | slot `apply` | translated "Update" | text of the button that activates the new version |
-| `dismissible` | `true` | "Later" button; the toast comes back on the next visit |
+| `dismissible` | `true` | "Later" button; the toast stays hidden in this tab until a newer version installs |
 | `styles` | `true` | [base styles](#styling) |
 | attributes | – | passed to the toast (`role=status`, class `pwa-toast`) |
 

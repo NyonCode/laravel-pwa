@@ -112,4 +112,7 @@ old JavaScript against the new worker.
 | `pwa:warm` | user hash and time of the last warm-up |
 | `pwa:push` | endpoint, user hash and time of the last confirmation of this browser's push subscription |
 
+In sessionStorage (per tab), `pwa:update-dismissed` remembers "Later" on the update toast: the toast stays
+hidden on the next pages of this tab and comes back with a newer version or in a new tab.
+
 Access is wrapped in `try/catch` (private mode, full storage). Login never depends on localStorage.

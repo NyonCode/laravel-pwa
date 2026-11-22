@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use NyonCode\LaravelPwa\Push\PushReport;
 use NyonCode\LaravelPwa\Push\WebPush;
 use NyonCode\LaravelPwa\Push\WebPushMessage;
+use NyonCode\LaravelPwa\Support\Value;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -43,7 +44,7 @@ class WebPushFake extends WebPush
 
         $this->queued[] = ['notifiables' => $list, 'message' => $message];
 
-        return (int) ceil(count($list) / max(1, config()->integer('pwa.push.queue.chunk', 100)));
+        return (int) ceil(count($list) / max(1, Value::configInt('pwa.push.queue.chunk', 100)));
     }
 
     /**

@@ -7,6 +7,7 @@ namespace NyonCode\LaravelPwa\Push;
 use DateTimeInterface;
 use Illuminate\Support\Facades\URL;
 use InvalidArgumentException;
+use NyonCode\LaravelPwa\Support\Value;
 
 /**
  * A notification for WebPushChannel, returned from your notification's toWebPush():
@@ -247,7 +248,7 @@ class WebPushMessage
         $urgency = $this->urgency ?? config()->string('pwa.push.urgency', 'normal');
 
         return array_filter([
-            'TTL' => $this->ttl ?? config()->integer('pwa.push.ttl', 60 * 60 * 24 * 28),
+            'TTL' => $this->ttl ?? Value::configInt('pwa.push.ttl', 60 * 60 * 24 * 28),
             'urgency' => in_array($urgency, self::URGENCIES, true) ? $urgency : 'normal',
             'topic' => $this->topic,
         ], static fn (int|string|null $value): bool => $value !== null);

@@ -72,7 +72,7 @@ php artisan pwa:doctor [--ci]
 | Check | Level on failure |
 | --- | --- |
 | HTTPS in `APP_URL` (outside local) | error |
-| `pwa.enabled` | warning |
+| `pwa.enabled` (off in `local` by default) | warning |
 | kill switch inactive | error |
 | manifest: `name` | error |
 | 192 and 512 icons | error |
@@ -91,7 +91,7 @@ php artisan pwa:doctor [--ci]
 | `pwa.cache` on some route | warning |
 | shared kill switch store | warning |
 | with `push.enabled`: `minishlink/web-push`, VAPID keys and subject, subscriptions table | error |
-| with `push.enabled`: `push.endpoints = null`, no worker showing notifications | warning |
+| with `push.enabled`: `push.endpoints = null`, no worker showing notifications, user model without `HasPushSubscriptions` | warning |
 
 Without `--ci`, it always returns 0. With `--ci`, it returns 1 on any error (warnings don't count).
 

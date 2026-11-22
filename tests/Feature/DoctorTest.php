@@ -77,3 +77,18 @@ it('shows PWA details in php artisan about', function (): void {
         ->expectsOutputToContain('Kill switch')
         ->assertSuccessful();
 });
+
+it('explains that the service worker is off locally by default', function (): void {
+    config(['pwa.enabled' => false]);
+    app()->detectEnvironment(fn (): string => 'local');
+
+    $this->artisan('pwa:doctor')
+        ->expectsOutputToContain('off in the local environment by default (PWA_ENABLED=true to try it)')
+        ->assertSuccessful();
+
+    app()->detectEnvironment(fn (): string => 'production');
+
+    $this->artisan('pwa:doctor')
+        ->expectsOutputToContain('Service worker off (pwa.enabled, PWA_ENABLED)')
+        ->assertSuccessful();
+});

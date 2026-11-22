@@ -6,6 +6,7 @@ namespace NyonCode\LaravelPwa\Console;
 
 use Illuminate\Console\Command;
 use NyonCode\LaravelPwa\ServiceWorker\ServiceWorkerBuilder;
+use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
@@ -44,7 +45,7 @@ class BuildCommand extends Command
             str_replace(base_path().'/', '', $builder->compiledPath()),
         ));
 
-        $limit = config()->integer('pwa.sw.precache_warn_kb', 5120);
+        $limit = Value::configInt('pwa.sw.precache_warn_kb', 5120);
 
         if ($limit > 0 && $kilobytes > $limit) {
             $this->components->warn("The precache is {$kilobytes} KB (pwa.sw.precache_warn_kb = {$limit}): every visitor downloads it on install. Exclude large files with pwa.sw.precache_exclude or use precache_vite = 'entries'.");

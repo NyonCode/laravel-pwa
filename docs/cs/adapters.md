@@ -11,7 +11,7 @@ Klient balíčku obsahuje dva malé adaptéry.
 
 | Situace | Livewire 3 a 4 | Inertia |
 | --- | --- | --- |
-| výpadek sítě | lišta „Jste offline“, výchozí okno potlačeno | lišta, `inertia:exception` potlačena |
+| výpadek sítě | lišta „Jste offline. Změna se neodeslala“, výchozí okno potlačeno | lišta „Jste offline“, `inertia:exception` potlačena |
 | akce ve frontě (202) | – (Livewire požadavky nejdou do fronty) | lišta, `pwa:queue` |
 | 503 údržba | `location.reload()` → obrazovka údržby | totéž |
 | 419 CSRF | nový token, `pwa:csrf-refreshed`, okno „Page expired“ potlačeno | nový token; automatické zopakování jen přes `fetch` a `window.axios` |

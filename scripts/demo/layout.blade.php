@@ -4,7 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ $title }} · Laravel PWA demo</title>
+    <link rel="icon" type="image/png" href="{{ $base }}/icons/favicon-32.png">
     <x-pwa::head/>
+    <script>
+        // "Simulate a new version" registers the worker under a new URL. Later pages register that URL
+        // too, otherwise the original sw.js would count as yet another new version.
+        try {
+            const sw = localStorage.getItem('demo:sw');
+            const el = document.getElementById('pwa-config');
+            if (sw && el) el.textContent = JSON.stringify({ ...JSON.parse(el.textContent), sw });
+        } catch { /* storage blocked */ }
+    </script>
     <style>
         :root { color-scheme: light dark; --bg: #f8fafc; --fg: #0f172a; --muted: #475569; --card: #fff; --line: #e2e8f0; --accent: #4f46e5; }
         @media (prefers-color-scheme: dark) { :root { --bg: #0b1220; --fg: #e2e8f0; --muted: #94a3b8; --card: #111a2e; --line: #1e293b; --accent: #818cf8; } }

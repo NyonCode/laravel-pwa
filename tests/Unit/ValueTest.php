@@ -24,3 +24,28 @@ it('narrows numeric values to integers', function (): void {
         ->and(Value::int('abc', 5))->toBe(5)
         ->and(Value::int(null))->toBe(0);
 });
+
+it('reads booleans from env() strings and falls back for anything else', function (mixed $value, bool $expected): void {
+    expect(Value::bool($value, true))->toBe($expected);
+})->with([
+    [false, false],
+    ['false', false],
+    ['0', false],
+    ['off', false],
+    ['true', true],
+    ['1', true],
+    [0, false],
+    [null, true],
+    ['maybe', true],
+    [['array'], true],
+]);
+
+it('reads integer and boolean settings written as env() strings', function (): void {
+    config()->set(['test.minutes' => '120', 'test.flag' => 'false', 'test.broken' => ['x']]);
+
+    expect(Value::configInt('test.minutes', 5))->toBe(120)
+        ->and(Value::configInt('test.missing', 5))->toBe(5)
+        ->and(Value::configInt('test.broken', 5))->toBe(5)
+        ->and(Value::configBool('test.flag', true))->toBeFalse()
+        ->and(Value::configBool('test.missing', true))->toBeTrue();
+});

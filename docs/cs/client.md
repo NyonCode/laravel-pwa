@@ -111,4 +111,8 @@ starý JavaScript proti novému workeru.
 | `pwa:warm` | hash uživatele a čas posledního předehřátí |
 | `pwa:push` | endpoint, hash uživatele a čas posledního potvrzení push odběru tohoto prohlížeče |
 
+V sessionStorage (pro každou záložku zvlášť) si `pwa:update-dismissed` pamatuje „Později“ u toastu
+aktualizace: na dalších stránkách této záložky zůstane toast skrytý a vrátí se s novější verzí nebo
+v nové záložce.
+
 Přístup je v `try/catch` (soukromý režim, plné úložiště). Přihlášení na localStorage nikdy nezávisí.

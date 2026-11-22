@@ -89,7 +89,7 @@ Vlastní tlačítko kdekoli: atribut `data-pwa-install` na libovolném prvku; za
 | --- | --- | --- |
 | slot | přeložené „Je k dispozici nová verze.“ | text |
 | slot `apply` | přeložené „Aktualizovat“ | text tlačítka, které aktivuje novou verzi |
-| `dismissible` | `true` | tlačítko „Později“; při další návštěvě se toast ukáže znovu |
+| `dismissible` | `true` | tlačítko „Později“; v této záložce se toast znovu ukáže až s další novou verzí |
 | `styles` | `true` | [základní styly](#stylování) |
 | atributy | – | předají se na toast (`role=status`, třída `pwa-toast`) |
 

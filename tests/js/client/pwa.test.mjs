@@ -243,7 +243,9 @@ describe('adapters', () => {
     assert.equal(client.reloads.count, 1);
 
     onFailure({ error: new Error('offline') });
-    assert.ok(client.document.querySelector('.pwa-bar') && !client.document.querySelector('.pwa-bar').hidden);
+    const bar = client.document.querySelector('.pwa-bar');
+    assert.ok(bar && !bar.hidden);
+    assert.equal(bar.textContent, 'Not sent'); // Livewire updates are never queued: no "sent later" promise
   });
 
   it('Inertia: recognises a queued response from the worker', async () => {
