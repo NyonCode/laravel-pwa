@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
 ### Added
 - Inertia offline navigation: the worker handles Inertia visits (GET with `X-Inertia`) like pages. With
   the `pwa.cache` consent it stores the page object per user next to the HTML; offline it answers a visit
@@ -175,7 +177,8 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
   client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.0...v1.0.1
