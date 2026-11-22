@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-22
+
 ### Fixed
 - The keep-alive endpoint (`/pwa/session`) answered 500 in apps whose `config/session.php` reads
   `'lifetime' => env('SESSION_LIFETIME', 120)` without an `(int)` cast (the Livewire starter kit), because
@@ -20,6 +22,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   changes either (`offline_bar_no_queue`).
 - Demo: "Simulate a new version" no longer offers the update a second time after it was applied, and
   the demo pages link a favicon.
+- The push toggle ignores clicks while a toggle is in progress, so a double click no longer creates
+  two subscriptions.
+
+### Changed
+- `pwa:doctor` warns when the user model cannot receive web push (no `HasPushSubscriptions`), explains
+  that `pwa.enabled` is off in the `local` environment by default, and points Livewire logins to the
+  recipe for `remember`.
 
 ## [1.0.1] - 2026-11-21
 
@@ -132,6 +141,7 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
   client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/NyonCode/laravel-pwa/releases/tag/v1.0.0
