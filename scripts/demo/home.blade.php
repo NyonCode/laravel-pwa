@@ -40,7 +40,9 @@
 
         document.getElementById('simulate-update').addEventListener('click', async () => {
             const config = JSON.parse(document.getElementById('pwa-config').textContent);
-            await navigator.serviceWorker.register(`${config.sw}?deploy=${Date.now()}`, { scope: config.scope, updateViaCache: 'none' });
+            const url = `${config.sw.split('?')[0]}?deploy=${Date.now()}`;
+            try { localStorage.setItem('demo:sw', url); } catch { /* storage blocked */ }
+            await navigator.serviceWorker.register(url, { scope: config.scope, updateViaCache: 'none' });
         });
     </script>
 </x-demo::layout>

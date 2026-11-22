@@ -24,6 +24,7 @@ it('sends the documented defaults to the client', function (): void {
         'push' => null,
         'i18n' => [
             'offline' => __('pwa::messages.offline_bar'),
+            'notSent' => __('pwa::messages.offline_not_sent'),
             'maintenance' => __('pwa::messages.maintenance_bar'),
             'update' => __('pwa::messages.update_available'),
             'reload' => __('pwa::messages.reload'),
@@ -54,6 +55,13 @@ it('passes changed settings through', function (): void {
         ->and($config['install'])->toBe(['minVisits' => 1, 'dismissDays' => 7, 'iosHint' => false])
         ->and($config['nav'])->toBe(['enabled' => false, 'minWidth' => 1200])
         ->and($config['adapters'])->toBe(['livewire' => false, 'inertia' => false, 'reloadOnResume' => true]);
+});
+
+it('does not promise to send changes later without the offline queue', function (): void {
+    config()->set('pwa.offline.queue', false);
+
+    expect(app(Pwa::class)->clientConfig()['i18n']['offline'])->toBe(__('pwa::messages.offline_bar_no_queue'))
+        ->and(__('pwa::messages.offline_bar_no_queue'))->toBe('You are offline.');
 });
 
 it('reports the kill switch to the client', function (): void {

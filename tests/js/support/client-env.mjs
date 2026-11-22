@@ -25,7 +25,7 @@ export const baseConfig = (overrides = {}) => ({
   nav: { enabled: true, minWidth: 900 },
   adapters: { livewire: true, inertia: true, reloadOnResume: false },
   offlineUrl: '/offline',
-  i18n: { offline: 'Offline', maintenance: 'Maintenance', update: 'Update', reload: 'Reload' },
+  i18n: { offline: 'Offline', notSent: 'Not sent', maintenance: 'Maintenance', update: 'Update', reload: 'Reload' },
   ...overrides,
 });
 
@@ -147,6 +147,7 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
     navigator: window.navigator,
     location,
     localStorage: window.localStorage,
+    sessionStorage: window.sessionStorage,
     CustomEvent: window.CustomEvent,
     MessageChannel: window.MessageChannel ?? globalThis.MessageChannel,
     Request: window.Request,

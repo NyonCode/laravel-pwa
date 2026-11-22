@@ -8,6 +8,7 @@ use Minishlink\WebPush\MessageSentReport;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush as Client;
 use NyonCode\LaravelPwa\Contracts\PushTransport;
+use NyonCode\LaravelPwa\Support\Value;
 use Psr\Http\Client\ClientInterface;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -57,7 +58,7 @@ class MinishlinkTransport implements PushTransport
 
         $reports = [];
 
-        foreach ($client->flush(max(1, config()->integer('pwa.push.batch_size', 1000))) as $report) {
+        foreach ($client->flush(max(1, Value::configInt('pwa.push.batch_size', 1000))) as $report) {
             /** @var MessageSentReport $report */
             $reports[$report->getEndpoint()] = new PushReport(
                 endpoint: $report->getEndpoint(),

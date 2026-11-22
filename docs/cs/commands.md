@@ -72,7 +72,7 @@ php artisan pwa:doctor [--ci]
 | Kontrola | Úroveň při selhání |
 | --- | --- |
 | HTTPS v `APP_URL` (mimo local) | chyba |
-| `pwa.enabled` | varování |
+| `pwa.enabled` (v `local` ve výchozím stavu vypnuto) | varování |
 | nouzové vypnutí neaktivní | chyba |
 | manifest: `name` | chyba |
 | ikony 192 a 512 | chyba |
@@ -91,7 +91,7 @@ php artisan pwa:doctor [--ci]
 | `pwa.cache` na nějaké routě | varování |
 | sdílené úložiště nouzového vypnutí | varování |
 | s `push.enabled`: `minishlink/web-push`, klíče VAPID a subject, tabulka odběrů | chyba |
-| s `push.enabled`: `push.endpoints = null`, žádný worker nezobrazuje notifikace | varování |
+| s `push.enabled`: `push.endpoints = null`, žádný worker nezobrazuje notifikace, model uživatele bez `HasPushSubscriptions` | varování |
 
 Bez `--ci` vrací vždy 0; s `--ci` vrací 1 při jakékoli chybě (varování ne).
 

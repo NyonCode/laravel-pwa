@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Auth\User;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
@@ -397,6 +398,16 @@ describe('doctor', function (): void {
             ->expectsOutputToContain('Web push library (minishlink/web-push)')
             ->expectsOutputToContain('VAPID keys and subject')
             ->expectsOutputToContain('Push subscriptions table (pwa_push_subscriptions)')
+            ->assertSuccessful();
+    });
+
+    it('warns when the user model cannot receive web push', function (): void {
+        config(['auth.providers.users.model' => PushUser::class]);
+        $this->artisan('pwa:doctor')->expectsOutputToContain(PushUser::class.' receives web push')->assertSuccessful();
+
+        config(['auth.providers.users.model' => User::class]);
+        $this->artisan('pwa:doctor')
+            ->expectsOutputToContain('cannot receive web push: add the HasPushSubscriptions trait')
             ->assertSuccessful();
     });
 

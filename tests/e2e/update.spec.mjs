@@ -39,3 +39,28 @@ test('a new worker waits for the update toast, then takes over and reloads', asy
   expect(await page.evaluate(() => window.Pwa.version())).toBe(next);
   await expect(toast).toBeHidden();
 });
+
+test('Later keeps the toast hidden on the next pages of the tab, a newer version brings it back', async ({ page }) => {
+  await page.goto('/components');
+  await controlled(page);
+  const toast = page.locator('[data-pwa-update]');
+  const deploy = async () => {
+    const current = readFileSync(COMPILED, 'utf8');
+    const version = current.match(/"version":"([0-9a-f]+)"/)[1];
+    writeFileSync(COMPILED, current.replace(`"version":"${version}"`, `"version":"${Date.now().toString(16).slice(-12).padStart(12, '0')}"`));
+    await page.evaluate(() => window.Pwa.update());
+  };
+
+  await deploy();
+  await expect(toast).toBeVisible();
+  await toast.locator('[data-pwa-update-dismiss]').click();
+  await expect(toast).toBeHidden();
+
+  await page.reload();
+  await controlled(page);
+  expect(await page.evaluate(() => window.Pwa.updateAvailable())).toBe(true);
+  await expect(toast).toBeHidden();
+
+  await deploy();
+  await expect(toast).toBeVisible();
+});

@@ -45,6 +45,15 @@ it('returns a fresh csrf token and anonymous user hash', function (): void {
         ->assertJsonMissing(['user' => '42']);
 });
 
+it('reads a session lifetime the app config leaves as an env() string', function (): void {
+    // The Livewire starter kit: 'lifetime' => env('SESSION_LIFETIME', 120), without an (int) cast.
+    config()->set(['session.lifetime' => '45', 'pwa.session.keepalive_minutes' => '5']);
+
+    $this->getJson('/pwa/session')
+        ->assertOk()
+        ->assertJson(['lifetime' => 45]);
+});
+
 it('forces remember-me in the installed app', function (array $headers, array $cookies, string $uri, bool $expected): void {
     $response = $this->withHeaders($headers)
         ->withUnencryptedCookies($cookies)

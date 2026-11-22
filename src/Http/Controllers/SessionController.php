@@ -31,7 +31,7 @@ class SessionController
             'authenticated' => $request->user() !== null,
             'user' => $pwa->userHash($request),
             'csrf' => csrf_token(),
-            'lifetime' => config()->integer('session.lifetime', 120),
+            'lifetime' => Value::configInt('session.lifetime', 120),
             'warm' => $pwa->warmUrls($request),
         ], 200, ['Cache-Control' => 'no-store']);
     }
@@ -46,7 +46,7 @@ class SessionController
      */
     public function telemetry(Request $request): JsonResponse
     {
-        $max = config()->integer('pwa.telemetry.max_events', 20);
+        $max = Value::configInt('pwa.telemetry.max_events', 20);
 
         $request->validate([
             'source' => ['required', 'in:sw,client'],

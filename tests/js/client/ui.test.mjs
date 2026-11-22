@@ -82,6 +82,38 @@ describe('updates', () => {
     assert.equal(client.Pwa.updateAvailable(), true);
   });
 
+  it('keeps Later for the tab: a reload with the same waiting worker stays quiet', async () => {
+    const waiting = (window) => {
+      window.navigator.serviceWorker.registration.waiting = window.navigator.serviceWorker.fakeWorker('installed');
+    };
+    client = await createClient({ body: TOAST, before: waiting });
+    click($('[data-pwa-update-dismiss]'));
+    assert.equal(client.window.sessionStorage.getItem('pwa:update-dismissed'), '1');
+    client.close();
+
+    // The same tab after a reload: sessionStorage survives.
+    client = await createClient({
+      body: TOAST,
+      before: (window) => { window.sessionStorage.setItem('pwa:update-dismissed', '1'); waiting(window); },
+    });
+    assert.equal($('[data-pwa-update]').hidden, true);
+    assert.equal($('.pwa-bar'), null);
+    assert.equal(client.Pwa.updateAvailable(), true);
+    assert.equal(client.Pwa.applyUpdate(), true);
+    assert.equal(client.window.sessionStorage.getItem('pwa:update-dismissed'), null);
+  });
+
+  it('shows a newer version again after Later', async () => {
+    client = await createClient({ body: TOAST, before: (window) => window.sessionStorage.setItem('pwa:update-dismissed', '1') });
+    assert.equal(client.window.sessionStorage.getItem('pwa:update-dismissed'), null); // nothing waits at load
+
+    client.window.sessionStorage.setItem('pwa:update-dismissed', '1');
+    client.sw.installUpdate();
+
+    assert.equal($('[data-pwa-update]').hidden, false);
+    assert.equal(client.window.sessionStorage.getItem('pwa:update-dismissed'), null);
+  });
+
   it('skips the bar with updates.bar = false', async () => {
     client = await createClient({ config: { updates: { bar: false } } });
     client.sw.installUpdate();
@@ -203,5 +235,48 @@ describe('push toggle', () => {
     assert.equal($('[data-pwa-push-toggle]').getAttribute('aria-pressed'), 'true');
     assert.equal($('[data-pwa-push-label="subscribed"]').hidden, false);
     assert.equal($('[data-pwa-push-label="unsubscribed"]').hidden, true);
+  });
+
+  it('ignores clicks while a toggle is in progress', async () => {
+    const waiting = [];
+    const grant = () => waiting.splice(0).forEach((resolve) => resolve('granted'));
+    let subscribed = 0;
+    const subscription = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+      options: { applicationServerKey: null },
+      toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: 'p', auth: 'a' } }),
+      unsubscribe: async () => true,
+    };
+    let current = null;
+    client = await createClient({
+      config: pushConfig,
+      body: TOGGLE,
+      fetch: () => new client.window.Response(JSON.stringify({ subscribed: true, user: 'u1' }), { status: 201 }),
+      before: (window) => {
+        window.PushManager = function PushManager() {};
+        // The permission prompt stays open until grant() is called.
+        window.Notification = { permission: 'default', requestPermission: () => new Promise((resolve) => waiting.push(resolve)) };
+        window.navigator.serviceWorker.registration.pushManager = {
+          getSubscription: async () => current,
+          subscribe: async () => { subscribed += 1; current = subscription; return subscription; },
+        };
+      },
+    });
+    await client.flush();
+    const button = $('[data-pwa-push-toggle]');
+
+    click(button);
+    for (let i = 0; i < 5; i += 1) await client.flush();
+    assert.equal(button.getAttribute('aria-busy'), 'true');
+    click(button);
+    click(button);
+    for (let i = 0; i < 5; i += 1) await client.flush();
+    grant();
+    for (let i = 0; i < 10; i += 1) await client.flush();
+
+    assert.equal(subscribed, 1);
+    assert.equal(client.calls.filter((c) => c.init.method === 'POST').length, 1);
+    assert.equal(button.hasAttribute('aria-busy'), false);
+    assert.equal($('[data-pwa-push]').getAttribute('data-pwa-push-state'), 'subscribed');
   });
 });

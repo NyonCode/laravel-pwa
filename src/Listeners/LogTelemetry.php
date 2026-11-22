@@ -6,6 +6,7 @@ namespace NyonCode\LaravelPwa\Listeners;
 
 use Illuminate\Support\Facades\Log;
 use NyonCode\LaravelPwa\Events\TelemetryReceived;
+use NyonCode\LaravelPwa\Support\Value;
 
 /**
  * Writes worker and client errors to the log (`pwa.telemetry.channel`, else the default channel).
@@ -17,7 +18,7 @@ final class LogTelemetry
 {
     public function handle(TelemetryReceived $event): void
     {
-        if (! config()->boolean('pwa.telemetry.log', true)) {
+        if (! Value::configBool('pwa.telemetry.log', true)) {
             return;
         }
 

@@ -67,7 +67,11 @@ class DoctorCommand extends Command
     {
         $url = Value::string(config('app.url'));
         $this->add(str_starts_with($url, 'https://') || app()->isLocal() ? 'ok' : 'error', "HTTPS (APP_URL = {$url})");
-        $this->add(config('pwa.enabled') ? 'ok' : 'warn', 'Service worker enabled in config (pwa.enabled)');
+        $this->add(config('pwa.enabled') ? 'ok' : 'warn', match (true) {
+            (bool) config('pwa.enabled') => 'Service worker enabled in config (pwa.enabled)',
+            app()->isLocal() => 'Service worker off: pwa.enabled is off in the local environment by default (PWA_ENABLED=true to try it)',
+            default => 'Service worker off (pwa.enabled, PWA_ENABLED)',
+        });
         $this->add($pwa->killed() ? 'error' : 'ok', 'Kill switch inactive (pwa:enable)');
 
         if (config('pwa.tenancy.resolver') !== null) {
@@ -172,7 +176,7 @@ class DoctorCommand extends Command
 
         try {
             $kilobytes = (int) ceil($builder->precacheBytes() / 1024);
-            $limit = config()->integer('pwa.sw.precache_warn_kb', 5120);
+            $limit = Value::configInt('pwa.sw.precache_warn_kb', 5120);
             $this->add($limit > 0 && $kilobytes > $limit ? 'warn' : 'ok', "Precache size {$kilobytes} KB (warning above {$limit} KB, pwa.sw.precache_exclude)");
         } catch (Throwable $e) {
             $this->add('error', 'Precache: '.$e->getMessage());
@@ -264,7 +268,9 @@ class DoctorCommand extends Command
 
         $hasRemember = collect(RouteFacade::getRoutes()->getRoutes())
             ->contains(fn (Route $route): bool => in_array('pwa.remember', $route->gatherMiddleware(), true));
-        $this->add($hasRemember ? 'ok' : 'warn', 'pwa.remember middleware on the login route');
+        $this->add($hasRemember ? 'ok' : 'warn', $hasRemember
+            ? 'pwa.remember middleware on the login route'
+            : 'pwa.remember middleware on the login route (a Livewire login sets remember in the component instead, see Recipes)');
 
         $hasCache = collect(RouteFacade::getRoutes()->getRoutes())
             ->contains(fn (Route $route): bool => in_array('pwa.cache', $route->gatherMiddleware(), true));
@@ -298,13 +304,34 @@ class DoctorCommand extends Command
             $this->add('warn', 'Push subscriptions table not checked: '.$e->getMessage());
         }
 
+        $this->checkPushRecipient();
+
         if (config('pwa.push.endpoints') === null) {
             $this->add('warn', 'pwa.push.endpoints is null: the server sends to any host a browser registers');
         }
 
-        if (! config()->boolean('pwa.push.handle_in_worker', true) && (array) config('pwa.sw.import', []) === []) {
+        if (! Value::configBool('pwa.push.handle_in_worker', true) && (array) config('pwa.sw.import', []) === []) {
             $this->add('warn', 'pwa.push.handle_in_worker is off and no sw.import script shows the notifications');
         }
+    }
+
+    /**
+     * Subscribing works with any model, but sending to a user needs HasPushSubscriptions (or
+     * routeNotificationForWebPush()): without it WebPush::send($user) finds no subscriptions.
+     */
+    protected function checkPushRecipient(): void
+    {
+        $guard = Value::string(config('auth.defaults.guard'));
+        $provider = Value::string(config("auth.guards.{$guard}.provider"));
+        $model = config("auth.providers.{$provider}.model");
+
+        if (! is_string($model) || ! class_exists($model)) {
+            return;
+        }
+
+        $this->add(method_exists($model, 'routeNotificationForWebPush') ? 'ok' : 'warn', method_exists($model, 'routeNotificationForWebPush')
+            ? "{$model} receives web push"
+            : "{$model} cannot receive web push: add the HasPushSubscriptions trait (sending to a user finds no subscriptions)");
     }
 
     protected function add(string $level, string $message): void

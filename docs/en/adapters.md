@@ -11,7 +11,7 @@ HTML. The package client includes two small adapters.
 
 | Situation | Livewire 3 and 4 | Inertia |
 | --- | --- | --- |
-| network failure | "You are offline" banner, default dialog suppressed | banner, `inertia:exception` suppressed |
+| network failure | "You are offline. The change was not sent" banner, default dialog suppressed | "You are offline" banner, `inertia:exception` suppressed |
 | queued action (202) | – (Livewire requests are never queued) | banner, `pwa:queue` |
 | 503 maintenance mode | `location.reload()` → maintenance screen | same |
 | 419 CSRF | new token, `pwa:csrf-refreshed`, "Page expired" dialog suppressed | new token; automatic retry only via `fetch` and `window.axios` |

@@ -83,7 +83,7 @@ class WebPush
     public function queue(Builder|iterable $notifiables, WebPushMessage $message): int
     {
         $message->toJson();
-        $size = max(1, config()->integer('pwa.push.queue.chunk', 100));
+        $size = max(1, Value::configInt('pwa.push.queue.chunk', 100));
         $jobs = 0;
 
         if ($notifiables instanceof Builder) {
@@ -388,7 +388,7 @@ class WebPush
 
     protected function trim(Model $owner): void
     {
-        $max = max(1, config()->integer('pwa.push.max_subscriptions', 10));
+        $max = max(1, Value::configInt('pwa.push.max_subscriptions', 10));
 
         $keep = $this->ownedBy($owner)
             ->orderByDesc('last_used_at')

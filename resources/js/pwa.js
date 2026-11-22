@@ -24,6 +24,14 @@ const store = {
   },
 };
 
+// Per tab: "Later" on the update toast holds until the tab closes (or a newer version installs).
+const tabStore = {
+  get: (key) => { try { return sessionStorage.getItem(`pwa:${key}`); } catch { return null; } },
+  set: (key, value) => {
+    try { if (value === null) sessionStorage.removeItem(`pwa:${key}`); else sessionStorage.setItem(`pwa:${key}`, value); } catch { /* private mode */ }
+  },
+};
+
 /* ---------------------------------------------------------------------- *
  * Display mode
  * ---------------------------------------------------------------------- */
@@ -106,6 +114,7 @@ const applyUpdate = () => {
   const worker = waitingWorker || registration?.waiting;
   if (!worker) return false;
   acceptedUpdate = true;
+  tabStore.set('update-dismissed', null);
   worker.postMessage({ type: 'SKIP_WAITING' });
   return true;
 };
@@ -119,12 +128,14 @@ const updateUpdateUi = () => {
   document.querySelectorAll('[data-pwa-update]').forEach((el) => { el.hidden = !visible; });
 };
 
-const offerUpdate = (worker) => {
+// fresh: the worker installed while this page was open (a newer version than one dismissed earlier).
+const offerUpdate = (worker, fresh = false) => {
   waitingWorker = worker;
-  updateDismissed = false;
+  if (fresh) tabStore.set('update-dismissed', null);
+  updateDismissed = tabStore.get('update-dismissed') !== null;
   emit('update-available', { worker });
   updateUpdateUi();
-  if (ownUpdateUi()) return;
+  if (ownUpdateUi() || updateDismissed) return;
   showBar(t('update', 'A new version is available.'), { label: t('reload', 'Reload'), run: applyUpdate });
 };
 
@@ -139,11 +150,12 @@ const registerServiceWorker = async () => {
   registration = await navigator.serviceWorker.register(C.sw, { scope: C.scope, updateViaCache: 'none' });
 
   if (registration.waiting && navigator.serviceWorker.controller) offerUpdate(registration.waiting);
+  else tabStore.set('update-dismissed', null);
 
   registration.addEventListener('updatefound', () => {
     const worker = registration.installing;
     worker?.addEventListener('statechange', () => {
-      if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(worker);
+      if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(worker, true);
     });
   });
 
@@ -487,6 +499,20 @@ const updatePushUi = async () => {
 
 const togglePush = async () => ((await pushState()) === 'subscribed' ? unsubscribe() : subscribe());
 
+// One toggle at a time: a second click during the permission prompt or the request would start a
+// parallel subscribe (two subscriptions, one of them orphaned).
+let pushBusy = false;
+const togglePushOnce = async (button) => {
+  if (pushBusy) return;
+  pushBusy = true;
+  button.setAttribute('aria-busy', 'true');
+  try { await togglePush(); } catch { /* state below shows the result */ } finally {
+    pushBusy = false;
+    button.removeAttribute('aria-busy');
+    await updatePushUi();
+  }
+};
+
 /* ---------------------------------------------------------------------- *
  * Installation
  * ---------------------------------------------------------------------- */
@@ -556,9 +582,9 @@ document.addEventListener('click', (event) => {
   if (on('[data-pwa-install]')) { event.preventDefault(); install(); }
   if (on('[data-pwa-install-dismiss]')) { store.set('install-dismissed', Date.now()); updateInstallUi(); }
   if (on('[data-pwa-update-apply]')) { event.preventDefault(); applyUpdate(); }
-  if (on('[data-pwa-update-dismiss]')) { updateDismissed = true; updateUpdateUi(); }
+  if (on('[data-pwa-update-dismiss]')) { updateDismissed = true; tabStore.set('update-dismissed', '1'); updateUpdateUi(); }
   const toggle = on('[data-pwa-push-toggle]');
-  if (toggle && !toggle.disabled) { event.preventDefault(); togglePush().catch(() => {}).finally(updatePushUi); }
+  if (toggle && !toggle.disabled) { event.preventDefault(); togglePushOnce(toggle); }
 });
 
 /** Re-reads the [data-pwa-*] elements: after Livewire/Inertia navigation or a framework render. */
@@ -577,7 +603,8 @@ document.addEventListener('inertia:navigate', () => setTimeout(refreshUi, 0));
 
 const livewireAdapter = () => {
   if (!C.adapters?.livewire) return;
-  const offline = () => showBar(t('offline', 'You are offline. Changes will be sent once connected.'), null, 'warn');
+  // Livewire updates are never queued (a replayed snapshot would be stale): say the change was lost.
+  const offline = () => showBar(t('notSent', 'You are offline. The change was not sent, try again once connected.'), null, 'warn');
   const failed = async (status, preventDefault) => {
     if (status === 503) { preventDefault(); location.reload(); }
     else if (status === 419) { preventDefault(); await keepAlive(true); emit('csrf-refreshed', {}); }

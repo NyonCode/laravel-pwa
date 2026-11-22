@@ -157,7 +157,7 @@ class Pwa
             }
         }
 
-        return array_slice(array_keys($urls), 0, max(0, config()->integer('pwa.offline.warm.max', 20)));
+        return array_slice(array_keys($urls), 0, max(0, Value::configInt('pwa.offline.warm.max', 20)));
     }
 
     /**
@@ -184,7 +184,7 @@ class Pwa
      */
     public function enabled(): bool
     {
-        // PWA_ENABLED=1 arrives as the string "1", so this is not config()->boolean().
+        // PWA_ENABLED=1 arrives as the string "1", so this is not Value::configBool().
         return filter_var(config('pwa.enabled', true), FILTER_VALIDATE_BOOL) && ! $this->killed();
     }
 
@@ -292,12 +292,12 @@ class Pwa
             'tenant' => $tenant?->key,
             'session' => [
                 'url' => $prefix.'/session',
-                'keepalive' => config()->integer('pwa.session.keepalive_minutes', 10),
-                'refreshCsrf' => config()->boolean('pwa.session.refresh_csrf', true),
+                'keepalive' => Value::configInt('pwa.session.keepalive_minutes', 10),
+                'refreshCsrf' => Value::configBool('pwa.session.refresh_csrf', true),
             ],
             'warm' => [
                 'enabled' => $this->warmsPages(),
-                'interval' => config()->integer('pwa.offline.warm.interval', 60),
+                'interval' => Value::configInt('pwa.offline.warm.interval', 60),
             ],
             // Web push: the public VAPID key and where the browser stores its subscription.
             'push' => $this->pushEnabled() ? [
@@ -307,25 +307,27 @@ class Pwa
             'ping' => $prefix.'/ping',
             'telemetry' => config('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'install' => [
-                'minVisits' => config()->integer('pwa.install.min_visits', 2),
-                'dismissDays' => config()->integer('pwa.install.dismiss_days', 30),
-                'iosHint' => config()->boolean('pwa.install.ios_hint', true),
+                'minVisits' => Value::configInt('pwa.install.min_visits', 2),
+                'dismissDays' => Value::configInt('pwa.install.dismiss_days', 30),
+                'iosHint' => Value::configBool('pwa.install.ios_hint', true),
             ],
             'updates' => [
-                'bar' => config()->boolean('pwa.updates.bar', true),
+                'bar' => Value::configBool('pwa.updates.bar', true),
             ],
             'nav' => [
-                'enabled' => config()->boolean('pwa.desktop_nav.enabled', true),
-                'minWidth' => config()->integer('pwa.desktop_nav.min_width', 900),
+                'enabled' => Value::configBool('pwa.desktop_nav.enabled', true),
+                'minWidth' => Value::configInt('pwa.desktop_nav.min_width', 900),
             ],
             'adapters' => [
-                'livewire' => config()->boolean('pwa.adapters.livewire', true),
-                'inertia' => config()->boolean('pwa.adapters.inertia', true),
-                'reloadOnResume' => config()->boolean('pwa.adapters.reload_on_resume', false),
+                'livewire' => Value::configBool('pwa.adapters.livewire', true),
+                'inertia' => Value::configBool('pwa.adapters.inertia', true),
+                'reloadOnResume' => Value::configBool('pwa.adapters.reload_on_resume', false),
             ],
             'offlineUrl' => config('pwa.offline.enabled', true) ? config()->string('pwa.offline.route', '/offline') : null,
             'i18n' => [
-                'offline' => __('pwa::messages.offline_bar'),
+                // Without the queue, nothing is sent later: do not promise it.
+                'offline' => __(Value::configBool('pwa.offline.queue', true) ? 'pwa::messages.offline_bar' : 'pwa::messages.offline_bar_no_queue'),
+                'notSent' => __('pwa::messages.offline_not_sent'),
                 'maintenance' => __('pwa::messages.maintenance_bar'),
                 'update' => __('pwa::messages.update_available'),
                 'reload' => __('pwa::messages.reload'),

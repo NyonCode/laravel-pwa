@@ -157,17 +157,17 @@ class ServiceWorkerBuilder
     public function runtimeConfig(): array
     {
         $prefix = '/'.trim(config()->string('pwa.route_prefix', 'pwa'), '/');
-        $offline = config()->boolean('pwa.offline.enabled', true);
+        $offline = Value::configBool('pwa.offline.enabled', true);
 
         $config = [
             'precache' => $this->precache(),
             'offlineUrl' => $offline ? config()->string('pwa.offline.route', '/offline') : null,
-            'queue' => config()->boolean('pwa.offline.queue', true),
-            'navigationTimeout' => config()->integer('pwa.cache.navigation_timeout', 3) * 1000,
+            'queue' => Value::configBool('pwa.offline.queue', true),
+            'navigationTimeout' => Value::configInt('pwa.cache.navigation_timeout', 3) * 1000,
             'neverCache' => $this->stringList('pwa.cache.never_cache'),
             'rules' => array_map(static fn (CacheRule $rule): array => $rule->toArray(), $this->rules()),
             'buildPrefix' => '/'.trim(config()->string('pwa.sw.build_directory', 'build'), '/').'/',
-            'telemetry' => config()->boolean('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
+            'telemetry' => Value::configBool('pwa.telemetry.enabled', true) ? $prefix.'/telemetry' : null,
             'sessionUrl' => $prefix.'/session',
             'client' => strtok(app(Pwa::class)->clientUrl(), '?'),
             'warm' => app(Pwa::class)->warmsPages(),
@@ -193,7 +193,7 @@ class ServiceWorkerBuilder
      */
     protected function pushConfig(string $prefix): ?array
     {
-        if (! app(Pwa::class)->pushEnabled() || ! config()->boolean('pwa.push.handle_in_worker', true)) {
+        if (! app(Pwa::class)->pushEnabled() || ! Value::configBool('pwa.push.handle_in_worker', true)) {
             return null;
         }
 
@@ -203,7 +203,7 @@ class ServiceWorkerBuilder
         return [
             'key' => config('pwa.push.vapid.public_key'),
             'url' => $prefix.'/push/subscriptions',
-            'events' => config()->boolean('pwa.push.analytics', false) ? $prefix.'/push/events' : null,
+            'events' => Value::configBool('pwa.push.analytics', false) ? $prefix.'/push/events' : null,
             'name' => Value::string(config('pwa.short_name')) ?: Value::string(config('pwa.name'), 'Laravel'),
             'icon' => config('pwa.push.icon') ?? $existing($icons.'/icon-192.png'),
             'badge' => config('pwa.push.badge') ?? $existing($icons.'/monochrome-512.png'),
@@ -221,7 +221,7 @@ class ServiceWorkerBuilder
     {
         $urls = [];
 
-        if (config()->boolean('pwa.offline.enabled', true)) {
+        if (Value::configBool('pwa.offline.enabled', true)) {
             $urls[] = config()->string('pwa.offline.route', '/offline');
         }
 

@@ -6,6 +6,7 @@ namespace NyonCode\LaravelPwa\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use NyonCode\LaravelPwa\Support\Value;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
@@ -43,7 +44,7 @@ class DownCommand extends Command
 
         $retry ??= $until instanceof Carbon
             ? max(15, min(300, (int) now()->diffInSeconds($until, false)))
-            : config()->integer('pwa.maintenance.retry', 60);
+            : Value::configInt('pwa.maintenance.retry', 60);
 
         // The template is prerendered in this process, so changing the config is enough.
         config([
