@@ -237,6 +237,34 @@ describe('push toggle', () => {
     assert.equal($('[data-pwa-push-label="unsubscribed"]').hidden, true);
   });
 
+  it('turns unavailable when the browser refuses to subscribe (private window, no push service)', async () => {
+    client = await createClient({
+      config: pushConfig,
+      body: TOGGLE.replace('</div>', '<small data-pwa-push-label="unavailable" hidden>Not here</small></div>'),
+      before: (window) => {
+        window.PushManager = function PushManager() {};
+        window.Notification = { permission: 'granted', requestPermission: async () => 'granted' };
+        window.navigator.serviceWorker.registration.pushManager = {
+          getSubscription: async () => null,
+          subscribe: async () => { throw new window.DOMException('Registration failed - push service not available', 'AbortError'); },
+        };
+      },
+    });
+    await client.flush();
+    const states = [];
+    client.Pwa.on('push', (detail) => states.push(detail));
+
+    click($('[data-pwa-push-toggle]'));
+    for (let i = 0; i < 10; i += 1) await client.flush();
+
+    assert.deepEqual(states, [{ state: 'unavailable', error: 'AbortError' }]);
+    assert.equal($('[data-pwa-push]').getAttribute('data-pwa-push-state'), 'unavailable');
+    assert.equal($('[data-pwa-push-toggle]').disabled, true);
+    assert.equal($('small[data-pwa-push-label="unavailable"]').hidden, false);
+    assert.equal(await client.Pwa.push.state(), 'unavailable');
+    assert.equal(client.calls.filter((c) => c.init.method === 'POST').length, 0);
+  });
+
   it('ignores clicks while a toggle is in progress', async () => {
     const waiting = [];
     const grant = () => waiting.splice(0).forEach((resolve) => resolve('granted'));

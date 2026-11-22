@@ -38,6 +38,7 @@ return [
     'push_enable' => 'Zapnout oznámení',
     'push_fallback' => 'Máte nové oznámení. Otevřete aplikaci a podívejte se.',
     'push_install_required' => 'Pro oznámení si přidejte aplikaci na plochu.',
+    'push_unavailable' => 'Oznámení nejsou v tomto prohlížeči dostupná (například v anonymním okně).',
     'queued_count' => ':n akce čeká|:n akce čekají|:n akcí čeká',
     'queued_lead' => 'Uloženo v zařízení. Odešle se automaticky po připojení, nic se neztratí.',
     'queued_title' => 'Čeká na odeslání',

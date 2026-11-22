@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-22
+
+### Fixed
+- The push toggle did nothing when the browser refused to subscribe although it has the push API (a
+  private window in Chrome, a browser without a push service). It now switches to the new `unavailable`
+  state: the button is disabled, `<x-pwa::push-toggle/>` shows the `push_unavailable` hint (slot
+  `unavailable`), `Pwa.push.state()` returns `unavailable` and `pwa:push` carries `{ state, error }`.
+
+### Documentation
+- Troubleshooting: the service worker off in local development, the notification toggle doing nothing,
+  notifications that do not arrive, and the 500 on the settings pages of the Livewire starter kit with
+  Livewire 4 (a kit issue, with the config fix).
+
+### Development
+- `scripts/starter-kit.sh` removes the app after a passing run (`KIT_KEEP=1` keeps it); a failed run
+  keeps it for debugging.
+- The kill switch browser test no longer fails when the retiring worker's reload lands late (it
+  interrupted the next navigation in Firefox and destroyed the page under a check in WebKit).
+
 ## [1.0.2] - 2026-11-22
 
 ### Fixed
@@ -141,7 +160,8 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
   client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/NyonCode/laravel-pwa/releases/tag/v1.0.0

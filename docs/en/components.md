@@ -114,12 +114,13 @@ is not shown. Your own markup works the same way: `[data-pwa-update]` (shown whi
 | slot `disable` | translated "Turn off notifications" | button text when subscribed |
 | slot `denied` | translated hint | shown when the user blocked notifications |
 | slot `install-required` | translated hint | iPhone / iPad in Safari: push works only in the Home Screen app |
+| slot `unavailable` | translated hint | the browser refused to subscribe (a private window, no push service) |
 | `styles` | `true` | [base styles](#styling) |
 | attributes | – | passed to the `<button>` (class `pwa-push__toggle`) |
 
 Needs the [web push module](push.md). A click subscribes or unsubscribes this device
 (`Pwa.push.toggle()`); the permission prompt appears only then. The wrapper gets
-`data-pwa-push-state` (`subscribed`, `unsubscribed`, `denied`, `install-required`), the button
+`data-pwa-push-state` (`subscribed`, `unsubscribed`, `denied`, `install-required`, `unavailable`), the button
 `aria-pressed`, and the matching `[data-pwa-push-label]` is shown. Without push on the server, or in a
 browser without push, the toggle stays hidden.
 

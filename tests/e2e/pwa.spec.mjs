@@ -127,17 +127,21 @@ test('maintenance: 503 screen, page cache untouched', async () => {
 });
 
 test('kill switch: pwa:disable removes the worker and caches, pwa:enable restores it', async () => {
-  artisan('pwa:disable', '--force');
-  // The retiring worker reloads open windows itself; that reload may interrupt this navigation.
-  await page.goto('/').catch(() => page.waitForLoadState());
+  // The retiring worker reloads open windows itself, at a moment the test cannot see: the reload can
+  // interrupt a navigation or destroy the page under an evaluate. Every check below tolerates that
+  // (a destroyed context reads as -1, "not yet") and waits for the state instead of one snapshot.
+  // Navigations wait for the commit only: WebKit may never fire load for an interrupted one.
+  const count = (fn) => page.evaluate(fn).catch(() => -1);
+  const registrations = () => count(() => navigator.serviceWorker.getRegistrations().then((r) => r.length));
 
-  await expect.poll(() => page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length)), { timeout: 10_000 }).toBe(0);
-  await expect.poll(() => page.evaluate(() => caches.keys().then((k) => k.filter((n) => n.startsWith('pwa-')).length))).toBe(0);
+  artisan('pwa:disable', '--force');
+  await page.goto('/', { waitUntil: 'commit' }).catch(() => {});
+  await expect.poll(registrations, { timeout: 10_000 }).toBe(0);
+  await expect.poll(() => count(() => caches.keys().then((k) => k.filter((n) => n.startsWith('pwa-')).length))).toBe(0);
 
   artisan('pwa:enable');
-  await page.goto('/');
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length))).toBe(1);
+  await page.goto('/', { waitUntil: 'commit' }).catch(() => {});
+  await expect.poll(registrations, { timeout: 10_000 }).toBe(1);
 });
 
 test('no JavaScript errors on the page', () => {

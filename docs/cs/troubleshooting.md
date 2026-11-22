@@ -78,6 +78,46 @@ DevTools → Application → Manifest ukáže přesný důvod.
   rychleji odinstalovat a nainstalovat znovu.
 - S WCO tlačítka kreslí `<x-pwa::nav/>`.
 
+## Service worker se při lokálním vývoji neregistruje
+
+`pwa.enabled` je v prostředí `local` ve výchozím stavu vypnuté, aby worker v cache nikdy neschoval vaše
+změny během vývoje. Pro vyzkoušení PWA lokálně nastavte v `.env` `PWA_ENABLED=true`; upozorní na to
+i `pwa:doctor`. `localhost` a `127.0.0.1` jsou bezpečné originy, jiné lokální hosty potřebují HTTPS.
+
+## Přepínač oznámení nic nedělá nebo hlásí, že oznámení nejsou dostupná
+
+- Anonymní okno: Chrome tam push nepodporuje a stránka to nemůže předem zjistit. Přihlášení k odběru
+  selže, přepínač přejde do stavu `unavailable` a ukáže nápovědu `push_unavailable`.
+- Prohlížeč bez push služby (některá sestavení Chromia, Brave bez „Google services for push messaging“):
+  stejný stav `unavailable`.
+- Zablokovaná oznámení: stav `denied`; uživatel je musí povolit v nastavení webu.
+- iPhone, iPad: push funguje jen v aplikaci přidané na plochu (`install-required`).
+
+Pro zalogování nebo vysvětlení poslouchejte `pwa:push` (`{ state, error }`).
+
+## Uživatel se přihlásil k odběru, ale oznámení nepřijde
+
+- Model uživatele nemá trait `HasPushSubscriptions` (ani `routeNotificationForWebPush()`): odběr se uloží,
+  ale `WebPush::send($user)` žádný nenajde. `pwa:doctor` na to upozorní.
+- `WebPush::queue()` a notifikace ve frontě potřebují běžící queue worker (`php artisan queue:work`).
+- Host push služby není v `pwa.push.endpoints`: `PushFailed` s „Endpoint host is not in
+  pwa.push.endpoints“.
+- Změnily se klíče VAPID: staré odběry neplatí, dokud se prohlížeče znovu nepřihlásí (klient je obnoví při další návštěvě).
+- Oznámení skrývá režim soustředění systému nebo nastavení prohlížeče: v DevTools ověřte
+  `registration.getNotifications()`.
+
+## Livewire starter kit: stránky nastavení vrací 500
+
+„No hint path defined for [layouts]“ na `/settings/profile` ve starter kitu Livewire postaveném na Voltu
+s Livewire 4. Chyba je v kitu, ne v balíčku: jeho Volt stránky nemají `#[Layout]` a Livewire 4 použije
+`layouts::app`, který kit nemá. Publikujte konfiguraci Livewire (`php artisan livewire:config`) a nastavte
+layout kitu:
+
+```php
+// config/livewire.php
+'component_layout' => 'components.layouts.app',
+```
+
 ## Ladění service workeru
 
 ```js
