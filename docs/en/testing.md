@@ -148,7 +148,7 @@ npm run test:kits -- react 13
 
 The kits bring their own configs and frontend stacks, which the workbench cannot: the 500 from
 `/pwa/session` fixed in 1.0.2 showed up only there. The app is created outside the checkout
-(`$TMPDIR/laravel-pwa-kits`); a setup step that no longer changes its file fails, so a reshaped kit is
+(`$TMPDIR/laravel-pwa-kits`) and removed after a passing run (`KIT_KEEP=1` keeps it); a setup step that no longer changes its file fails, so a reshaped kit is
 noticed.
 
 ### CI

@@ -78,6 +78,46 @@ DevTools → Application → Manifest shows the exact reason.
   to speed it up, uninstall and reinstall it.
 - With WCO, the buttons are drawn by `<x-pwa::nav/>`.
 
+## The service worker does not register in local development
+
+`pwa.enabled` defaults to off in the `local` environment, so a cached worker never hides your changes
+while you develop. Set `PWA_ENABLED=true` in `.env` to try the PWA locally; `pwa:doctor` says so too.
+`localhost` and `127.0.0.1` count as secure origins, other local hosts need HTTPS.
+
+## The notification toggle does nothing or says notifications are unavailable
+
+- A private window: Chrome does not support push there and cannot tell the page up front. The subscribe
+  call fails, the toggle switches to `unavailable` and shows the `push_unavailable` hint.
+- A browser without a push service (some Chromium builds, Brave without "Google services for push
+  messaging"): the same `unavailable` state.
+- Blocked notifications: the state is `denied`; the user has to allow them in the site settings.
+- iPhone, iPad: push works only in the app added to the Home Screen (`install-required`).
+
+Listen to `pwa:push` (`{ state, error }`) to log or explain these cases.
+
+## A user subscribed but no notification arrives
+
+- The user model has no `HasPushSubscriptions` trait (or `routeNotificationForWebPush()`): subscribing
+  works, but `WebPush::send($user)` finds no subscriptions. `pwa:doctor` warns about it.
+- `WebPush::queue()` and queued notifications need a running queue worker (`php artisan queue:work`).
+- The push service host is not in `pwa.push.endpoints`: `PushFailed` with "Endpoint host is not in
+  pwa.push.endpoints".
+- The VAPID keys changed: old subscriptions are invalid until the browsers resubscribe (the client renews them on the next visit).
+- The operating system's focus mode or the browser's notification settings hide it: check
+  `registration.getNotifications()` in DevTools.
+
+## Livewire starter kit: the settings pages answer 500
+
+"No hint path defined for [layouts]" on `/settings/profile` in the Volt-based Livewire starter kit with
+Livewire 4. This comes from the kit, not from the package: its Volt pages have no `#[Layout]`, and
+Livewire 4 falls back to `layouts::app`, which the kit does not have. Publish the Livewire config
+(`php artisan livewire:config`) and point it to the kit's layout:
+
+```php
+// config/livewire.php
+'component_layout' => 'components.layouts.app',
+```
+
 ## Debugging the service worker
 
 ```js

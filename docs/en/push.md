@@ -70,7 +70,7 @@ with texts for the blocked and the iPhone cases.
 | --- | --- | --- |
 | `supported()` | bool | push enabled on the server and in this browser |
 | `permission()` | string | `default`, `granted`, `denied`, `unsupported` |
-| `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unsupported` |
+| `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unavailable` (the browser refused to subscribe, e.g. a private window), `unsupported` |
 | `subscribe()` | `Promise<PushSubscription\|null>` | asks for permission, subscribes, stores the subscription on the server |
 | `unsubscribe()` | `Promise<bool>` | removes it on the server and in the browser |
 | `toggle()` | Promise | `unsubscribe()` when subscribed, otherwise `subscribe()` |

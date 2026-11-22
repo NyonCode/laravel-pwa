@@ -3,6 +3,7 @@
 # Installs this package into a fresh Laravel starter kit and runs the smoke test against it.
 #
 #   scripts/starter-kit.sh <livewire|react|vue> [laravel-major] [app-dir]
+#   KIT_KEEP=1 scripts/starter-kit.sh react 13    # keep the app after a passing run
 #
 # The kit comes from Packagist (composer create-project), the package from this checkout (a path
 # repository). The setup follows the documentation (tests/starter-kits/setup.php), then pwa:doctor --ci
@@ -59,4 +60,16 @@ trap 'kill $server 2>/dev/null || true' EXIT
 for _ in $(seq 1 30); do curl -sf -o /dev/null "http://127.0.0.1:$port/up" && break; sleep 1; done
 
 cd "$root"
+# A failed run keeps the app for debugging (set -e stops before the cleanup below).
+trap 'kill $server 2>/dev/null || true; printf "\nThe app stays for debugging: %s\n" "$app"' EXIT
 KIT="$kit" KIT_URL="http://127.0.0.1:$port" KIT_APP="$app" npx playwright test --config=tests/starter-kits/playwright.config.mjs
+
+# The app with its vendor and node_modules takes hundreds of MB: remove it unless KIT_KEEP=1.
+kill "$server" 2>/dev/null || true
+trap - EXIT
+if [ "${KIT_KEEP:-0}" = "1" ]; then
+  step "Kept $app"
+else
+  rm -rf "$app"
+  step "Removed $app (KIT_KEEP=1 keeps it)"
+fi

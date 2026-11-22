@@ -113,12 +113,13 @@ převezme stránku a ta se znovu načte. S toastem na stránce se vestavěná
 | slot `disable` | přeložené „Vypnout oznámení“ | text tlačítka s odběrem |
 | slot `denied` | přeložená nápověda | uživatel oznámení zablokoval |
 | slot `install-required` | přeložená nápověda | iPhone / iPad v Safari: push funguje jen v aplikaci z plochy |
+| slot `unavailable` | přeložená nápověda | prohlížeč odběr odmítl (anonymní okno, žádná push služba) |
 | `styles` | `true` | [základní styly](#stylování) |
 | atributy | – | předají se na `<button>` (třída `pwa-push__toggle`) |
 
 Potřebuje [modul web push](push.md). Kliknutí přihlásí nebo odhlásí odběr tohoto zařízení
 (`Pwa.push.toggle()`); dotaz na oprávnění se objeví až tehdy. Obal dostane `data-pwa-push-state`
-(`subscribed`, `unsubscribed`, `denied`, `install-required`), tlačítko `aria-pressed` a zobrazí se
+(`subscribed`, `unsubscribed`, `denied`, `install-required`, `unavailable`), tlačítko `aria-pressed` a zobrazí se
 odpovídající `[data-pwa-push-label]`. Bez push na serveru nebo v prohlížeči bez push zůstane skrytý.
 
 ## Stylování

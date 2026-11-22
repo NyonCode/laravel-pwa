@@ -71,7 +71,7 @@ včetně textů pro zablokovaná oznámení a iPhone.
 | --- | --- | --- |
 | `supported()` | bool | push je zapnutý na serveru i v tomto prohlížeči |
 | `permission()` | string | `default`, `granted`, `denied`, `unsupported` |
-| `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unsupported` |
+| `state()` | `Promise<string>` | `subscribed`, `unsubscribed`, `denied`, `install-required`, `unavailable` (prohlížeč odběr odmítl, např. anonymní okno), `unsupported` |
 | `subscribe()` | `Promise<PushSubscription\|null>` | požádá o oprávnění, přihlásí odběr a uloží ho na server |
 | `unsubscribe()` | `Promise<bool>` | odebere odběr na serveru i v prohlížeči |
 | `toggle()` | Promise | `unsubscribe()`, když odběr existuje, jinak `subscribe()` |

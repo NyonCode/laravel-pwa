@@ -1,6 +1,6 @@
 {{--
   <x-pwa::push-toggle/> — turns web push on and off for this device (pwa.push.enabled).
-  pwa.js sets data-pwa-push-state (subscribed, unsubscribed, denied, install-required) and shows the
+  pwa.js sets data-pwa-push-state (subscribed, unsubscribed, denied, install-required, unavailable) and shows the
   matching label; the component stays hidden where push is not available.
 
   <x-pwa::push-toggle class="btn" />
@@ -20,7 +20,9 @@
         <span data-pwa-push-label="subscribed" hidden>{{ $disable ?? __('pwa::messages.push_disable') }}</span>
         <span data-pwa-push-label="denied" hidden>{{ $enable ?? __('pwa::messages.push_enable') }}</span>
         <span data-pwa-push-label="install-required" hidden>{{ $enable ?? __('pwa::messages.push_enable') }}</span>
+        <span data-pwa-push-label="unavailable" hidden>{{ $enable ?? __('pwa::messages.push_enable') }}</span>
     </button>
     <small class="pwa-push__hint" data-pwa-push-label="denied" hidden>{{ $denied ?? __('pwa::messages.push_denied') }}</small>
     <small class="pwa-push__hint" data-pwa-push-label="install-required" hidden>{{ $installRequired ?? __('pwa::messages.push_install_required') }}</small>
+    <small class="pwa-push__hint" data-pwa-push-label="unavailable" hidden>{{ $unavailable ?? __('pwa::messages.push_unavailable') }}</small>
 </div>

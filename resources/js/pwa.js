@@ -358,6 +358,10 @@ const sameKey = (buffer, bytes) => {
 
 const pushRegistration = async () => registration || (await navigator.serviceWorker.ready);
 
+// The browser refused to subscribe although it has the push API: a private window in Chrome, no push
+// service (some Chromium builds), a policy. Nothing can be detected up front, so remember it for this page.
+let pushUnavailable = false;
+
 const currentSubscription = async () => {
   if (!pushSupported()) return null;
   try {
@@ -398,6 +402,7 @@ const saveSubscription = async (subscription) => {
 const pushState = async () => {
   if (!pushSupported()) return C.push && isIos() && !isInstalled() ? 'install-required' : 'unsupported';
   if (pushPermission() === 'denied') return 'denied';
+  if (pushUnavailable) return 'unavailable';
   // Only a device that subscribed through this app can be subscribed: skip the push API otherwise.
   return store.get('push') && (await currentSubscription()) ? 'subscribed' : 'unsubscribed';
 };
@@ -419,7 +424,15 @@ const subscribe = async () => {
     await subscription.unsubscribe();
     subscription = null;
   }
-  subscription ||= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+  if (!subscription) {
+    try {
+      subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    } catch (error) {
+      pushUnavailable = true;
+      emit('push', { state: 'unavailable', error: error?.name || 'Error' });
+      return null;
+    }
+  }
 
   if (!(await saveSubscription(subscription))) {
     await subscription.unsubscribe().catch(() => {});
@@ -491,7 +504,7 @@ const updatePushUi = async () => {
       label.hidden = label.getAttribute('data-pwa-push-label') !== state;
     });
     el.querySelectorAll('[data-pwa-push-toggle]').forEach((button) => {
-      button.disabled = state === 'denied' || state === 'install-required';
+      button.disabled = state === 'denied' || state === 'install-required' || state === 'unavailable';
       button.setAttribute('aria-pressed', String(state === 'subscribed'));
     });
   });

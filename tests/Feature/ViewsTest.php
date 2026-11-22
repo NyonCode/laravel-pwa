@@ -88,7 +88,12 @@ it('renders the push toggle with a label for each state', function (): void {
         ->toContain('Notify me')
         ->toContain('data-pwa-push-label="subscribed"')
         ->toContain(__('pwa::messages.push_denied'))
-        ->toContain(__('pwa::messages.push_install_required'));
+        ->toContain(__('pwa::messages.push_install_required'))
+        ->toContain('data-pwa-push-label="unavailable"')
+        ->toContain(__('pwa::messages.push_unavailable'));
+
+    expect(Blade::render('<x-pwa::push-toggle><x-slot:unavailable>Use another browser</x-slot:unavailable></x-pwa::push-toggle>'))
+        ->toContain('Use another browser');
 });
 
 it('prints the base styles once and lets them be turned off', function (): void {

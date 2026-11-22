@@ -145,7 +145,7 @@ npm run test:kits -- react 13
 ```
 
 Kity mají vlastní konfiguraci a frontend, které workbench nemá: chyba 500 z `/pwa/session` opravená
-v 1.0.2 se ukázala jen tam. Aplikace vzniká mimo checkout (`$TMPDIR/laravel-pwa-kits`); krok nastavení,
+v 1.0.2 se ukázala jen tam. Aplikace vzniká mimo checkout (`$TMPDIR/laravel-pwa-kits`) a po úspěšném běhu se smaže (`KIT_KEEP=1` ji ponechá); krok nastavení,
 který už nezmění svůj soubor, selže, takže změněný kit nezůstane bez povšimnutí.
 
 ### CI

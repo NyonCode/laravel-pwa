@@ -38,6 +38,7 @@ return [
     'push_enable' => 'Turn on notifications',
     'push_fallback' => 'You have a new notification. Open the app to see it.',
     'push_install_required' => 'Add the app to your Home Screen to get notifications.',
+    'push_unavailable' => 'Notifications are not available in this browser (for example in a private window).',
     'queued_count' => ':n action waiting|:n actions waiting',
     'queued_lead' => 'Saved on this device. It will be sent automatically once connected; nothing is lost.',
     'queued_title' => 'Waiting to be sent',
