@@ -52,6 +52,10 @@ uživatel akci zopakuje.
 Formuláře přes `useForm` jsou XHR, takže se při výpadku uloží do fronty a odešlou po připojení.
 Kvůli zpožděnému odeslání posílejte s vytvářenými záznamy vlastní UUID.
 
+Offline se odkaz na stránku s `pwa.cache` obslouží z cache, takže návštěva projde; jen stránka, která
+nikdy uložená nebyla, skončí `inertia:exception` a lištou. Viz
+[Stránky dostupné offline](offline.md#inertia).
+
 ## Vypnutí
 
 ```php

@@ -151,8 +151,26 @@ Keep the details on the page the notification opens.
 | anything else (413, 429, 5xx, network) | keeps it, dispatches `PushFailed` |
 
 `WebPush::send()` and the channel return a list of `Push\PushReport` (`endpoint`, `success`, `status`,
-`reason`). Subscriptions whose browser announced an `expirationTime` are removed by
-`php artisan model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"`.
+`reason`).
+
+## Pruning old subscriptions
+
+A browser that is uninstalled, reset or simply abandoned never says goodbye: its subscription stays until
+a send gets a 404 or 410. `pwa:push:prune` deletes subscriptions past the `expirationTime` the browser
+announced and those unused for `push.prune_after_days` days (90; a config published before 1.1 lacks the key and prunes expired ones only, see [UPGRADE.md](https://github.com/NyonCode/laravel-pwa/blob/main/UPGRADE.md)). "Used" means a successful delivery or a
+visit of the app, which confirms its subscription once a day, so active devices are never pruned.
+
+```php
+// routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('pwa:push:prune')->daily();
+```
+
+`--pretend` counts without deleting, `--days=30` overrides the setting, `prune_after_days => null` prunes
+expired subscriptions only. The model is `MassPrunable`, so
+`php artisan model:prune --model="NyonCode\LaravelPwa\Push\PushSubscription"` does the same; rows are
+deleted in chunks without model events (Laravel dispatches `ModelsPruned`).
 
 Every send also dispatches `PushSent` with the message, the reports and the notifiable;
 `delivered()`, `expired()` and `failed()` count them.

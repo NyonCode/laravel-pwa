@@ -53,6 +53,15 @@ Co nepovolovat:
 
 Na sdíleném zařízení se cache při odhlášení maže ([Bezpečnost](security.md)).
 
+### Inertia
+
+Odkazy Inertia nenavigují: stahují objekt stránky jako JSON (`X-Inertia`). Worker s těmito návštěvami
+zachází jako se stránkami: se stejným souhlasem `pwa.cache` uloží JSON pro uživatele vedle HTML a offline
+na návštěvu odpoví uloženým JSON, nebo u stránky známé jen z plného načtení či z
+[předehřátí](#předehřátí) objektem stránky z jejího uloženého HTML. Odkaz na uloženou stránku pak funguje
+offline bez znovunačtení aplikace. Částečné reloady (`only`, `except`) se nikdy neukládají ani
+neobsluhují z cache. Komponenty stránek pocházejí z buildu Vite, který si worker po načtení ponechá.
+
 ## Předehřátí
 
 Stránky, které uživatel nikdy neotevřel, se dají stáhnout dopředu, takže fungují offline hned po

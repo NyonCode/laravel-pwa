@@ -80,12 +80,25 @@ class PushSubscription extends Model
     }
 
     /**
-     * Subscriptions past the expirationTime the browser announced (php artisan model:prune).
+     * Subscriptions past the expirationTime the browser announced, and those unused for
+     * pwa.push.prune_after_days days: no successful delivery and no visit of the app, which confirms
+     * its subscription once a day (php artisan pwa:push:prune or model:prune).
      *
      * @return Builder<static>
      */
     public function prunable(): Builder
     {
-        return static::query()->whereNotNull('expires_at')->where('expires_at', '<', now());
+        // Missing from a config published before 1.1: expired subscriptions only, as before.
+        $days = config('pwa.push.prune_after_days');
+        $before = is_numeric($days) && (int) $days > 0 ? now()->subDays((int) $days) : null;
+
+        return static::query()->where(static function (Builder $query) use ($before): void {
+            $query->where(static fn (Builder $expired): Builder => $expired->whereNotNull('expires_at')->where('expires_at', '<', now()));
+
+            if ($before !== null) {
+                $query->orWhere('last_used_at', '<', $before)
+                    ->orWhere(static fn (Builder $never): Builder => $never->whereNull('last_used_at')->where('created_at', '<', $before));
+            }
+        });
     }
 }

@@ -14,6 +14,7 @@ description: Reference artisan příkazů pwa:* – volby, výstup, návratové 
 | `pwa:down` | údržba |
 | `pwa:disable` / `pwa:enable` | nouzové vypnutí SW |
 | `pwa:push:vapid` | jednou, před zapnutím [push notifikací](push.md) |
+| `pwa:push:prune` | denně ze scheduleru, se zapnutým push |
 
 ## pwa:install
 
@@ -122,6 +123,16 @@ Vygeneruje pár klíčů P-256 (OpenSSL, bez dalšího balíčku) a zapíše `PW
 `PWA_VAPID_PRIVATE_KEY` do `.env`. Existující klíče ponechá a vrátí 1; `--force` je nahradí (všechny
 odběry přestanou fungovat, dokud se prohlížeč nepřihlásí znovu). `--show` klíče vypíše pro správce
 tajemství a nic nezapíše. Viz [Push notifikace](push.md).
+
+## pwa:push:prune
+
+```bash
+php artisan pwa:push:prune [--days=] [--pretend]
+```
+
+Smaže push odběry po vypršení a odběry nepoužité (žádné doručení, žádná návštěva)
+`push.prune_after_days` dní. `--days` přepíše nastavení (`0` = jen vypršené), `--pretend` jen spočítá.
+Naplánujte ho denně; viz [Úklid starých odběrů](push.md#úklid-starých-odběrů).
 
 ## php artisan about
 

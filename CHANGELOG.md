@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
+### Added
+- Inertia offline navigation: the worker handles Inertia visits (GET with `X-Inertia`) like pages. With
+  the `pwa.cache` consent it stores the page object per user next to the HTML; offline it answers a visit
+  from the stored JSON or from the `data-page` object of the stored HTML of that URL (first load,
+  warm-up). Links to stored pages now work offline in React and Vue apps instead of failing with
+  `inertia:exception`. Partial reloads are never stored or served from the cache.
+- `php artisan pwa:push:prune [--days=] [--pretend]`: deletes push subscriptions past their expiration
+  time and those unused (no delivery, no visit) for `push.prune_after_days` days. Schedule it daily.
+- `push.prune_after_days` (90 in the package config). The `MassPrunable` subscription model honours it in
+  `model:prune` too; a config published before 1.1 has no key and keeps pruning expired subscriptions
+  only.
+
+### Development
+- The starter kit smoke test checks that an Inertia link to a stored page works offline.
+
 ## [1.0.3] - 2026-11-22
 
 ### Fixed
@@ -160,7 +177,8 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
   client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.0...v1.0.1

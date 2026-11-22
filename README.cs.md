@@ -114,6 +114,7 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 | `pwa:down` | `artisan down` s obrazovkou údržby PWA |
 | `pwa:disable` / `pwa:enable` | Nouzové vypnutí service workeru na všech zařízeních |
 | `pwa:push:vapid` | Vygeneruje klíče VAPID pro web push |
+| `pwa:push:prune` | Smaže vypršené a dlouho nepoužité push odběry (plánujte denně) |
 | `pwa:doctor` | Kontrola HTTPS, ikon, buildu, pravidel cache, výjimek z údržby, session |
 
 ## Dokumentace

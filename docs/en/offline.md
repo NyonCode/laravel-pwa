@@ -53,6 +53,15 @@ What not to allow:
 
 On a shared device, the cache is cleared on logout ([Security](security.md)).
 
+### Inertia
+
+Inertia links do not navigate: they fetch the page object as JSON (`X-Inertia`). The worker treats these
+visits like pages: with the same `pwa.cache` consent it stores the JSON per user next to the HTML, and
+offline it answers a visit from the stored JSON or, for a page known only from a full load or the
+[warm-up](#warm-up), from the page object inside its stored HTML. A link to a stored page then works
+offline without reloading the app. Partial reloads (`only`, `except`) are never stored or answered from
+the cache. The page components come from the Vite build, which the worker keeps once loaded.
+
 ## Warm-up
 
 Pages the user has never opened can be downloaded ahead of time, so they work offline right after

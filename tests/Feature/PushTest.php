@@ -266,6 +266,48 @@ describe('subscriptions', function (): void {
 
         expect($user->pushSubscriptions()->pluck('endpoint')->all())->toBe(['https://fcm.googleapis.com/fcm/send/b']);
     });
+
+    it('prunes subscriptions unused for pwa.push.prune_after_days days', function (): void {
+        config(['pwa.push.prune_after_days' => 90]);
+        $user = PushUser::make('Alice');
+        $endpoint = static fn (string $name): string => "https://fcm.googleapis.com/fcm/send/{$name}";
+        subscriptionFor($user, $endpoint('expired'))->forceFill(['expires_at' => now()->subMinute()])->save();
+        subscriptionFor($user, $endpoint('idle'))->forceFill(['last_used_at' => now()->subDays(91)])->save();
+        subscriptionFor($user, $endpoint('never-used'))->forceFill(['last_used_at' => null, 'created_at' => now()->subDays(91)])->save();
+        subscriptionFor($user, $endpoint('active'))->forceFill(['last_used_at' => now()->subDays(89)])->save();
+        subscriptionFor($user, $endpoint('new'))->forceFill(['last_used_at' => null, 'created_at' => now()->subDay()])->save();
+        subscriptionFor($user, $endpoint('expires-later'))->forceFill(['expires_at' => now()->addDay()])->save();
+        $left = static fn (): array => $user->pushSubscriptions()->orderBy('id')->pluck('endpoint')->map(static fn (string $url): string => basename($url))->all();
+
+        $this->artisan('pwa:push:prune', ['--pretend' => true])
+            ->expectsOutputToContain('3 push subscription(s) would be deleted')
+            ->assertSuccessful();
+        expect($left())->toHaveCount(6);
+
+        $this->artisan('pwa:push:prune')->expectsOutputToContain('3 push subscription(s) deleted')->assertSuccessful();
+
+        expect($left())->toBe(['active', 'new', 'expires-later']);
+    });
+
+    it('prunes only expired subscriptions with prune_after_days null or --days=0', function (): void {
+        $user = PushUser::make('Alice');
+        subscriptionFor($user)->forceFill(['last_used_at' => now()->subYear()])->save();
+
+        config(['pwa.push.prune_after_days' => null]);
+        $this->artisan('pwa:push:prune')->expectsOutputToContain('0 push subscription(s) deleted')->assertSuccessful();
+
+        // A config published before 1.1 has no key: expired only, as before.
+        $push = config('pwa.push');
+        unset($push['prune_after_days']);
+        config(['pwa.push' => $push]);
+        $this->artisan('pwa:push:prune')->expectsOutputToContain('0 push subscription(s) deleted')->assertSuccessful();
+
+        config(['pwa.push.prune_after_days' => 90]);
+        $this->artisan('pwa:push:prune', ['--days' => '0'])->expectsOutputToContain('0 push subscription(s) deleted')->assertSuccessful();
+        $this->artisan('pwa:push:prune', ['--days' => '400', '--pretend' => true])->expectsOutputToContain('0 push subscription(s) would be deleted')->assertSuccessful();
+        $this->artisan('pwa:push:prune', ['--days' => '30'])->expectsOutputToContain('1 push subscription(s) deleted')->assertSuccessful();
+        $this->artisan('pwa:push:prune', ['--days' => 'soon'])->expectsOutputToContain('--days must be a whole number')->assertExitCode(2);
+    });
 });
 
 describe('sending', function (): void {
