@@ -138,7 +138,8 @@ $this->get('/manifest.webmanifest')->assertValidManifest();
 
 Balíček se řídí [sémantickým verzováním](docs/cs/versioning.md): minor verze nikdy nerozbijí veřejné
 API. Laravel 11 a starší jsou po konci podpory a balíček je nepodporuje. Každé vydání se testuje
-s nejnižšími i nejnovějšími závislostmi na všech podporovaných verzích PHP a Laravelu.
+s nejnižšími i nejnovějšími závislostmi na všech podporovaných verzích PHP a Laravelu. Co přijde dál,
+je v [roadmapě](docs/cs/roadmap.md).
 
 ## AI agenti a MCP
 
