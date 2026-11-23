@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: "Co je v plánu po 1.1: navigace Livewire offline, odchozí schránka pro neodeslané požadavky, doctor pro živý web, podporované verze v roce 2027 a 2.0."
+description: "Co je v plánu po 1.2: doctor pro živý web, podporované verze v roce 2027 a 2.0."
 ---
 
 # Roadmap
@@ -16,19 +16,7 @@ v [GitHub issues](https://github.com/NyonCode/laravel-pwa/issues).
 | 1.0 | stabilní veřejné API, UI komponenty, WebKit v e2e, předcache Vite, push po dávkách a statistika |
 | 1.0.1–1.0.3 | opravy z reálné aplikace a starter kitů, CI se starter kity, stav push `unavailable` |
 | 1.1 | odkazy Inertia na uložené stránky fungují offline, `pwa:push:prune` |
-
-## 1.2: Navigace Livewire a odchozí schránka
-
-- **`wire:navigate` offline.** Livewire další stránku stahuje s hlavičkou `X-Livewire-Navigate` místo
-  navigace, takže jí worker dnes z uložených stránek neodpoví – stejná mezera, jakou měla Inertia před
-  1.1. Worker bude uložené stránky servírovat i těmto požadavkům, s krokem ve smoke testu Livewire
-  starter kitu.
-- **Odchozí schránka pro neúspěšná odeslání.** Požadavek z offline fronty, který server odmítne (chyba
-  validace 422, 403, 409), se dnes po události `replayed` zahodí. Nově zůstane v odchozí schránce:
-  `Pwa.outbox()` ho vypíše se stavem a odpovědí serveru, `retry()` a `discard()` s ním naloží, nová
-  událost `replay-failed` a komponenta `<x-pwa::outbox>` ho ukážou uživateli.
-- **Limity fronty.** Volitelné maximální stáří a počet požadavků ve frontě (`offline.queue_max_age`,
-  `offline.queue_max`), aby se starý požadavek neodeslal po dnech bez vědomí uživatele.
+| 1.2 | odkazy `wire:navigate` offline, odchozí schránka pro odmítnuté offline změny, limity fronty |
 
 ## 1.3: Živý web
 
