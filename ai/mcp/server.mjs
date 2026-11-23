@@ -627,7 +627,7 @@ const tools = [
         client.members.map((member) => `- \`${member}\``).join('\n'),
         '## Events emitted by the client (document, prefix "pwa:")',
         client.events.map((event) => `- \`pwa:${event}\``).join('\n'),
-        'Service-worker messages are re-emitted with their own type: activated, offline, maintenance, logout, queue, replayed.',
+        'Service-worker messages are re-emitted with their own type: activated, offline, maintenance, logout, queue, queue-full, replayed, replay-failed.',
         doc ? `---\n\n${doc.body}` : '',
       ].filter(Boolean).join('\n\n')
     },

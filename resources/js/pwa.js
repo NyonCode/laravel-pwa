@@ -181,10 +181,21 @@ const registerServiceWorker = async () => {
         break;
       case 'queued':
       case 'queue':
-        emit('queue', { count: data.count });
+        emit('queue', { count: data.count, failed: data.failed ?? 0 });
+        updateOutboxUi().catch(() => {});
+        break;
+      case 'queue-full':
+        showBar(t('queueFull', 'You are offline and too many changes are waiting. This one was not saved.'), null, 'warn');
+        emit('queue-full', { count: data.count });
         break;
       case 'replayed':
         emit('replayed', data);
+        break;
+      case 'replay-failed':
+        // With an outbox on the page, it shows the change; otherwise say that it was not saved.
+        if (!document.querySelector('[data-pwa-outbox]')) showBar(t('replayFailed', 'A change made offline could not be saved.'), null, 'warn');
+        emit('replay-failed', data);
+        updateOutboxUi().catch(() => {});
         break;
       case 'identity':
         // Another user signed in without a navigation (Inertia, Livewire): fetch their warm-up list.
@@ -198,6 +209,72 @@ const registerServiceWorker = async () => {
   });
 
   if (navigator.onLine) navigator.serviceWorker.controller?.postMessage({ type: 'REPLAY_QUEUE' });
+};
+
+/** A request to the worker with a reply port; null without an active worker. */
+const askWorker = (message) => new Promise((resolve) => {
+  const worker = navigator.serviceWorker?.controller || registration?.active;
+  if (!worker) { resolve(null); return; }
+  const channel = new MessageChannel();
+  channel.port1.onmessage = (e) => { channel.port1.close(); resolve(e.data ?? null); };
+  worker.postMessage(message, [channel.port2]);
+});
+
+/* ---------------------------------------------------------------------- *
+ * Outbox (offline.outbox): queued requests the server refused on replay
+ * ---------------------------------------------------------------------- */
+
+const outbox = async () => {
+  const reply = await askWorker({ type: 'OUTBOX' });
+  return (reply?.items || []).map((item) => ({
+    ...item,
+    path: new URL(item.url, location.origin).pathname,
+    retry: () => askWorker({ type: 'RETRY', id: item.id }).then((result) => { updateOutboxUi().catch(() => {}); return result || { ok: false }; }),
+    discard: () => askWorker({ type: 'DISCARD', id: item.id }).then((result) => { updateOutboxUi().catch(() => {}); return result || { ok: false }; }),
+  }));
+};
+
+const outboxReason = (root, item) => {
+  if (item.message) return item.message;
+  if (item.reason === 'expired') return root.getAttribute('data-pwa-outbox-expired') || 'It waited too long to be sent.';
+  return (root.getAttribute('data-pwa-outbox-refused') || 'The server did not accept it (error :status).').replace(':status', String(item.status));
+};
+
+const errorMessages = (errors) => Object.values(errors || {}).flatMap((value) => (Array.isArray(value) ? value : [value])).map(String);
+
+/** Fills every [data-pwa-outbox] from its <template data-pwa-outbox-item>; hidden while empty. */
+const updateOutboxUi = async () => {
+  const roots = document.querySelectorAll('[data-pwa-outbox]');
+  if (roots.length === 0) return;
+  const items = await outbox();
+  roots.forEach((root) => {
+    root.hidden = items.length === 0;
+    const list = root.querySelector('[data-pwa-outbox-list]');
+    const template = root.querySelector('template[data-pwa-outbox-item]');
+    if (!list || !template) return;
+    list.replaceChildren(...items.map((item) => {
+      const node = template.content.firstElementChild.cloneNode(true);
+      node.setAttribute('data-pwa-outbox-id', String(item.id));
+      const fields = { method: item.method, path: item.path, status: String(item.status), reason: outboxReason(root, item) };
+      node.querySelectorAll('[data-pwa-outbox-field]').forEach((el) => { el.textContent = fields[el.getAttribute('data-pwa-outbox-field')] ?? ''; });
+      node.querySelectorAll('[data-pwa-outbox-errors]').forEach((el) => {
+        const messages = errorMessages(item.errors);
+        el.hidden = messages.length === 0;
+        el.replaceChildren(...messages.map((text) => Object.assign(document.createElement('li'), { textContent: text })));
+      });
+      return node;
+    }));
+  });
+};
+
+const outboxAction = async (button, action) => {
+  const node = button.closest('[data-pwa-outbox-id]');
+  if (!node || node.getAttribute('aria-busy') === 'true') return;
+  node.setAttribute('aria-busy', 'true');
+  node.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+  const id = Number(node.getAttribute('data-pwa-outbox-id'));
+  await askWorker({ type: action, id });
+  await updateOutboxUi();
 };
 
 /* ---------------------------------------------------------------------- *
@@ -596,6 +673,10 @@ document.addEventListener('click', (event) => {
   if (on('[data-pwa-install-dismiss]')) { store.set('install-dismissed', Date.now()); updateInstallUi(); }
   if (on('[data-pwa-update-apply]')) { event.preventDefault(); applyUpdate(); }
   if (on('[data-pwa-update-dismiss]')) { updateDismissed = true; tabStore.set('update-dismissed', '1'); updateUpdateUi(); }
+  const retry = on('[data-pwa-outbox-retry]');
+  if (retry) { event.preventDefault(); outboxAction(retry, 'RETRY'); }
+  const discard = on('[data-pwa-outbox-discard]');
+  if (discard) { event.preventDefault(); outboxAction(discard, 'DISCARD'); }
   const toggle = on('[data-pwa-push-toggle]');
   if (toggle && !toggle.disabled) { event.preventDefault(); togglePushOnce(toggle); }
 });
@@ -605,6 +686,7 @@ const refreshUi = () => {
   updateInstallUi();
   updateUpdateUi();
   updatePushUi().catch(() => {});
+  updateOutboxUi().catch(() => {});
 };
 
 document.addEventListener('livewire:navigated', refreshUi);
@@ -681,6 +763,7 @@ const boot = async () => {
 
   try { await registerServiceWorker(); } catch (e) { console.warn('[pwa]', e); }
   updatePushUi().catch(() => {});
+  updateOutboxUi().catch(() => {});
 
   if (C.warm?.enabled && navigator.serviceWorker?.controller && warmDue(store.get('warm', {}).user)) keepAlive(true);
   else if (C.push && Date.now() - (store.get('push')?.at || Infinity) >= PUSH_SYNC) keepAlive(true);
@@ -718,6 +801,7 @@ window.Pwa = {
     set: (count) => navigator.setAppBadge?.(count).catch(() => {}),
     clear: () => navigator.clearAppBadge?.().catch(() => {}),
   },
+  outbox,
   version: () => new Promise((resolve) => {
     const ctrl = navigator.serviceWorker?.controller;
     if (!ctrl) { resolve(null); return; }

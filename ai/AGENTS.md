@@ -193,13 +193,18 @@ Safari reports Mac even on iPad; without Client Hints macOS is therefore not tre
 - `<x-pwa::push-toggle/>` — `[data-pwa-push]` wrapper with `[data-pwa-push-toggle]` button
   (→ `Pwa.push.toggle()`); client sets `data-pwa-push-state` and `aria-pressed`, shows the matching
   `[data-pwa-push-label]`; hidden when push is unavailable. Slots `enable`, `disable`, `denied`, `install-required`.
+- `<x-pwa::outbox/>` — hidden `[data-pwa-outbox]` panel (not fixed) listing queued requests the server
+  refused on replay (`offline.outbox`): rows from `<template data-pwa-outbox-item>` with
+  `[data-pwa-outbox-field]` (`method|path|status|reason`), `[data-pwa-outbox-errors]`,
+  `[data-pwa-outbox-retry]`, `[data-pwa-outbox-discard]`. Its presence suppresses the "could not be saved"
+  bar. Props `styles`, slots `title` and default (lead text).
 - Base styles (`partials/ui-styles`) print once per page with the CSP nonce, `:where()` rules,
   CSS variables `--pwa-surface|on-surface|muted|action|radius|shadow|font`; `:styles="false"` opts out.
   No inline scripts: `pwa.js` drives every `[data-pwa-*]` element; `Pwa.refreshUi()` (also on
   `livewire:navigated`, `inertia:navigate`, `pageshow`) re-scans elements added later.
 
 Views to customise (`php artisan vendor:publish --tag="pwa::views"`): `offline.blade.php`,
-`maintenance.blade.php`, `components/{head,nav,install,update-toast,push-toggle}.blade.php`, `partials/ui-styles.blade.php`. Offline and maintenance pages
+`maintenance.blade.php`, `components/{head,nav,install,update-toast,push-toggle,outbox}.blade.php`, `partials/ui-styles.blade.php`. Offline and maintenance pages
 must stay self-contained (inline CSS/SVG/JS, no external URLs). In `maintenance.blade.php` pass PHP
 data only via `data-*` attributes on `#pwa-maintenance`, never inside `<script>` (keeps the CSP hash
 stable). Keep the `@if($nonce) nonce=…` attributes.
@@ -213,8 +218,9 @@ Requests are handled in this order; the first row that applies wins.
 | `/sw.js`; navigations to `cache.never_cache` paths | untouched | — |
 | the client script `/pwa/client.js?v=…` (precached, despite `/pwa/*` in never_cache) | cache-first | `pwa-static-{version}` |
 | fetch/XHR to `cache.never_cache` paths | passed to the network, never stored or queued; identity headers are read | — |
-| POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1` | — |
+| POST/PUT/PATCH/DELETE (`fetch`/XHR, not navigations) | network; on network error stored in IndexedDB `pwa`/`queue`, responds `202 {"queued":true}` + `X-PWA-Queued: 1`; beyond `offline.queue_max` `Response.error()` + `queue-full` | — |
 | navigation | network (+ Navigation Preload); after `cache.navigation_timeout` s use cache if present; on error cache, then `/offline` | `pwa-pages-{userHash}` |
+| GET with `X-Livewire-Navigate` (`wire:navigate`) | like a navigation, stored under the page URL (never redirected answers); on error cache, then `Response.error()` (Livewire falls back to a full navigation) | `pwa-pages-{userHash}` |
 | `/build/*`, precache list | cache-first | `pwa-static-{version}` |
 | routes registered in `sw.extend` via `self.PwaWorker.route()` | the app's handler | handler's choice |
 | other same-origin GET | first matching cache rule (see below) | `pwa-rule-{name}-{userHash}` or `pwa-shared-{name}` |
@@ -233,8 +239,12 @@ the client asks the user (bar or update toast), then `Pwa.applyUpdate()` sends `
 and reloads after `controllerchange`. Never post `SKIP_WAITING` from app code: the page would not reload. Activation removes caches of rules that no
 longer exist and pre-1.0 caches (`pwa-api-*`, `pwa-images*`).
 
-Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION` (with a port).
-Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503.
+Messages to the worker: `SKIP_WAITING`, `REPLAY_QUEUE`, `CLEAR_USER`, `IDENTITY` (`{user}` from keep-alive), `GET_VERSION`, `OUTBOX`, `RETRY` `{id}`, `DISCARD` `{id}` (the last four with a port).
+Queue replay retries once with a fresh CSRF token after 419 and stops on network error or 503. A
+refused replay (status ≥ 400, or an `X-Inertia` answer with non-empty `props.errors`) and an entry older
+than `offline.queue_max_age` minutes get `failed: {status, reason, message, errors, at}` and stay in the
+same store as the outbox (`offline.outbox`; never replayed automatically, only by `RETRY`), or are deleted
+without it; either way the worker broadcasts `replay-failed`. Config published before 1.2 lacks the key → dropped as before.
 
 ### Cache rules (`pwa.cache.rules`, `Pwa::serviceWorker()->cache()`)
 
@@ -352,12 +362,13 @@ messages are built and size-checked, nothing is sent.
 ## Client `window.Pwa` (`resources/js/pwa.js`)
 
 `config`, `displayMode()`, `isInstalled()`, `isIos()`, `install()` → `'accepted'|'dismissed'|'unavailable'`,
-`canInstall()`, `update()` (check only), `updateAvailable()`, `applyUpdate()` → bool, `refreshUi()`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
+`canInstall()`, `update()` (check only), `updateAvailable()`, `applyUpdate()` → bool, `refreshUi()`, `outbox()` → refused requests `{id, url, path, method, status, reason ('refused'|'expired'), message, errors, data, queuedAt, failedAt, retry(), discard()}`, `keepAlive()`, `warm()` → `{count, skipped, failed}` or `null`, `version()`, `on(name, fn)` → unsubscribe fn, `badge.set(n)`, `badge.clear()`,
 `push.supported()`, `push.permission()`, `push.state()` → `subscribed|unsubscribed|denied|install-required|unsupported`,
 `push.subscribe()` (call from a click) → subscription or `null`, `push.unsubscribe()`, `push.toggle()`, `push.subscription()`.
 
 DOM events on `document` (`pwa:` + name, also via `Pwa.on(name)`): `ready`, `resume`, `online`,
-`offline`, `maintenance`, `logout`, `queue` `{count}`, `replayed` `{url,status}`,
+`offline`, `maintenance`, `logout`, `queue` `{count, failed}`, `queue-full` `{count}`, `replayed` `{url,status}`,
+`replay-failed` `{id, url, method, status, reason, message, errors, kept}`,
 `update-available` `{worker}`, `activated` `{version}`, `installable` `{prompt, ios}`, `installed`, `csrf` `{token}`,
 `csrf-refreshed`, `identity` `{user}` (another user signed in), `warmed` `{count,skipped,failed}`,
 `push` `{state, lost?, error?}`, `push-received` `{tag}`, `push-renewed`, `notification-click` `{url, action}`.

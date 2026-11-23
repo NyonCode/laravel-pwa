@@ -12,6 +12,17 @@ updates within 1.x never break the public API. On every update:
 
 The service worker migrates its caches itself when the new version activates.
 
+## From 1.1 to 1.2
+
+Nothing to change. To use the new pieces:
+
+- **Outbox:** queued requests the server refuses on replay are kept for the user. A published
+  `config/pwa.php` has no `outbox` key in its `offline` section and keeps dropping them, as before; add
+  `'outbox' => true` (and optionally `'queue_max'`, `'queue_max_age'`) to turn it on, then place
+  `<x-pwa::outbox/>` where the user sees it. Without the component the client shows a bar.
+- **`wire:navigate` offline** needs nothing: after `pwa:build`, links to pages with `pwa.cache` work
+  offline in Livewire apps.
+
 ## From 1.0 to 1.1
 
 Nothing to change. To use the new pieces:

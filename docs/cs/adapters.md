@@ -28,6 +28,9 @@ do fronty: stav komponent by po odeslání se zpožděním nemusel sedět. Pozn�
 `X-Livewire`, takže to platí i pro adresu Livewire 4 `/livewire-{hash}/update`; `cache.never_cache`
 obsahuje `/livewire/*` i `/livewire-*`.
 
+Odkazy `wire:navigate` fungují offline u uložených stránek: worker odpoví na stažení stránky Livewirem
+z cache ([Offline](offline.md#livewire-wirenavigate)).
+
 Offline stav v šabloně: vestavěné `wire:offline` funguje dál.
 
 ```blade

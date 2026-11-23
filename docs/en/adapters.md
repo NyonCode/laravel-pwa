@@ -28,6 +28,9 @@ them) and never caches or queues them: component state might no longer match whe
 late. It recognises them by the `X-Livewire` header, so this also holds for the Livewire 4 address
 `/livewire-{hash}/update`; `cache.never_cache` lists both `/livewire/*` and `/livewire-*`.
 
+`wire:navigate` links work offline for stored pages: the worker answers Livewire's page fetch from the
+cache ([Offline](offline.md#livewire-wirenavigate)).
+
 Offline state in templates: the built-in `wire:offline` keeps working.
 
 ```blade

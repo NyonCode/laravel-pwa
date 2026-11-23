@@ -62,6 +62,15 @@ na návštěvu odpoví uloženým JSON, nebo u stránky známé jen z plného na
 offline bez znovunačtení aplikace. Částečné reloady (`only`, `except`) se nikdy neukládají ani
 neobsluhují z cache. Komponenty stránek pocházejí z buildu Vite, který si worker po načtení ponechá.
 
+### Livewire (`wire:navigate`)
+
+Ani odkazy `wire:navigate` nenavigují: Livewire stáhne HTML další stránky (`X-Livewire-Navigate`)
+a vymění ho. Worker s tímto stahováním zachází jako s navigací: se souhlasem `pwa.cache` uloží stránku pod
+její URL, takže stránka otevřená odkazem je k dispozici i pozdějšímu plnému načtení a naopak, a při
+pomalé nebo nedostupné síti odpoví uloženou stránkou. Odkaz na uloženou stránku pak funguje offline bez
+znovunačtení aplikace. U stránky, která nikdy uložená nebyla, stažení selže a Livewire přejde na plnou
+navigaci, která ukáže offline obrazovku. Přesměrované odpovědi se neukládají.
+
 ## Předehřátí
 
 Stránky, které uživatel nikdy neotevřel, se dají stáhnout dopředu, takže fungují offline hned po
@@ -146,4 +155,43 @@ Pozor:
 - **Idempotence**: akce se může odeslat se zpožděním. Pro vytváření záznamů posílejte z klienta
   vlastní ID (UUID), aby opakování nevytvořilo duplicitu.
 - **Pořadí**: fronta se odesílá v pořadí vložení; první chyba sítě odesílání zastaví.
+- **Validace**: [odchozí schránka](#odchozí-schránka) zachytí, co server odmítne se stavem 4xx nebo 5xx,
+  i odpovědi Inertia s chybami validace. Obyčejný `fetch` formuláře bez `Accept: application/json`
+  dostane od Laravelu při neúspěšné validaci přesměrování zpět, které worker nerozezná od úspěchu: z
+  vlastního JS posílejte `Accept: application/json`.
 - Vypnutí: `offline.queue = false`, nebo konkrétní cesty do `cache.never_cache`.
+
+### Odchozí schránka
+
+Když server požadavek z fronty při odeslání odmítne (stav od 400 výš kromě 419 a 503, nebo odpověď Inertia
+s chybami validace), worker ho místo zahození ponechá v odchozí schránce (`offline.outbox`). Sám se už
+znovu neodešle. Uživatel vidí, co se neuložilo, a rozhodne:
+
+```blade
+<x-pwa::outbox/>
+```
+
+[Komponenta](components.md#x-pwaoutbox) vypíše každou změnu se zprávou serveru a chybami validace
+a s tlačítky **Zkusit znovu** a **Zahodit**. Bez ní na stránce klient ukáže lištu („Změnu provedenou
+offline se nepodařilo uložit“). Ve vlastním UI:
+
+```js
+Pwa.on('replay-failed', ({ url, status }) => console.warn('neuloženo', url, status))
+
+for (const item of await Pwa.outbox()) {
+  // item: {id, url, path, method, status, reason, message, errors, data, queuedAt, failedAt}
+  form.fill(item.data)        // odeslaná pole bez tokenů a hesel
+  await item.discard()        // nebo item.retry() → {ok: true}, jakmile ho server přijme
+}
+```
+
+`data` obsahuje pole formuláře nebo JSON těla bez `_token`, `_method` a polí, jejichž název obsahuje
+`password`, `secret`, `token`, `card`, `cvc`, `cvv` nebo `iban`; hlavičky se nikdy nezveřejňují. Odchozí
+schránka se maže se zbytkem dat uživatele při odhlášení nebo přihlášení jiného uživatele.
+
+### Limity
+
+`offline.queue_max` omezí, kolik požadavků smí čekat najednou: další se do fronty neuloží, selže jako síť
+a klient ukáže „čeká příliš mnoho změn“ (`pwa:queue-full`). `offline.queue_max_age` (minuty) zabrání,
+aby se požadavek, který čekal příliš dlouho, odeslal po několika dnech: při odesílání místo toho přejde do
+odchozí schránky s `reason: 'expired'` a rozhodne uživatel. Obojí je ve výchozím stavu vypnuté (`null`).

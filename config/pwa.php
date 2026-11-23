@@ -223,6 +223,11 @@ return [
         'route' => '/offline',
         'precache' => [],
         'queue' => true,                // queue POST/PUT/PATCH/DELETE while the network is down
+        // Queued requests the server refuses on replay (422, 403, 409…) stay in an outbox for the
+        // user to retry or discard (Pwa.outbox(), <x-pwa::outbox>) instead of being dropped.
+        'outbox' => true,
+        'queue_max' => null,            // at most this many waiting requests (null: no limit)
+        'queue_max_age' => null,        // minutes; older requests are not sent, they go to the outbox
         // Pages the worker downloads ahead of time, so they open offline without a prior visit.
         // Only pages with the pwa.cache middleware are stored. Per-user lists: Pwa::warmUsing().
         'warm' => [

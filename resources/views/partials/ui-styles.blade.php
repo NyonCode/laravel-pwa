@@ -1,5 +1,5 @@
 {{--
-  Base styles for <x-pwa::install>, <x-pwa::update-toast> and <x-pwa::push-toggle>, printed once per page.
+  Base styles for <x-pwa::install>, <x-pwa::update-toast>, <x-pwa::push-toggle> and <x-pwa::outbox>, printed once per page.
   Theme them with CSS variables, or pass :styles="false" to the components and style the pwa-* classes yourself.
 --}}
 @once
@@ -32,5 +32,23 @@
   :where(.pwa-ios-hint__close){display:block; margin-left:auto}
   :where(.pwa-push){display:inline-flex; flex-direction:column; gap:4px}
   :where(.pwa-push__hint){font-size:.875em; opacity:.8}
+  :where(.pwa-outbox){
+    box-sizing:border-box; padding:12px 14px; border-radius:var(--pwa-radius); box-shadow:var(--pwa-shadow);
+    background:var(--pwa-surface); color:var(--pwa-on-surface); font:var(--pwa-font);
+  }
+  :where(.pwa-outbox p){margin:0 0 8px}
+  :where(.pwa-outbox__title){font-weight:600}
+  :where(.pwa-outbox__lead, .pwa-outbox__why, .pwa-outbox__errors){color:var(--pwa-muted)}
+  :where(.pwa-outbox__list){list-style:none; margin:0; padding:0; display:grid; gap:10px}
+  :where(.pwa-outbox__item){display:grid; gap:4px}
+  :where(.pwa-outbox__what){font-weight:600; overflow-wrap:anywhere}
+  :where(.pwa-outbox__errors){margin:0; padding-left:1.25em}
+  :where(.pwa-outbox__actions){display:flex; gap:8px}
+  :where(.pwa-outbox button){
+    font:inherit; font-weight:600; color:inherit; background:var(--pwa-action); border:0; border-radius:8px;
+    padding:6px 10px; cursor:pointer;
+  }
+  :where(.pwa-outbox button:focus-visible){outline:2px solid currentColor; outline-offset:2px}
+  :where(.pwa-outbox button:disabled){opacity:.6; cursor:default}
 </style>
 @endonce

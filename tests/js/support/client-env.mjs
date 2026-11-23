@@ -70,7 +70,14 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
     registered: [],
     unregistered: 0,
     listeners: new Map(),
-    controller: { postMessage: (message) => sw.posted.push(message) },
+    // Requests with a reply port (OUTBOX, RETRY…) are answered by sw.answer(message), when set.
+    answer: null,
+    controller: {
+      postMessage: (message, ports = []) => {
+        sw.posted.push(message);
+        if (sw.answer && ports[0]) Promise.resolve(sw.answer(message)).then((reply) => ports[0].postMessage(reply));
+      },
+    },
     register: async (url, options) => {
       sw.registered.push({ url, options });
       return sw.registration;
@@ -129,7 +136,7 @@ export const createClient = async ({ config = {}, fetch: network, displayMode = 
 
   const events = [];
   const record = (name) => document.addEventListener(name, (e) => events.push({ name, detail: e.detail }));
-  for (const name of ['ready', 'csrf', 'offline', 'maintenance', 'logout', 'queue', 'replayed', 'resume', 'online', 'csrf-refreshed', 'installed', 'update-available', 'activated', 'push', 'push-received', 'notification-click', 'identity', 'installable', 'warmed', 'push-renewed']) {
+  for (const name of ['ready', 'csrf', 'offline', 'maintenance', 'logout', 'queue', 'replayed', 'resume', 'online', 'csrf-refreshed', 'installed', 'update-available', 'activated', 'push', 'push-received', 'notification-click', 'identity', 'installable', 'warmed', 'push-renewed', 'replay-failed', 'queue-full']) {
     record(`pwa:${name}`);
   }
 

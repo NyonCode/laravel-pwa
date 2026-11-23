@@ -113,3 +113,21 @@ it('tells the worker where the client script lives, so offline pages keep it', f
     expect($config['client'])->toBe('/pwa/client.js')
         ->and(app(Pwa::class)->clientUrl())->toMatch('#^/pwa/client\.js\?v=[a-f0-9]{12}$#');
 });
+
+it('passes the outbox and the queue limits to the worker', function (): void {
+    config()->set('pwa.offline.outbox', true);
+    config()->set('pwa.offline.queue_max', '50');
+    config()->set('pwa.offline.queue_max_age', 1440);
+
+    expect(app(ServiceWorkerBuilder::class)->runtimeConfig())
+        ->toMatchArray(['outbox' => true, 'queueMax' => 50, 'queueMaxAge' => 86_400_000]);
+});
+
+it('keeps dropping refused requests with a config published before 1.2', function (): void {
+    $offline = config('pwa.offline');
+    unset($offline['outbox'], $offline['queue_max'], $offline['queue_max_age']);
+    config()->set('pwa.offline', $offline);
+
+    expect(app(ServiceWorkerBuilder::class)->runtimeConfig())
+        ->toMatchArray(['outbox' => false, 'queueMax' => 0, 'queueMaxAge' => 0]);
+});

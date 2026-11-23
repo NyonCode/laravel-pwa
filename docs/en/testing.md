@@ -140,7 +140,8 @@ package from this checkout and applies the documented setup (`tests/starter-kits
 component, `pwa.cache` on the dashboard, maintenance exceptions, push with `HasPushSubscriptions`, icons).
 Then it runs `pwa:doctor --ci` and `tests/starter-kits/smoke.spec.mjs` in Chromium against `php artisan
 serve`: manifest and worker, sign-in and keep-alive, the dashboard offline and the offline screen, a form
-sent offline (queued and replayed in Inertia, "not sent" in Livewire) and cleanup on logout.
+sent offline (queued and replayed in Inertia, "not sent" in Livewire), links to stored pages offline
+(Inertia visits, `wire:navigate`) and cleanup on logout.
 
 ```bash
 npm run test:kits -- react 13

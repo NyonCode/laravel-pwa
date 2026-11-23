@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-23
+
+### Added
+- `wire:navigate` offline: the worker handles Livewire's page fetches (`X-Livewire-Navigate`) like
+  navigations. With the `pwa.cache` consent it stores the page under its URL, and answers from the stored
+  page when the network is slow or down. Links to stored pages now work offline in Livewire apps without
+  a full reload, and pages opened through `wire:navigate` are stored at all (before, only full loads and
+  the warm-up stored pages).
+- Outbox (`offline.outbox`): a queued request the server refuses on replay (status 400 and up other
+  than 419 and 503, or an Inertia answer with validation errors) is kept instead of dropped, with the
+  server's message and validation errors. `Pwa.outbox()` lists it with `retry()` and `discard()`, the new
+  `<x-pwa::outbox/>` component shows it to the user, and the client shows a bar without it. New events
+  `pwa:replay-failed` and `pwa:queue-full`; `pwa:queue` also carries `failed`.
+- Queue limits: `offline.queue_max` (a request beyond it fails like the network) and
+  `offline.queue_max_age` in minutes (an older request is not sent, it goes to the outbox).
+- Translations `outbox_*`, `replay_failed`, `queue_full` (EN, CS).
+
+### Changed
+- The offline screen counts only the requests that still wait, not those in the outbox.
+
+### Development
+- The starter kit smoke test checks `wire:navigate` offline in the Livewire kit; e2e covers the outbox.
+
 ## [1.1.0] - 2026-11-22
 
 ### Added
@@ -177,7 +200,8 @@ The first stable release. Requires PHP 8.2+ and Laravel 12 or 13.
   Octane-style state isolation tests, weekly mutation testing); JS unit tests of the worker and the
   client; browser tests in Chromium, Firefox, WebKit and an iPhone project.
 
-[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/NyonCode/laravel-pwa/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/NyonCode/laravel-pwa/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/NyonCode/laravel-pwa/compare/v1.0.1...v1.0.2

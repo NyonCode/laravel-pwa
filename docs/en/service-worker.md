@@ -176,9 +176,12 @@ Client → SW (`navigator.serviceWorker.controller.postMessage`):
 | `{type: 'CLEAR_USER'}` | delete the user's cache and queue |
 | `{type: 'IDENTITY', user}` | identity from keep-alive (`/pwa/session`); a different user means the previous user's data is deleted |
 | `{type: 'GET_VERSION'}` + `MessagePort` | returns `{version}` (`window.Pwa.version()`) |
+| `{type: 'OUTBOX'}` + `MessagePort` | returns `{items}`, the refused requests (`window.Pwa.outbox()`) |
+| `{type: 'RETRY', id}` + `MessagePort` | sends a refused request again; `{ok}`, `{ok: false, status}` or `{ok: false, pending: true}` while offline |
+| `{type: 'DISCARD', id}` + `MessagePort` | deletes a refused request; `{ok}` |
 
 SW → client (`{source: 'pwa', type}`): `activated`, `offline`, `maintenance`, `logout`, `queued`,
-`queue`, `replayed`. The client turns them into `pwa:*` DOM events ([Client](client.md)).
+`queue`, `queue-full`, `replayed`, `replay-failed`. The client turns them into `pwa:*` DOM events ([Client](client.md)).
 
 ## sw.import
 

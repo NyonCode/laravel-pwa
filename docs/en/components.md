@@ -124,6 +124,32 @@ Needs the [web push module](push.md). A click subscribes or unsubscribes this de
 `aria-pressed`, and the matching `[data-pwa-push-label]` is shown. Without push on the server, or in a
 browser without push, the toggle stays hidden.
 
+## `<x-pwa::outbox/>`
+
+```blade
+<x-pwa::outbox class="card"/>
+<x-pwa::outbox>
+    <x-slot:title>Unsaved orders</x-slot:title>
+    These orders were not saved. Check them and try again.
+</x-pwa::outbox>
+```
+
+| Prop / slot | Default | Description |
+| --- | --- | --- |
+| slot `title` | translated "Not saved" | heading |
+| default slot | translated explanation | text under the heading |
+| `styles` | `true` | [base styles](#styling) |
+| attributes | – | passed to the wrapper (class `pwa-ui pwa-outbox`) |
+
+Changes made offline that the server refused when they were sent ([outbox](offline.md#outbox)): each
+row shows the method and path, the server's message or a translated reason, the validation errors, and
+**Try again** / **Discard**. Hidden while the outbox is empty, it is not a floating toast: place it where
+the user looks, for example above the content. The rows come from
+`<template data-pwa-outbox-item>` inside the component, with `[data-pwa-outbox-field]` (`method`,
+`path`, `status`, `reason`), `[data-pwa-outbox-errors]`, `[data-pwa-outbox-retry]` and
+`[data-pwa-outbox-discard]`; publish the views to change it. With the component on the page, the
+built-in "could not be saved" bar is not shown.
+
 ## Styling
 
 `install`, `update-toast` and `push-toggle` print a small stylesheet once per page (with the CSP nonce).

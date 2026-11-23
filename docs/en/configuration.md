@@ -125,6 +125,9 @@ You can translate `name`, `short_name` and `description` in
 | `offline.route` | string | `/offline` | URL of the offline screen (precached). |
 | `offline.precache` | list | `[]` | Additional URLs to precache, for example `['/manifest.webmanifest', '/img/logo.svg']`. |
 | `offline.queue` | bool | `true` | Queue POST/PUT/PATCH/DELETE requests during a network failure. |
+| `offline.outbox` | bool | `true` | Keep queued requests the server refuses on replay for the user to retry or discard, see [Outbox](offline.md#outbox). Missing from a config published before 1.2: they are dropped. |
+| `offline.queue_max` | int\|null | `null` | At most this many waiting requests; more are not queued. |
+| `offline.queue_max_age` | int\|null | `null` | Minutes; an older request is not sent, it goes to the outbox. |
 | `offline.warm.urls` | `list<string>` | `[]` | Pages downloaded ahead of time; per user with `Pwa::warmUsing()`, see [Warm-up](offline.md#warm-up). |
 | `offline.warm.max` | int | `20` | Maximum number of pages per warm-up. |
 | `offline.warm.interval` | int | `60` | Minutes between automatic warm-ups (a sign-in always warms). |
