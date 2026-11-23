@@ -96,10 +96,29 @@ it('renders the push toggle with a label for each state', function (): void {
         ->toContain('Use another browser');
 });
 
+it('renders the outbox hidden, with an item template and its texts', function (): void {
+    $html = Blade::render('<x-pwa::outbox class="box"><x-slot:title>Unsaved orders</x-slot:title></x-pwa::outbox>');
+
+    expect($html)->toContain('data-pwa-outbox hidden')
+        ->toContain('pwa-ui pwa-outbox box')
+        ->toContain('Unsaved orders')
+        ->toContain(__('pwa::messages.outbox_lead'))
+        ->toContain('<template data-pwa-outbox-item>')
+        ->toContain('data-pwa-outbox-field="path"')
+        ->toContain('data-pwa-outbox-errors')
+        ->toContain('data-pwa-outbox-retry')
+        ->toContain('data-pwa-outbox-discard')
+        ->toContain('data-pwa-outbox-refused="'.e(__('pwa::messages.outbox_refused')).'"')
+        ->toContain('data-pwa-outbox-expired="'.e(__('pwa::messages.outbox_expired')).'"');
+
+    app()->setLocale('cs');
+    expect(Blade::render('<x-pwa::outbox/>'))->toContain('Zahodit')->toContain('Neuloženo');
+});
+
 it('prints the base styles once and lets them be turned off', function (): void {
     Vite::useCspNonce('ui-nonce');
 
-    $html = Blade::render('<x-pwa::install/><x-pwa::update-toast/><x-pwa::push-toggle/>');
+    $html = Blade::render('<x-pwa::install/><x-pwa::update-toast/><x-pwa::push-toggle/><x-pwa::outbox/>');
 
     expect(substr_count($html, '<style'))->toBe(1)
         ->and($html)->toContain('nonce="ui-nonce"')

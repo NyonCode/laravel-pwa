@@ -163,6 +163,10 @@ class ServiceWorkerBuilder
             'precache' => $this->precache(),
             'offlineUrl' => $offline ? config()->string('pwa.offline.route', '/offline') : null,
             'queue' => Value::configBool('pwa.offline.queue', true),
+            // Missing from a config published before 1.2: refused requests are dropped, as before.
+            'outbox' => Value::configBool('pwa.offline.outbox', false),
+            'queueMax' => max(0, Value::configInt('pwa.offline.queue_max', 0)),
+            'queueMaxAge' => max(0, Value::configInt('pwa.offline.queue_max_age', 0)) * 60_000,
             'navigationTimeout' => Value::configInt('pwa.cache.navigation_timeout', 3) * 1000,
             'neverCache' => $this->stringList('pwa.cache.never_cache'),
             'rules' => array_map(static fn (CacheRule $rule): array => $rule->toArray(), $this->rules()),

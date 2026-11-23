@@ -15,6 +15,7 @@
         <x-pwa::push-toggle/>
     </header>
     <nav><a href="/">Úvod</a> · <a href="/orders">Objednávky</a> · <a href="/components">Komponenty</a></nav>
+    <x-pwa::outbox/>
     <x-pwa::update-toast/>
 </body>
 </html>

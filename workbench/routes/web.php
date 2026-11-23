@@ -13,7 +13,8 @@ Route::get('/reports', fn () => view('demo', ['title' => 'Reporty']))->middlewar
 
 // Warm-up demo: /reports is available offline without ever being visited.
 Pwa::warmUsing(fn (): array => ['/reports', '/private']);
-Route::post('/items', fn (Request $request) => response()->json(['saved' => $request->input('name')]));
+// Offline queue demo; the name "taken" is refused (422), so a replay of it lands in the outbox.
+Route::post('/items', fn (Request $request) => response()->json(['saved' => $request->validate(['name' => ['required', 'not_in:taken']])['name']]));
 
 // Cache rule demo: the catalogue is served stale-while-revalidate, also offline.
 Pwa::serviceWorker()->flush();

@@ -62,6 +62,16 @@ offline it answers a visit from the stored JSON or, for a page known only from a
 offline without reloading the app. Partial reloads (`only`, `except`) are never stored or answered from
 the cache. The page components come from the Vite build, which the worker keeps once loaded.
 
+### Livewire (`wire:navigate`)
+
+`wire:navigate` links do not navigate either: Livewire fetches the next page's HTML
+(`X-Livewire-Navigate`) and swaps it in. The worker treats these fetches like navigations: it stores the
+page with the `pwa.cache` consent under the page URL, so a page opened through a link is available to a
+later full load and the other way round, and answers them from the stored page when the network is slow
+or down. A link to a stored page then works offline without reloading the app. For a page that was never
+stored the fetch fails and Livewire falls back to a full navigation, which shows the offline screen.
+Redirected answers are not stored.
+
 ## Warm-up
 
 Pages the user has never opened can be downloaded ahead of time, so they work offline right after
@@ -145,4 +155,44 @@ Keep in mind:
 - **Idempotency**: an action may be sent with a delay. When creating records, send your own ID (a UUID) from the client
   so a retry does not create a duplicate.
 - **Order**: the queue is replayed in insertion order; the first network error stops the replay.
+- **Validation**: the [outbox](#outbox) keeps what the server refuses with a 4xx or 5xx status, and
+  Inertia answers with validation errors. A classic `fetch` of a form without `Accept: application/json`
+  gets a redirect back from Laravel on a failed validation, which the worker cannot tell from success:
+  send `Accept: application/json` from your own JS.
 - To turn it off, set `offline.queue = false`, or add specific paths to `cache.never_cache`.
+
+### Outbox
+
+When the server refuses a queued request on replay (a status from 400 up other than 419 and 503, or an
+Inertia answer with validation errors), the worker keeps it in an outbox instead of dropping it
+(`offline.outbox`). It is not sent again by itself. The user sees what was not saved and decides:
+
+```blade
+<x-pwa::outbox/>
+```
+
+The [component](components.md#x-pwaoutbox) lists each change with the server's message and the
+validation errors, with **Try again** and **Discard**. Without it on the page the client shows a bar
+("A change made offline could not be saved"). In your own UI:
+
+```js
+Pwa.on('replay-failed', ({ url, status }) => console.warn('not saved', url, status))
+
+for (const item of await Pwa.outbox()) {
+  // item: {id, url, path, method, status, reason, message, errors, data, queuedAt, failedAt}
+  form.fill(item.data)        // the fields that were sent, without tokens and passwords
+  await item.discard()        // or item.retry() → {ok: true} once the server accepts it
+}
+```
+
+`data` holds the fields of a form or JSON body, without `_token`, `_method` and fields whose name
+contains `password`, `secret`, `token`, `card`, `cvc`, `cvv` or `iban`; headers are never exposed. The
+outbox is deleted with the rest of the user's data on logout or when another user signs in.
+
+### Limits
+
+`offline.queue_max` limits how many requests wait at once: a request beyond it is not queued, it fails
+like the network and the client shows "too many changes are waiting" (`pwa:queue-full`).
+`offline.queue_max_age` (minutes) stops a request that waited too long from being sent days later: on
+replay it goes to the outbox with `reason: 'expired'` instead, so the user decides. Both are off
+(`null`) by default.

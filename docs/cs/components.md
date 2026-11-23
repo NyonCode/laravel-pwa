@@ -122,6 +122,31 @@ Potřebuje [modul web push](push.md). Kliknutí přihlásí nebo odhlásí odbě
 (`subscribed`, `unsubscribed`, `denied`, `install-required`, `unavailable`), tlačítko `aria-pressed` a zobrazí se
 odpovídající `[data-pwa-push-label]`. Bez push na serveru nebo v prohlížeči bez push zůstane skrytý.
 
+## `<x-pwa::outbox/>`
+
+```blade
+<x-pwa::outbox class="card"/>
+<x-pwa::outbox>
+    <x-slot:title>Neuložené objednávky</x-slot:title>
+    Tyto objednávky se neuložily. Zkontrolujte je a zkuste to znovu.
+</x-pwa::outbox>
+```
+
+| Prop / slot | Výchozí | Popis |
+| --- | --- | --- |
+| slot `title` | přeložené „Neuloženo“ | nadpis |
+| výchozí slot | přeložené vysvětlení | text pod nadpisem |
+| `styles` | `true` | [základní styly](#stylování) |
+| atributy | – | předají se obalu (třída `pwa-ui pwa-outbox`) |
+
+Změny provedené offline, které server při odeslání odmítl ([odchozí schránka](offline.md#odchozí-schránka)):
+každý řádek ukáže metodu a cestu, zprávu serveru nebo přeložený důvod, chyby validace a tlačítka **Zkusit
+znovu** / **Zahodit**. Dokud je schránka prázdná, je skrytá; není to plovoucí toast, umístěte ji tam, kam
+se uživatel dívá, třeba nad obsah. Řádky vznikají z `<template data-pwa-outbox-item>` uvnitř komponenty
+s `[data-pwa-outbox-field]` (`method`, `path`, `status`, `reason`), `[data-pwa-outbox-errors]`,
+`[data-pwa-outbox-retry]` a `[data-pwa-outbox-discard]`; pro změnu publikujte views. S komponentou na
+stránce se vestavěná lišta „nepodařilo uložit“ nezobrazuje.
+
 ## Stylování
 
 `install`, `update-toast` a `push-toggle` vypíšou jednou na stránku malý stylopis (s CSP nonce).

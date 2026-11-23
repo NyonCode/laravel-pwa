@@ -172,9 +172,12 @@ Klient → SW (`navigator.serviceWorker.controller.postMessage`):
 | `{type: 'CLEAR_USER'}` | smazat cache a frontu uživatele |
 | `{type: 'IDENTITY', user}` | identita z keep-alive (`/pwa/session`); jiný uživatel = smazat data předchozího |
 | `{type: 'GET_VERSION'}` + `MessagePort` | vrátí `{version}` (`window.Pwa.version()`) |
+| `{type: 'OUTBOX'}` + `MessagePort` | vrátí `{items}`, odmítnuté požadavky (`window.Pwa.outbox()`) |
+| `{type: 'RETRY', id}` + `MessagePort` | odešle odmítnutý požadavek znovu; `{ok}`, `{ok: false, status}` nebo offline `{ok: false, pending: true}` |
+| `{type: 'DISCARD', id}` + `MessagePort` | smaže odmítnutý požadavek; `{ok}` |
 
 SW → klient (`{source: 'pwa', type}`): `activated`, `offline`, `maintenance`, `logout`, `queued`,
-`queue`, `replayed`. Klient je převádí na DOM události `pwa:*` ([Klient](client.md)).
+`queue`, `queue-full`, `replayed`, `replay-failed`. Klient je převádí na DOM události `pwa:*` ([Klient](client.md)).
 
 ## sw.import
 

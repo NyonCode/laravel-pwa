@@ -153,6 +153,32 @@ test('Livewire: an action sent offline is not queued and the banner says so', as
   expect(problems).toEqual([]);
 });
 
+test('Livewire: wire:navigate stores the page and opens it offline without a reload', async ({ page, context }) => {
+  test.skip(INERTIA, 'Livewire kit only');
+  const problems = watch(page);
+  await login(page);
+  await controlled(page);
+
+  // wire:navigate fetches the page instead of navigating; the worker stores it like a navigation.
+  await page.evaluate(async () => {
+    for (const name of (await caches.keys()).filter((key) => key.startsWith('pwa-pages-'))) await caches.delete(name);
+  });
+  const viaLink = () => page.evaluate(() => new Promise((resolve) => {
+    window.__sameDocument = true;
+    document.addEventListener('livewire:navigated', () => resolve({ sameDocument: window.__sameDocument === true, path: location.pathname, offlineScreen: /offline/i.test(document.title) }), { once: true });
+    document.querySelector('a[href$="/dashboard"][wire\\:navigate]').click();
+  }));
+  expect((await viaLink()).sameDocument).toBe(true);
+  await expect.poll(() => cachedPages(page)).toContain('/dashboard');
+
+  // Offline the worker answers the fetch: Livewire swaps the page, no full reload.
+  await context.setOffline(true);
+  const offline = await viaLink();
+  expect(offline).toEqual({ sameDocument: true, path: '/dashboard', offlineScreen: false });
+  await context.setOffline(false);
+  expect(problems).toEqual([]);
+});
+
 test('signing out deletes the user\'s pages from the cache', async ({ page }) => {
   const problems = watch(page);
   await login(page);

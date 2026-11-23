@@ -138,7 +138,8 @@ balíček z tohoto checkoutu a provede nastavení podle dokumentace (`tests/star
 komponenta, `pwa.cache` na dashboardu, výjimky údržby, push s `HasPushSubscriptions`, ikony). Pak spustí
 `pwa:doctor --ci` a `tests/starter-kits/smoke.spec.mjs` v Chromiu proti `php artisan serve`: manifest
 a worker, přihlášení a keep-alive, dashboard offline a offline obrazovku, formulář odeslaný offline (v Inertia
-ve frontě a odeslaný po připojení, v Livewire „neodesláno“) a úklid po odhlášení.
+ve frontě a odeslaný po připojení, v Livewire „neodesláno“), odkazy na uložené stránky offline (návštěvy
+Inertia, `wire:navigate`) a úklid po odhlášení.
 
 ```bash
 npm run test:kits -- react 13

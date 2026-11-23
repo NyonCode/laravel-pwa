@@ -25,6 +25,8 @@ it('sends the documented defaults to the client', function (): void {
         'i18n' => [
             'offline' => __('pwa::messages.offline_bar'),
             'notSent' => __('pwa::messages.offline_not_sent'),
+            'replayFailed' => __('pwa::messages.replay_failed'),
+            'queueFull' => __('pwa::messages.queue_full'),
             'maintenance' => __('pwa::messages.maintenance_bar'),
             'update' => __('pwa::messages.update_available'),
             'reload' => __('pwa::messages.reload'),

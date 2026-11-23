@@ -30,9 +30,10 @@ description: window.Pwa – API, události pwa:*, lišty, instalace, badge a jak
 | `update()` | Promise | ručně zkontroluje novou verzi SW |
 | `updateAvailable()` | bool | čeká nová verze |
 | `applyUpdate()` | bool | aktivuje čekající verzi a po jejím převzetí stránku znovu načte; `false`, když nic nečeká |
-| `refreshUi()` | – | ukáže nebo skryje prvky `[data-pwa-*]` přidané po načtení (instalace, aktualizace, push) |
+| `refreshUi()` | – | ukáže nebo skryje prvky `[data-pwa-*]` přidané po načtení (instalace, aktualizace, push, odchozí schránka) |
 | `keepAlive()` | `Promise<object\|null>` | zavolá `/pwa/session` hned |
 | `warm()` | `Promise<object\|null>` | stáhne stránky k předehřátí hned; `{count, skipped, failed}` ([Offline](offline.md#předehřátí)) |
+| `outbox()` | `Promise<object[]>` | změny, které server při odeslání odmítl, každá s `retry()` a `discard()` ([Offline](offline.md#odchozí-schránka)) |
 | `version()` | `Promise<string\|null>` | verze aktivního SW |
 | `on(event, fn)` | function | posluchač bez prefixu `pwa:`; vrací funkci pro odhlášení |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
@@ -59,8 +60,10 @@ Všechny jako `CustomEvent` na `document` (`pwa:jméno`) i přes `Pwa.on('jméno
 | `pwa:offline` | `{}` | SW nezvládl navigaci ani akci kvůli síti |
 | `pwa:maintenance` | `{retryAfter}` | SW dostal 503 |
 | `pwa:logout` | `{}` | SW zpracoval odhlášení |
-| `pwa:queue` | `{count}` | změna fronty offline akcí |
-| `pwa:replayed` | `{url, status}` | akce z fronty odeslána |
+| `pwa:queue` | `{count, failed}` | změna fronty offline akcí (`count` čeká, `failed` v odchozí schránce) |
+| `pwa:queue-full` | `{count}` | akce se neuložila do fronty kvůli `offline.queue_max` |
+| `pwa:replayed` | `{url, status}` | akce z fronty odeslána (s jakýmkoli stavem) |
+| `pwa:replay-failed` | `{id, url, method, status, reason, message, errors, kept}` | server akci z fronty odmítl, nebo vypršela; `kept`, když zůstává v odchozí schránce |
 | `pwa:update-available` | `{worker}` | čeká nová verze SW |
 | `pwa:activated` | `{version}` | aktivovala se verze SW |
 | `pwa:installable` | `{prompt, ios}` | instalace je možná (výzva, nebo iOS návod) |

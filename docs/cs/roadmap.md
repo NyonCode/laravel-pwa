@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: "Co je v plánu po 1.1: navigace Livewire offline, odchozí schránka pro neodeslané požadavky, pravidelné předehřátí, doctor pro živý web, podporované verze v roce 2027 a 2.0."
+description: "Co je v plánu po 1.1: navigace Livewire offline, odchozí schránka pro neodeslané požadavky, doctor pro živý web, podporované verze v roce 2027 a 2.0."
 ---
 
 # Roadmap
@@ -30,11 +30,8 @@ v [GitHub issues](https://github.com/NyonCode/laravel-pwa/issues).
 - **Limity fronty.** Volitelné maximální stáří a počet požadavků ve frontě (`offline.queue_max_age`,
   `offline.queue_max`), aby se starý požadavek neodeslal po dnech bez vědomí uživatele.
 
-## 1.3: Předehřátí a živý web
+## 1.3: Živý web
 
-- **Pravidelné předehřátí.** V nainstalovaných aplikacích v Chromiu worker zaregistruje Periodic
-  Background Sync a obnovuje předehřívané stránky na pozadí, takže offline kopie je čerstvá, i když
-  aplikace nebyla otevřená. Ostatní prohlížeče dál předehřívají při návštěvě.
 - **`pwa:doctor --url=`.** Zkontroluje nasazený web zvenku: HTTPS, manifest a jeho ikony, hlavičky a
   scope workeru (`Service-Worker-Allowed`, hlavičky cache za CDN), hlavičky `X-PWA-*` uložené stránky
   a odpověď při údržbě. Hodí se do deploy pipeline.

@@ -30,9 +30,10 @@ description: The window.Pwa API, pwa:* events, the status bar, installation, bad
 | `update()` | Promise | checks for a new service worker version manually |
 | `updateAvailable()` | bool | a new version waits |
 | `applyUpdate()` | bool | activates the waiting version and reloads the page once it takes over; `false` when nothing waits |
-| `refreshUi()` | – | shows or hides `[data-pwa-*]` elements added after load (install, update, push) |
+| `refreshUi()` | – | shows or hides `[data-pwa-*]` elements added after load (install, update, push, outbox) |
 | `keepAlive()` | `Promise<object\|null>` | calls `/pwa/session` right away |
 | `warm()` | `Promise<object\|null>` | downloads the warm-up pages now; `{count, skipped, failed}` ([Offline](offline.md#warm-up)) |
+| `outbox()` | `Promise<object[]>` | changes the server refused on replay, each with `retry()` and `discard()` ([Offline](offline.md#outbox)) |
 | `version()` | `Promise<string\|null>` | version of the active service worker |
 | `on(event, fn)` | function | listener without the `pwa:` prefix; returns a function that removes it |
 | `badge.set(n)` | Promise | Badging API (iOS 16.4+, Android, desktop) |
@@ -59,8 +60,10 @@ Every event is dispatched as a `CustomEvent` on `document` (`pwa:name`) and is a
 | `pwa:offline` | `{}` | the service worker could not complete a navigation or action because of the network |
 | `pwa:maintenance` | `{retryAfter}` | the service worker received a 503 |
 | `pwa:logout` | `{}` | the service worker processed a logout |
-| `pwa:queue` | `{count}` | the offline queue changed |
-| `pwa:replayed` | `{url, status}` | a queued action was sent |
+| `pwa:queue` | `{count, failed}` | the offline queue changed (`count` waiting, `failed` in the outbox) |
+| `pwa:queue-full` | `{count}` | an action was not queued because of `offline.queue_max` |
+| `pwa:replayed` | `{url, status}` | a queued action was sent (any status) |
+| `pwa:replay-failed` | `{id, url, method, status, reason, message, errors, kept}` | the server refused a queued action, or it expired; `kept` when it stays in the outbox |
 | `pwa:update-available` | `{worker}` | a new service worker version is waiting |
 | `pwa:activated` | `{version}` | a service worker version was activated |
 | `pwa:installable` | `{prompt, ios}` | installation became possible (a prompt, or the iOS instructions) |

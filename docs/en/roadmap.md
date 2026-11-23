@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: "What is planned after 1.1: Livewire navigation offline, an outbox for failed replays, periodic warm-up, a doctor for the live site, supported versions in 2027 and 2.0."
+description: "What is planned after 1.1: Livewire navigation offline, an outbox for failed replays, a doctor for the live site, supported versions in 2027 and 2.0."
 ---
 
 # Roadmap
@@ -30,11 +30,8 @@ Plans, not promises: the order and the content can change. Everything in 1.x kee
 - **Queue limits.** Optional maximum age and count of queued requests (`offline.queue_max_age`,
   `offline.queue_max`), so that an old request is not sent days later without the user knowing.
 
-## 1.3: Warm-up and the live site
+## 1.3: The live site
 
-- **Periodic warm-up.** In installed Chromium apps the worker registers Periodic Background Sync and
-  refreshes the warm-up pages in the background, so the offline copy is fresh even when the app was not
-  opened. Other browsers keep warming up on visits.
 - **`pwa:doctor --url=`.** Checks the deployed site from outside: HTTPS, the manifest and its icons, the
   worker's headers and scope (`Service-Worker-Allowed`, caching headers behind a CDN), the `X-PWA-*`
   headers of a cached page and the maintenance answer. Useful in a deployment pipeline.

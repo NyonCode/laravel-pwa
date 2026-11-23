@@ -73,7 +73,7 @@ real Laravel app is everything around it, and that is what this package is built
 | Dynamic manifest | Per-request resolvers for tenants, branding and locales; Octane-safe | [Manifest](docs/en/manifest.md#resolvers-tenants-and-branding) |
 | Service worker | Built from your Vite manifest, versioned, auto-updating | [Service worker](docs/en/service-worker.md) |
 | Cache rules | network-first, cache-first, stale-while-revalidate, network-only, cache-only; per user or shared; limits and expiry | [Cache rules](docs/en/service-worker.md#cache-rules) |
-| Offline | Offline screen, offline pages with server consent, warm-up of unvisited pages, offline queue for forms and API calls | [Offline](docs/en/offline.md) |
+| Offline | Offline screen, offline pages with server consent, warm-up of unvisited pages, Inertia and `wire:navigate` links offline, offline queue for forms and API calls with an outbox for refused changes | [Offline](docs/en/offline.md) |
 | Push notifications | Optional: `WebPushChannel`, `Pwa.push.subscribe()`, VAPID keys, per-device subscriptions, Declarative Web Push, `WebPush::fake()` | [Push notifications](docs/en/push.md) |
 | Multi-tenant | One installable app per path tenant (`/t/acme/`): own worker scope, manifest identity and caches | [Multi-tenant apps](docs/en/tenancy.md) |
 | Session | Persistent login in the installed app, keep-alive, CSRF refresh | [Persistent login](docs/en/session.md) |

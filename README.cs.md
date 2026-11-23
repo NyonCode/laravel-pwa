@@ -68,7 +68,7 @@ Tím máte instalovatelnou PWA s offline obrazovkou. Všechno ostatní se zapín
 | Dynamický manifest | Resolvery per request pro tenanty, branding a jazyky, bezpečné pro Octane | [Manifest](docs/cs/manifest.md) |
 | Service worker | Sestavený z Vite manifestu, verzovaný, sám se aktualizuje | [Service worker](docs/cs/service-worker.md) |
 | Pravidla cache | network-first, cache-first, stale-while-revalidate, network-only, cache-only; per uživatel nebo sdílené; limity a expirace | [Service worker](docs/cs/service-worker.md) |
-| Offline | Offline obrazovka, stránky offline se souhlasem serveru, předehřátí nenavštívených stránek, fronta formulářů a API volání | [Offline](docs/cs/offline.md) |
+| Offline | Offline obrazovka, stránky offline se souhlasem serveru, předehřátí nenavštívených stránek, odkazy Inertia a `wire:navigate` offline, fronta formulářů a API volání s odchozí schránkou pro odmítnuté změny | [Offline](docs/cs/offline.md) |
 | Push notifikace | Volitelné: `WebPushChannel`, `Pwa.push.subscribe()`, klíče VAPID, odběry po zařízeních, Declarative Web Push, `WebPush::fake()` | [Push notifikace](docs/cs/push.md) |
 | Více tenantů | Samostatně instalovatelná aplikace pro každého tenanta na cestě (`/t/acme/`): vlastní scope workeru, identita v manifestu a cache | [Více tenantů](docs/cs/tenancy.md) |
 | Session | Trvalé přihlášení v aplikaci, keep-alive, obnova CSRF | [Trvalé přihlášení](docs/cs/session.md) |

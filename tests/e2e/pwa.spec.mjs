@@ -84,6 +84,37 @@ test('offline: a mutation is queued and replayed after reconnecting', { tag: '@o
   await expect.poll(() => queueCount(page)).toBe(0);
 });
 
+test('offline: a change the server refuses on replay lands in the outbox', { tag: '@offline' }, async () => {
+  await context.setOffline(false);
+  await page.goto('/components');
+  await controlled(page);
+  await expect(page.locator('[data-pwa-outbox]')).toBeHidden();
+
+  await context.setOffline(true);
+  const status = await page.evaluate(() => {
+    const token = document.querySelector('meta[name=csrf-token]').content;
+    return fetch('/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', 'X-CSRF-TOKEN': token },
+      body: `name=taken&_token=${token}`,
+    }).then((r) => r.status);
+  });
+  expect(status).toBe(202);
+
+  await context.setOffline(false);
+  await page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'REPLAY_QUEUE' }));
+
+  const outbox = page.locator('[data-pwa-outbox]');
+  await expect(outbox).toBeVisible();
+  await expect(outbox.locator('[data-pwa-outbox-list] li').first()).toContainText('POST /items');
+  await expect(outbox.locator('[data-pwa-outbox-errors] li')).toHaveText([/name is invalid/]);
+  expect((await page.evaluate(() => window.Pwa.outbox()))[0].data).toEqual({ name: 'taken' });
+
+  await outbox.locator('[data-pwa-outbox-discard]').click();
+  await expect(outbox).toBeHidden();
+  await expect.poll(() => queueCount(page)).toBe(0);
+});
+
 test('cache rules: the catalogue is served from its rule cache offline', { tag: '@offline' }, async () => {
   await page.goto('/orders');
   const online = await page.evaluate(() => fetch('/api/catalog').then((r) => r.json()));

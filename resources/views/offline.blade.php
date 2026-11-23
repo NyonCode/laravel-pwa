@@ -286,9 +286,11 @@ h1{font-size:clamp(22px,5vw,26px); line-height:1.25; margin:0 0 8px; text-align:
       req.onsuccess = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('queue')) { db.close(); return; }
-        const c = db.transaction('queue', 'readonly').objectStore('queue').count();
-        c.onsuccess = () => {
-          if (c.result > 0) { $('queue-count').textContent = plural(c.result); $('queue-section').hidden = false; }
+        // Entries the server refused (outbox) are not waiting any more.
+        const all = db.transaction('queue', 'readonly').objectStore('queue').getAll();
+        all.onsuccess = () => {
+          const waiting = all.result.filter((entry) => !entry.failed).length;
+          if (waiting > 0) { $('queue-count').textContent = plural(waiting); $('queue-section').hidden = false; }
           db.close();
         };
       };

@@ -328,6 +328,8 @@ class Pwa
                 // Without the queue, nothing is sent later: do not promise it.
                 'offline' => __(Value::configBool('pwa.offline.queue', true) ? 'pwa::messages.offline_bar' : 'pwa::messages.offline_bar_no_queue'),
                 'notSent' => __('pwa::messages.offline_not_sent'),
+                'replayFailed' => __('pwa::messages.replay_failed'),
+                'queueFull' => __('pwa::messages.queue_full'),
                 'maintenance' => __('pwa::messages.maintenance_bar'),
                 'update' => __('pwa::messages.update_available'),
                 'reload' => __('pwa::messages.reload'),

@@ -186,7 +186,27 @@
   // Only these headers are stored; cookies and authorization never are.
   const QUEUED_HEADERS = ['content-type', 'accept', 'x-csrf-token', 'x-xsrf-token', 'x-requested-with', 'x-inertia', 'x-livewire'];
 
+  const queueAll = () => tx('readonly', (store) => store.getAll());
+  const queueGet = (id) => tx('readonly', (store) => store.get(id));
+  const queuePut = (entry) => tx('readwrite', (store) => store.put(entry));
+  const queueDelete = (id) => tx('readwrite', (store) => store.delete(id));
+  const queueClear = async () => {
+    try { await tx('readwrite', (store) => store.clear()); } catch { /* database not created yet */ }
+  };
+
+  // Entries the server refused stay in the same store with `failed` set (offline.outbox): they are
+  // never replayed on their own, only on retry from the client.
+  const queueCounts = async () => {
+    const entries = await queueAll();
+    const failed = entries.filter((entry) => entry.failed).length;
+    return { count: entries.length - failed, failed };
+  };
+
+  const announceQueue = async (type = 'queue') => broadcast({ type, ...(await queueCounts()) });
+
+  /** Resolves to false when the queue is full (offline.queue_max). */
   const queuePush = async (request) => {
+    if (C.queueMax > 0 && (await queueCounts()).count >= C.queueMax) return false;
     const headers = {};
     request.headers.forEach((value, key) => {
       if (QUEUED_HEADERS.includes(key)) headers[key] = value;
@@ -196,14 +216,8 @@
     if (self.registration.sync) {
       try { await self.registration.sync.register(SYNC_TAG); } catch { /* Background Sync unavailable */ }
     }
-    await broadcast({ type: 'queued', count: await queueCount() });
-  };
-
-  const queueAll = () => tx('readonly', (store) => store.getAll());
-  const queueCount = () => tx('readonly', (store) => store.count());
-  const queueDelete = (id) => tx('readwrite', (store) => store.delete(id));
-  const queueClear = async () => {
-    try { await tx('readwrite', (store) => store.clear()); } catch { /* database not created yet */ }
+    await announceQueue('queued');
+    return true;
   };
 
   const freshCsrf = async () => {
@@ -226,14 +240,52 @@
     return { headers, body };
   };
 
-  let replaying = false;
+  const plainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-  const replayQueue = async () => {
-    if (replaying) return;
-    replaying = true;
+  /**
+   * Why the server refused a replayed request, or null when it accepted it: a status from 400 up,
+   * or an Inertia answer whose page carries validation errors (Inertia redirects back with 200).
+   */
+  const refusal = async (res) => {
+    const type = res.headers.get('Content-Type') || '';
+    let body = null;
+    if (type.includes('json')) {
+      try { body = await res.clone().json(); } catch { body = null; }
+    }
+    const inertiaErrors = res.headers.get('X-Inertia') === 'true' && plainObject(body?.props?.errors)
+      && Object.keys(body.props.errors).length > 0 ? body.props.errors : null;
+    if (res.status < 400 && !inertiaErrors) return null;
+
+    const errors = inertiaErrors || (plainObject(body?.errors) ? body.errors : null);
+    return {
+      status: res.status < 400 ? 422 : res.status,
+      message: typeof body?.message === 'string' ? body.message.slice(0, 500) : null,
+      // Validation messages only, and not too many of them.
+      errors: errors && JSON.stringify(errors).length <= 8000 ? errors : null,
+    };
+  };
+
+  /** Into the outbox (offline.outbox) or away, and tell the client either way. */
+  const refuse = async (entry, failure) => {
+    const failed = { ...failure, at: Date.now() };
+    if (C.outbox) await queuePut({ ...entry, failed });
+    else await queueDelete(entry.id);
+    await broadcast({ type: 'replay-failed', id: entry.id, url: entry.url, method: entry.method, kept: !!C.outbox, ...failed });
+  };
+
+  const expired = (entry) => C.queueMaxAge > 0 && Date.now() - entry.at > C.queueMaxAge;
+
+  let replayRun = null;
+
+  const replayAll = async () => {
     try {
       let token = null;
       for (const entry of await queueAll()) {
+        if (entry.failed) continue;
+        if (expired(entry)) {
+          await refuse(entry, { status: 0, reason: 'expired', message: null, errors: null });
+          continue;
+        }
         const init = { method: entry.method, headers: entry.headers, body: entry.body, credentials: 'same-origin' };
         let res;
         try {
@@ -246,13 +298,73 @@
           break; // still offline
         }
         if (res.status === 503) break; // maintenance, try later
-        await queueDelete(entry.id);
         await broadcast({ type: 'replayed', url: entry.url, status: res.status });
+        const failure = await refusal(res);
+        if (failure) await refuse(entry, { ...failure, reason: 'refused' });
+        else await queueDelete(entry.id);
       }
     } finally {
-      replaying = false;
-      await broadcast({ type: 'queue', count: await queueCount() });
+      await announceQueue();
     }
+  };
+
+  // One run at a time; a run asked for during another one waits for it.
+  const replayQueue = async () => {
+    while (replayRun) await replayRun;
+    replayRun = replayAll().finally(() => { replayRun = null; });
+    return replayRun;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Outbox (offline.outbox): what the client may see of the refused entries. Never the headers;
+   * the body only as fields of a form or JSON object, without tokens and secrets.
+   * ------------------------------------------------------------------ */
+
+  const SECRET_FIELD = /^_token$|^_method$|password|secret|token|card|cvc|cvv|iban/i;
+
+  const visibleData = (entry) => {
+    const type = entry.headers['content-type'] || '';
+    const text = () => new TextDecoder().decode(entry.body);
+    let data = null;
+    try {
+      if (type.includes('application/x-www-form-urlencoded')) data = Object.fromEntries(new URLSearchParams(text()));
+      else if (type.includes('json')) data = JSON.parse(text());
+    } catch {
+      data = null;
+    }
+    if (!plainObject(data)) return null;
+    return Object.fromEntries(Object.entries(data).filter(([key]) => !SECRET_FIELD.test(key)));
+  };
+
+  const outboxItems = async () => (await queueAll()).filter((entry) => entry.failed).map((entry) => ({
+    id: entry.id,
+    url: entry.url,
+    method: entry.method,
+    queuedAt: entry.at,
+    failedAt: entry.failed.at,
+    status: entry.failed.status,
+    reason: entry.failed.reason,
+    message: entry.failed.message,
+    errors: entry.failed.errors,
+    data: visibleData(entry),
+  }));
+
+  /** Sends a refused entry again: { ok } when the server took it, otherwise its new state. */
+  const retryEntry = async (id) => {
+    const entry = await queueGet(id);
+    if (!entry?.failed) return { ok: false, missing: true };
+    await queuePut({ ...entry, failed: undefined, at: Date.now() });
+    await replayQueue();
+    const after = await queueGet(id);
+    if (!after) return { ok: true };
+    return after.failed ? { ok: false, status: after.failed.status } : { ok: false, pending: true };
+  };
+
+  const discardEntry = async (id) => {
+    const entry = await queueGet(id);
+    if (entry?.failed) await queueDelete(id);
+    await announceQueue();
+    return { ok: !!entry?.failed };
   };
 
   /* ------------------------------------------------------------------ *
@@ -499,7 +611,11 @@
     return cached || Response.error();
   };
 
-  const handleNavigation = async (event) => {
+  /**
+   * A page: network first, the stored copy when the network is slow or down. Also serves Livewire's
+   * wire:navigate fetches, stored under the page URL (`key`) so that both find each other.
+   */
+  const handleNavigation = async (event, { key = event.request, fallback = offlineFallback, storable = () => true } = {}) => {
     const { request } = event;
     const pages = `${PAGES_PREFIX}${await currentUserHash()}`;
 
@@ -514,9 +630,9 @@
         return response; // the maintenance screen, never cached
       }
 
-      if (pageCacheable(response)) {
+      if (pageCacheable(response) && storable(response)) {
         const copy = response.clone();
-        event.waitUntil(caches.open(`${PAGES_PREFIX}${await currentUserHash()}`).then((c) => c.put(request, copy)));
+        event.waitUntil(caches.open(`${PAGES_PREFIX}${await currentUserHash()}`).then((c) => c.put(key, copy)));
       }
 
       return response;
@@ -527,14 +643,29 @@
       if (winner) return winner;
 
       // Slow network: use the cache if possible, otherwise keep waiting.
-      const cached = await caches.match(request, { cacheName: pages });
+      const cached = await caches.match(key, { cacheName: pages });
       return cached || (await network);
     } catch {
-      const cached = await caches.match(request, { cacheName: pages });
+      const cached = await caches.match(key, { cacheName: pages });
       if (cached) return cached;
       await broadcast({ type: 'offline' });
-      return offlineFallback();
+      return fallback();
     }
+  };
+
+  // Livewire's wire:navigate: a fetch of the next page's HTML instead of a navigation.
+  const livewireNavigate = (request) => request.headers.has('x-livewire-navigate');
+
+  const handleLivewireNavigate = (event) => {
+    const key = new URL(event.request.url);
+    key.hash = '';
+    return handleNavigation(event, {
+      key: key.href,
+      // Livewire falls back to a full navigation when the fetch fails offline.
+      fallback: async () => Response.error(),
+      // A navigation refuses a redirected response, and this copy is served to navigations too.
+      storable: (response) => !response.redirected,
+    });
   };
 
   /* ------------------------------------------------------------------ *
@@ -622,7 +753,12 @@
       await observeFrom(request, response);
       return response;
     } catch {
-      await queuePush(copy);
+      if (!(await queuePush(copy))) {
+        // offline.queue_max: fail like the network instead of growing the queue.
+        await broadcast({ type: 'offline' });
+        await announceQueue('queue-full');
+        return Response.error();
+      }
       await broadcast({ type: 'offline' });
       return new Response(JSON.stringify({ queued: true }), {
         status: 202,
@@ -778,6 +914,15 @@
       case 'REPLAY_QUEUE':
         event.waitUntil(replayQueue());
         break;
+      case 'OUTBOX':
+        event.waitUntil(outboxItems().then((items) => event.ports[0]?.postMessage({ items })));
+        break;
+      case 'RETRY':
+        event.waitUntil(retryEntry(data.id).then((result) => event.ports[0]?.postMessage(result)));
+        break;
+      case 'DISCARD':
+        event.waitUntil(discardEntry(data.id).then((result) => event.ports[0]?.postMessage(result)));
+        break;
       case 'CLEAR_USER':
         event.waitUntil(purgeUserData().then(() => switchUser('guest')));
         break;
@@ -813,7 +958,7 @@
 
   /* ------------------------------------------------------------------ *
    * Fetch routing. Order: worker script → never_cache (pass-through) → mutations →
-   * navigations → precached build files → sw.extend routes → rules.
+   * navigations → wire:navigate and Inertia visits → precached build files → sw.extend routes → rules.
    * ------------------------------------------------------------------ */
 
   self.addEventListener('fetch', (event) => {
@@ -849,6 +994,11 @@
 
     if (local && request.mode === 'navigate') {
       event.respondWith(handleNavigation(event));
+      return;
+    }
+
+    if (local && livewireNavigate(request)) {
+      event.respondWith(handleLivewireNavigate(event));
       return;
     }
 
